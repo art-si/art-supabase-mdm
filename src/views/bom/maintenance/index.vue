@@ -369,6 +369,13 @@
     { type: 'globalIndex', label: '序号', width: 72, fixed: 'left' },
     { prop: 'materialId', label: '父项物料', minWidth: 290, fixed: 'left', formatter: identity },
     {
+      prop: 'projectId',
+      label: '项目归属',
+      minWidth: 190,
+      formatter: (row) =>
+        row.project ? `${row.project.projectName} · ${row.project.projectCode}` : '通用 BOM'
+    },
+    {
       prop: 'groupId',
       label: 'BOM 分组',
       minWidth: 130,
@@ -400,7 +407,12 @@
       width: 112,
       align: 'center',
       formatter: (row) => (
-        <ArtDictDisplay dictCode="mdmBomStatus" value={row.status} display="tag" />
+        <div class="flex flex-col items-center gap-1">
+          <ArtDictDisplay dictCode="mdmBomStatus" value={row.status} display="tag" />
+          {row.sourceQuotationId && row.status === 'design' ? (
+            <small class="text-[var(--art-gray-600)]">工程报价待复核</small>
+          ) : null}
+        </div>
       )
     },
     {

@@ -72,8 +72,18 @@ export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSign
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions
   )
+  const projectIds = uniq((data ?? []).flatMap((row) => (row.projectId ? [row.projectId] : [])))
+  const { data: projects } = projectIds.length
+    ? await responseHandle<Array<{ id: string; projectCode: string; projectName: string }>>(
+        () =>
+          supabase.from('mdm_project').select('id,project_code,project_name').in('id', projectIds),
+        readOptions
+      )
+    : { data: [] }
+  const projectsById = new Map((projects ?? []).map((project) => [project.id, project]))
   const rows = (data ?? []).map((row) => ({
     ...row,
+    project: row.projectId ? (projectsById.get(row.projectId) ?? null) : null,
     items: [...(row.items ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)
   }))
   return { data: rows, total: total ?? 0, current: params.current, size: params.size }

@@ -90,6 +90,9 @@ export interface BomRecord {
   id: string
   tenantId: string
   bomCode: string
+  projectId?: string | null
+  project?: { id: string; projectCode: string; projectName: string } | null
+  sourceQuotationId?: string | null
   materialId: string
   material?: BomMaterialReference | null
   processRouteId?: string | null

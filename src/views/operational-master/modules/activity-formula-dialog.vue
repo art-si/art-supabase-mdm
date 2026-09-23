@@ -26,7 +26,16 @@
         :tenant-options="tenantOptions"
       />
 
-      <ElForm v-else ref="formRef" :model="model" :rules="rules" label-position="top">
+      <ArtForm
+        custom-layout
+        :show-reset="false"
+        :show-submit="false"
+        v-else
+        ref="formRef"
+        v-model="model"
+        :rules="rules"
+        label-position="top"
+      >
         <ArtSectionCard class="formula-dialog__basic" preserve-content-structure>
           <header class="formula-dialog__section-header">
             <div>
@@ -377,15 +386,18 @@
             </ElFormItem>
           </main>
         </section>
-      </ElForm>
+      </ArtForm>
     </div>
   </ArtDialog>
 
   <ArtDialog ref="parameterDialogRef" size="sm">
-    <ElForm
+    <ArtForm
+      custom-layout
+      :show-reset="false"
+      :show-submit="false"
       ref="parameterFormRef"
       label-position="top"
-      :model="parameterEditor.model"
+      v-model="parameterEditor.model"
       :rules="parameterRules"
     >
       <div class="parameter-editor__grid">
@@ -465,13 +477,14 @@
           />
         </ElFormItem>
       </div>
-    </ElForm>
+    </ArtForm>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
-  import type { ElForm, ElTree } from 'element-plus'
+  import type { ElTree } from 'element-plus'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -518,8 +531,8 @@
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const dialogRef = ref<ArtDialogExpose<MasterDialogOpenData>>()
   const parameterDialogRef = ref<ArtDialogExpose>()
-  const formRef = ref<InstanceType<typeof ElForm>>()
-  const parameterFormRef = ref<InstanceType<typeof ElForm>>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
+  const parameterFormRef = ref<InstanceType<typeof ArtForm>>()
   const parameterTreeRef = ref<InstanceType<typeof ElTree>>()
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
   const readonly = ref(false)
