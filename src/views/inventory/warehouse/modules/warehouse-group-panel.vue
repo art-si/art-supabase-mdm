@@ -2,7 +2,7 @@
   <ArtSectionCard
     class="warehouse-group-panel"
     title="仓库分组"
-    subtitle="选择分组后联动筛选右侧仓库"
+    subtitle="选择分组后查看本级及下级仓库"
     :loading="loading"
     :error="error"
     :empty="!loading && !error && !groups.length"

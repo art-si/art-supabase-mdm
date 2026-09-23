@@ -72,6 +72,7 @@
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
+  import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
@@ -183,6 +184,14 @@
     loading: false,
     error: ''
   })
+  const groupTreeUtils = new TreeUtils({ parentKey: 'parentId' })
+  const selectedGroupIds = computed(() =>
+    groupState.selectedId
+      ? groupTreeUtils
+          .getDescendants(groupTreeUtils.listToTree(groupState.rows), groupState.selectedId, true)
+          .map((group) => String(group.id))
+      : undefined
+  )
   const references = ref<OperationalMasterReferences>({
     customers: [],
     employees: [],
@@ -490,7 +499,8 @@
       {
         ...params,
         tenantId: effectiveTenantId.value,
-        groupId: groupState.selectedId || undefined
+        groupId: groupState.selectedId || undefined,
+        groupIds: selectedGroupIds.value
       },
       options
     )

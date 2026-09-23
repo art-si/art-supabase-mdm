@@ -110,6 +110,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { exportExcel } from '@/utils/file'
   import { formatWithDayjs } from '@/utils/time'
+  import TreeUtils from '@/utils/tree'
   import {
     fetchProcessRoutes,
     copyProcessRoute,
@@ -169,6 +170,14 @@
     loading: false,
     error: ''
   })
+  const groupTreeUtils = new TreeUtils({ parentKey: 'parentId' })
+  const selectedGroupIds = computed(() =>
+    groupState.selectedId
+      ? groupTreeUtils
+          .getDescendants(groupTreeUtils.listToTree(groupState.rows), groupState.selectedId, true)
+          .map((group) => String(group.id))
+      : undefined
+  )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '路线总数',
@@ -211,7 +220,8 @@
       {
         ...p,
         tenantId: effectiveTenantId.value || '',
-        groupId: groupState.selectedId || undefined
+        groupId: groupState.selectedId || undefined,
+        groupIds: selectedGroupIds.value
       },
       o
     )

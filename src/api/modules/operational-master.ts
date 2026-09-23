@@ -101,7 +101,8 @@ export async function fetchOperationalMaster(
     .range((params.current - 1) * params.size, params.current * params.size - 1)
 
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
-  if (params.groupId) query = query.eq('group_id', params.groupId)
+  if (params.groupIds?.length) query = query.in('group_id', params.groupIds)
+  else if (params.groupId) query = query.eq('group_id', params.groupId)
   if (typeof params.enabled === 'boolean') query = query.eq('enabled', params.enabled)
   if (params.keyword?.trim()) {
     query = query.or(buildOrIlikeFilter(definition.keywordColumns, params.keyword.trim()))

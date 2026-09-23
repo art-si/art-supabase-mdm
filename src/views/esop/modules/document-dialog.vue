@@ -84,15 +84,16 @@
             </div>
           </template>
           <template #attachmentUrl>
-            <div class="esop-document-dialog__upload">
-              <ArtUploadFile
-                v-model="form.attachmentUrl"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
-                title="选择 ESOP 附件"
-                tip="推荐 PDF；支持常见文档、表格、演示稿与图片，单个文件不超过 20 MB"
-                @upload-success="handleUploadSuccess"
-              />
-            </div>
+            <ArtUploadFile
+              v-model="form.attachmentUrl"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
+              title="选择 ESOP 附件"
+              tip="推荐 PDF；支持常见文档、表格、演示稿与图片，单个文件不超过 20 MB"
+              :disabled="!form.tenantId"
+              :resource-tenant-id="form.tenantId"
+              :file-name="form.attachmentName"
+              @resource-change="handleAttachmentChange"
+            />
           </template>
         </ArtForm>
 
@@ -155,6 +156,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import { ElMessage } from 'element-plus'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -315,7 +317,17 @@
     versionNo: [{ required: true, message: '请输入版本号', trigger: 'blur' }],
     attachmentUrl: [{ required: true, message: '请上传 ESOP 附件', trigger: 'change' }]
   }
-  const handleUploadSuccess = (resource: Api.DataCenter.Resources.ResourceListItem): void => {
+  const handleAttachmentChange = (resources: Api.DataCenter.Resources.ResourceListItem[]): void => {
+    const resource = resources[0]
+    if (!resource) return
+    if (resource.tenantId !== form.tenantId) {
+      form.attachmentUrl = ''
+      form.attachmentName = ''
+      form.attachmentType = ''
+      form.attachmentSize = undefined
+      ElMessage.warning('附件不属于当前目标租户，请重新选择')
+      return
+    }
     form.attachmentUrl = resource.url ?? ''
     form.attachmentName =
       resource.originName || decodeURIComponent(resource.url?.split('/').pop() || 'ESOP附件')
@@ -391,6 +403,10 @@
       form.categoryId = ''
       form.materialIds = []
       form.routeIds = []
+      form.attachmentUrl = ''
+      form.attachmentName = ''
+      form.attachmentType = ''
+      form.attachmentSize = undefined
     }
   )
   defineExpose({ handleOpen })
@@ -477,19 +493,6 @@
         padding: 4px 8px;
         background: var(--el-fill-color-lighter);
         border-radius: 999px;
-      }
-    }
-
-    &__upload {
-      padding: var(--art-space-3);
-      background: var(--el-bg-color);
-      border: 1px dashed var(--el-border-color);
-      border-radius: var(--el-border-radius-base);
-      transition: border-color 0.16s ease;
-
-      &:focus-within,
-      &:hover {
-        border-color: var(--theme-color);
       }
     }
 

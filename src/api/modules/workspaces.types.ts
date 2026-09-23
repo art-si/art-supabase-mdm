@@ -15,6 +15,7 @@ export interface WorkspaceQuery {
   enabled?: boolean
   departmentIds?: string[]
   groupId?: string
+  groupIds?: string[]
 }
 export interface OperationTask {
   inputMode: string

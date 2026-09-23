@@ -146,6 +146,7 @@ export interface OperationalMasterQuery {
   size: number
   keyword?: string
   groupId?: string
+  groupIds?: string[]
   enabled?: boolean
 }
 

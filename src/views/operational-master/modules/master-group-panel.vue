@@ -2,7 +2,7 @@
   <ArtSectionCard
     class="master-group-panel"
     :title="title"
-    subtitle="选择分组后联动筛选右侧数据"
+    subtitle="选择分组后查看本级及下级数据"
     :loading="loading"
     :error="error"
     :empty="!loading && !error && !groups.length"

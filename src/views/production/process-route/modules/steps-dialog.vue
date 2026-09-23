@@ -627,16 +627,14 @@
             :show-submit="false"
           >
             <template #attachments>
-              <div class="step-editor__upload">
-                <ArtUploadFile
-                  v-model="sopForm.attachments"
-                  multiple
-                  :limit="10"
-                  :disabled="editorReadonly"
-                  title="上传作业指导书"
-                  tip="支持上传附件，也可选择工程主数据中的 ESOP 文档。"
-                />
-              </div>
+              <ArtUploadFile
+                v-model="sopForm.attachments"
+                multiple
+                :limit="10"
+                :disabled="editorReadonly"
+                title="上传作业指导书"
+                tip="支持上传附件，也可选择工程主数据中的 ESOP 文档。"
+              />
             </template>
           </ArtForm>
         </div>
@@ -3097,19 +3095,6 @@
 
       svg {
         color: var(--theme-color);
-      }
-    }
-
-    &__upload {
-      padding: var(--art-space-3);
-      background: var(--el-bg-color);
-      border: 1px dashed var(--el-border-color);
-      border-radius: var(--el-border-radius-base);
-      transition: border-color var(--art-motion-duration-fast) ease;
-
-      &:focus-within,
-      &:hover {
-        border-color: var(--theme-color);
       }
     }
   }

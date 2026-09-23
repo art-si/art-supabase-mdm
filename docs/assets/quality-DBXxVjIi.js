@@ -1,1 +1,0 @@
-import{Nn as e,Sn as t,vr as n}from"./useApi-s_02lHjl-LGPls--9.js";import{t as r}from"./center-C3zDYzIc.js";var i=e({name:`MdmDataQuality`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-view":`quality`}))}});export{i as default};
