@@ -518,6 +518,7 @@
       label: '设备身份',
       minWidth: 250,
       fixed: 'left',
+      link: { permission: 'MdmProductionEquipment:View', onClick: showDetail },
       formatter: (row) => (
         <div class="production-equipment-page__identity">
           <span>

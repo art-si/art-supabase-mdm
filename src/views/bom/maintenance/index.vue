@@ -367,7 +367,14 @@
   }
   const columnsFactory = (): ColumnOption<BomRecord>[] => [
     { type: 'globalIndex', label: '序号', width: 72, fixed: 'left' },
-    { prop: 'materialId', label: '父项物料', minWidth: 290, fixed: 'left', formatter: identity },
+    {
+      prop: 'materialId',
+      label: '父项物料',
+      minWidth: 290,
+      fixed: 'left',
+      formatter: identity,
+      link: { permission: 'MdmBomMaintenance:View', onClick: openDetail }
+    },
     {
       prop: 'projectId',
       label: '项目归属',

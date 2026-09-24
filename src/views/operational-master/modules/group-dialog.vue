@@ -83,6 +83,7 @@
   })
   const domainCopy: Record<MasterGroupDomain, { title: string; icon: string }> = {
     customer: { title: '客户分组', icon: 'ri:building-2-line' },
+    supplier: { title: '供应商分组', icon: 'ri:store-2-line' },
     project: { title: '项目分组', icon: 'ri:briefcase-4-line' },
     operation: { title: '工序分组', icon: 'ri:git-commit-line' },
     'process-route': { title: '路线分组', icon: 'ri:route-line' }

@@ -669,7 +669,8 @@
       label: '物料主身份',
       minWidth: 280,
       fixed: 'left',
-      formatter: identity
+      formatter: identity,
+      link: { permission: 'MdmMaterialArchive:View', onClick: showDetail }
     },
     {
       prop: 'categoryId',

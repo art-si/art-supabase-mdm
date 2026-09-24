@@ -45,6 +45,8 @@
 
 <script setup lang="ts">
   import { cloneDeep } from 'lodash-es'
+  import { storeToRefs } from 'pinia'
+  import { useUserStore } from '@/store/modules/user'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -67,6 +69,10 @@
   }
 
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  void userStore.ensureDictLoaded('mdmWarehouseType')
+  void userStore.ensureDictLoaded('mdmWarehouseBusinessScope')
   const dialogRef = ref<ArtDialogExpose<WarehouseDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const initialForm = (): WarehouseInput & { id?: string } => ({
@@ -75,7 +81,11 @@
     warehouseCode: '',
     warehouseName: '',
     responsibleEmployeeId: null,
+    warehouseType: 'raw_material',
+    businessScopes: ['picking', 'availability', 'warning'],
     enableLocations: false,
+    enableZones: false,
+    singleSkuPerBin: false,
     remark: '',
     status: 'enabled'
   })
@@ -111,6 +121,13 @@
       props: { maxlength: 100, placeholder: '如 一号成品仓' }
     },
     {
+      label: '仓库类型',
+      key: 'warehouseType',
+      type: 'select',
+      options: getDictMap.value.mdmWarehouseType ?? [],
+      props: { placeholder: '选择仓库类型' }
+    },
+    {
       label: '仓库分组',
       key: 'groupId',
       type: 'select',
@@ -131,12 +148,43 @@
       span: 24
     },
     {
+      label: '业务应用范围',
+      key: 'businessScopes',
+      type: 'select',
+      span: 24,
+      options: getDictMap.value.mdmWarehouseBusinessScope ?? [],
+      props: {
+        multiple: true,
+        collapseTags: true,
+        collapseTagsTooltip: true,
+        placeholder: '选择适用业务'
+      }
+    },
+    {
       label: '启用仓位',
       key: 'enableLocations',
       type: 'switch',
       props: { activeText: '启用', inactiveText: '关闭' },
       help: '开启后，该仓库可继续维护库区与仓位层级。'
     },
+    ...(form.model.enableLocations
+      ? [
+          {
+            label: '启用库区',
+            key: 'enableZones',
+            type: 'switch' as const,
+            props: { activeText: '启用', inactiveText: '关闭' },
+            help: '启用后库位必须归属库区；关闭时可直接挂在仓库下。'
+          },
+          {
+            label: '一位一品',
+            key: 'singleSkuPerBin',
+            type: 'switch' as const,
+            props: { activeText: '启用', inactiveText: '关闭' },
+            help: '启用后每个库位只能存放一种物料。'
+          }
+        ]
+      : []),
     {
       label: '启用状态',
       key: 'status',
@@ -159,8 +207,27 @@
       { required: true, message: '请输入仓库编码', trigger: 'blur' },
       { pattern: /^[A-Za-z][A-Za-z0-9_-]*$/, message: '编码格式不正确', trigger: 'blur' }
     ],
-    warehouseName: [{ required: true, message: '请输入仓库名称', trigger: 'blur' }]
+    warehouseName: [{ required: true, message: '请输入仓库名称', trigger: 'blur' }],
+    warehouseType: [{ required: true, message: '请选择仓库类型', trigger: 'change' }],
+    businessScopes: [
+      {
+        required: true,
+        type: 'array' as const,
+        min: 1,
+        message: '至少选择一个业务应用范围',
+        trigger: 'change'
+      }
+    ]
   }
+  watch(
+    () => form.model.enableLocations,
+    (enabled) => {
+      if (!enabled) {
+        form.model.enableZones = false
+        form.model.singleSkuPerBin = false
+      }
+    }
+  )
 
   const submit = async (): Promise<boolean> => {
     try {
@@ -171,7 +238,11 @@
           warehouseCode: form.model.warehouseCode.trim().toUpperCase(),
           warehouseName: form.model.warehouseName.trim(),
           responsibleEmployeeId: form.model.responsibleEmployeeId || null,
+          warehouseType: form.model.warehouseType,
+          businessScopes: form.model.businessScopes,
           enableLocations: form.model.enableLocations,
+          enableZones: form.model.enableLocations && form.model.enableZones,
+          singleSkuPerBin: form.model.enableLocations && form.model.singleSkuPerBin,
           remark: form.model.remark.trim(),
           status: form.model.status
         },

@@ -33,7 +33,11 @@ export interface WarehouseRecord {
   warehouseCode: string
   warehouseName: string
   responsibleEmployeeId: string | null
+  warehouseType: string
+  businessScopes: string[]
   enableLocations: boolean
+  enableZones: boolean
+  singleSkuPerBin: boolean
   remark?: string | null
   status: WarehouseStatus
   createTime?: string
@@ -69,7 +73,11 @@ export interface WarehouseInput {
   warehouseCode: string
   warehouseName: string
   responsibleEmployeeId: string | null
+  warehouseType: string
+  businessScopes: string[]
   enableLocations: boolean
+  enableZones: boolean
+  singleSkuPerBin: boolean
   remark: string
   status: WarehouseStatus
 }

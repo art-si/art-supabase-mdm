@@ -648,6 +648,7 @@
       label: '受控文档',
       minWidth: 300,
       fixed: 'left',
+      link: { permission: 'MdmEsop:View', onClick: showDetail },
       formatter: (row) => (
         <div class="esop-page__identity">
           <span aria-hidden="true">

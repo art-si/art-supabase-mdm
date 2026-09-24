@@ -6,7 +6,7 @@ export type OperationalMasterKind =
   | 'operation'
   | 'workstation'
 
-export type MasterGroupDomain = 'customer' | 'project' | 'operation' | 'process-route'
+export type MasterGroupDomain = 'customer' | 'project' | 'operation' | 'process-route' | 'supplier'
 
 export type ActivityFormulaPurpose =
   | 'report_preparation'

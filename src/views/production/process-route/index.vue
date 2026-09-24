@@ -232,7 +232,13 @@
   }
   const columns = (): ColumnOption<ProcessRoute>[] => [
     { type: 'globalIndex', label: '序号', width: 72 },
-    { prop: 'code', label: '路线编码', width: 128, fixed: 'left' },
+    {
+      prop: 'code',
+      label: '路线编码',
+      width: 128,
+      fixed: 'left',
+      link: { permission: 'MdmProcessRoute:View', onClick: (row) => openStepsDialog(row, true) }
+    },
     {
       prop: 'material',
       label: '产品主数据',

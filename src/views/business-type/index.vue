@@ -408,6 +408,7 @@
       label: '业务类型',
       minWidth: 250,
       fixed: 'left',
+      link: { permission: 'MdmBusinessType:View', onClick: openDetail },
       formatter: (row) => (
         <div class="business-type-identity">
           <span class="business-type-identity__icon" aria-hidden="true">

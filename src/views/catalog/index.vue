@@ -346,7 +346,13 @@
 
   const columnsFactory = (): ColumnOption<MdmCatalogRecord>[] => [
     { type: 'globalIndex', label: '序号', width: 68 },
-    { prop: 'name', label: '主数据身份', minWidth: 240, formatter: renderIdentity },
+    {
+      prop: 'name',
+      label: '主数据身份',
+      minWidth: 240,
+      formatter: renderIdentity,
+      link: { onClick: (row) => detailDrawerRef.value?.handleOpen(row) }
+    },
     { prop: 'sourceLabel', label: '主档来源', minWidth: 150, formatter: renderSource },
     { prop: 'status', label: '生命周期', width: 112, formatter: renderLifecycle },
     { prop: 'qualityScore', label: '资料完整度', minWidth: 190, formatter: renderQuality },

@@ -1,1 +1,0 @@
-import{Nn as e,Sn as t,vr as n}from"./useApi-s_02lHjl-LGPls--9.js";import{t as r}from"./center-D2aEFaIG.js";var i=e({name:`MdmDataDistribution`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-view":`outbox`}))}});export{i as default};

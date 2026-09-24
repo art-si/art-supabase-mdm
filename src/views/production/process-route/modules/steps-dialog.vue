@@ -1656,7 +1656,13 @@
       formatter: (row) => sequenceTypeLabel(row.sequence?.sequenceType || '')
     },
     { prop: 'code', label: '工序号', width: 100 },
-    { prop: 'name', label: '工序名称', minWidth: 150, showOverflowTooltip: true },
+    {
+      prop: 'name',
+      label: '工序名称',
+      minWidth: 150,
+      showOverflowTooltip: true,
+      link: { permission: 'MdmProcessRoute:View', onClick: (row) => openStep(row, 'view') }
+    },
     {
       prop: 'componentAssignmentCount',
       label: '分配组件',

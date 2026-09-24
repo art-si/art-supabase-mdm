@@ -2,6 +2,7 @@
   <ArtPermissionGuard permission="MdmWarehouseDefinition:View" resource-name="仓库定义">
     <div class="warehouse-page business-workspace-page art-full-height">
       <BusinessWorkspaceHeader
+        density="compact"
         eyebrow="INVENTORY MASTER DATA"
         title="仓库定义"
         description="统一维护仓库分组、仓库身份与负责人，为采购、库存和出库业务提供可靠引用。"
@@ -10,7 +11,6 @@
           { label: '库存主数据', type: 'primary' },
           { label: '员工花名册联动', type: 'success' }
         ]"
-        :metrics="metrics"
       >
         <template #actions><BusinessTableWorkspaceActions :table="tableRef" /></template>
       </BusinessWorkspaceHeader>
@@ -45,7 +45,6 @@
               :search-items="searchItems"
               :columns-factory="columnsFactory"
               :header-actions="headerActions"
-              header-actions-placement="workspace"
               :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
               :table-props="{
                 rowKey: 'id',
@@ -75,13 +74,12 @@
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
-  import BusinessWorkspaceHeader, {
-    type BusinessWorkspaceMetric
-  } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -95,7 +93,6 @@
     fetchWarehouseWorkspace,
     setWarehousesEnabled,
     type WarehouseGroup,
-    type WarehouseOverview,
     type WarehouseQuery,
     type WarehouseRecord
   } from '@mdm/api'
@@ -123,44 +120,10 @@
   const groups = ref<WarehouseGroup[]>([])
   const selectedGroupId = ref('')
   const groupState = reactive({ loading: true, error: '' })
-  const overview = reactive<WarehouseOverview>({
-    total: 0,
-    enabled: 0,
-    locationEnabled: 0,
-    managed: 0
-  })
   const search = reactive({
     keyword: '',
     status: undefined as 'enabled' | 'disabled' | undefined
   })
-  const metrics = computed<BusinessWorkspaceMetric[]>(() => [
-    {
-      label: '仓库总数',
-      value: overview.total,
-      description: '当前查看范围',
-      icon: 'ri:store-2-line'
-    },
-    {
-      label: '启用仓库',
-      value: overview.enabled,
-      description: '可供业务引用',
-      icon: 'ri:checkbox-circle-line',
-      tone: 'success'
-    },
-    {
-      label: '启用仓位',
-      value: overview.locationEnabled,
-      description: '允许维护库区与仓位',
-      icon: 'ri:layout-grid-line',
-      tone: 'primary'
-    },
-    {
-      label: '已配置负责人',
-      value: overview.managed,
-      description: '责任边界清晰',
-      icon: 'ri:user-star-line'
-    }
-  ])
   const searchItems: SearchFormItem[] = [
     {
       label: '关键字',
@@ -282,6 +245,24 @@
       formatter: identity
     },
     {
+      prop: 'warehouseType',
+      label: '仓库类型',
+      width: 128,
+      dict: { code: 'mdmWarehouseType', display: 'auto' }
+    },
+    {
+      prop: 'businessScopes',
+      label: '业务应用范围',
+      minWidth: 240,
+      formatter: (row) => (
+        <div class="flex flex-wrap gap-1">
+          {row.businessScopes.map((scope) => (
+            <ArtDictDisplay dictCode="mdmWarehouseBusinessScope" value={scope} display="tag" />
+          ))}
+        </div>
+      )
+    },
+    {
       prop: 'groupId',
       label: '仓库分组',
       minWidth: 150,
@@ -309,6 +290,28 @@
       formatter: (row) => (
         <ElTag type={row.enableLocations ? 'primary' : 'info'} effect="light">
           {row.enableLocations ? '已开启' : '未开启'}
+        </ElTag>
+      )
+    },
+    {
+      prop: 'enableZones',
+      label: '启用库区',
+      width: 112,
+      align: 'center',
+      formatter: (row) => (
+        <ElTag type={row.enableZones ? 'primary' : 'info'} effect="light">
+          {row.enableZones ? '已开启' : '未开启'}
+        </ElTag>
+      )
+    },
+    {
+      prop: 'singleSkuPerBin',
+      label: '一位一品',
+      width: 112,
+      align: 'center',
+      formatter: (row) => (
+        <ElTag type={row.singleSkuPerBin ? 'success' : 'info'} effect="light">
+          {row.singleSkuPerBin ? '是' : '否'}
         </ElTag>
       )
     },
@@ -370,7 +373,6 @@
         options
       )
       groups.value = result.groups
-      Object.assign(overview, result.overview)
       return { records: result.data, total: result.total }
     } catch (error) {
       groupState.error = error instanceof Error ? error.message : '仓库分组加载失败，请重试'
@@ -401,6 +403,11 @@
       flex: 1;
       min-width: 0;
       min-height: 0;
+    }
+
+    &__table-pane {
+      display: flex;
+      flex-direction: column;
     }
 
     :deep(.warehouse-page__person) {

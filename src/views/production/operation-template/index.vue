@@ -389,6 +389,11 @@
       label: '产品',
       minWidth: 240,
       fixed: 'left',
+      link: {
+        permission: 'MdmOperationTemplate:View',
+        onClick: (row) =>
+          void detail.value?.handleOpen('绑定详情', bindingDisplay(row), bindingLabels)
+      },
       formatter: (r) => (
         <div class="template-workspace__stack">
           <strong title={r.route?.material?.materialName || ''}>

@@ -2,6 +2,7 @@
   <ArtPermissionGuard permission="MdmOutboundRule:View" resource-name="出库规则配置">
     <div class="outbound-rule-page business-workspace-page art-full-height">
       <BusinessWorkspaceHeader
+        density="compact"
         eyebrow="INVENTORY MASTER DATA"
         title="出库规则配置"
         description="按字段来源与优先级编排出库顺序，为先进先出、后进先出和临期优先提供统一策略。"
@@ -22,7 +23,6 @@
         :search-items="searchItems"
         :columns-factory="columnsFactory"
         :header-actions="headerActions"
-        header-actions-placement="workspace"
         :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
         :table-props="{
           rowKey: 'id',
@@ -46,8 +46,8 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,

@@ -2,6 +2,7 @@
   <ArtPermissionGuard permission="MdmSupplyChainCodeRule:View" resource-name="供应链编码规则">
     <div class="supply-code-page business-workspace-page art-full-height">
       <BusinessWorkspaceHeader
+        density="compact"
         eyebrow="INVENTORY MASTER DATA"
         title="供应链编码规则"
         description="统一维护批号、序列号与跟踪号的编码结构，让业务单据共享可审计的编号口径。"
@@ -22,7 +23,6 @@
         :search-items="searchItems"
         :columns-factory="columnsFactory"
         :header-actions="headerActions"
-        header-actions-placement="workspace"
         :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
         :table-props="{
           rowKey: 'id',
@@ -46,8 +46,8 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,

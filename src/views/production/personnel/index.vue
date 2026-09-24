@@ -455,6 +455,7 @@
       label: '部门 / 产线',
       minWidth: 220,
       fixed: 'left',
+      link: { permission: props.departmentPermissions.view, onClick: viewDepartmentRow },
       formatter: (row) => (
         <div class="production-workspace__resource-identity">
           <span aria-hidden="true">{row.kind === '工厂' ? '厂' : '组'}</span>
@@ -537,6 +538,7 @@
       label: '姓名',
       minWidth: 170,
       fixed: 'left',
+      link: { permission: 'MdmProductionPersonnel:View', onClick: viewPerson },
       formatter: (row) => (
         <div class="production-workspace__identity">
           <ElAvatar size={32} src={row.avatarUrl}>

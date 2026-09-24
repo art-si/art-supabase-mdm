@@ -434,6 +434,13 @@
           minWidth: field.minWidth,
           fixed: field.key === config.value.nameKey ? 'left' : undefined,
           showOverflowTooltip: true,
+          link:
+            field.key === config.value.nameKey
+              ? {
+                  permission: `${config.value.routeName}:View`,
+                  onClick: (row) => openDialog(row, false, true)
+                }
+              : undefined,
           formatter: (row) => displayValue(row, field.key)
         })
       }
