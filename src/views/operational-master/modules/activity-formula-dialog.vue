@@ -847,11 +847,6 @@
       next.code = `${next.code || ''}_COPY`
     }
     Object.assign(model, next)
-    await Promise.all(
-      ['mdmFormulaPurpose', 'mdmActivityType', 'mdmActivityUnit', 'commonBoolean'].map((code) =>
-        userStore.ensureDictLoaded(code)
-      )
-    )
     await dialogRef.value?.handleOpen(data, {
       title: readonly.value
         ? '活动公式详情'
@@ -867,6 +862,11 @@
       onOpen: async (_openData, api) => {
         api.setLoading(true)
         try {
+          await Promise.all(
+            ['mdmFormulaPurpose', 'mdmActivityType', 'mdmActivityUnit', 'commonBoolean'].map(
+              (code) => userStore.ensureDictLoaded(code)
+            )
+          )
           await loadParameters()
           formRef.value?.clearValidate()
         } finally {

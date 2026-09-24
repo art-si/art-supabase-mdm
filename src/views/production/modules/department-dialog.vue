@@ -165,7 +165,6 @@
     if (row) Object.assign(form.model, { name: row.organizationName, code: row.organizationCode })
   }
   async function handleOpen(data: OpenData) {
-    await tenantScopeStore.loadTenantOptions()
     Object.assign(form, { id: data.row?.id, departments: data.departments })
     const parentTenantId = data.parentId
       ? data.departments.find((department) => department.id === data.parentId)?.tenantId
@@ -182,8 +181,17 @@
       subtitle: data.row ? `正在维护：${data.row.name}` : '建立新的生产组织节点',
       confirmText: data.row ? '保存更改' : '创建部门',
       contentMaxHeight: '68vh',
-      onOpen: async () => {
-        if (form.model.tenantId) await formRef.value?.reloadOptions('organizationId')
+      loading: true,
+      loadingText: '正在加载组织选项…',
+      onOpen: async (_openData, api) => {
+        try {
+          await tenantScopeStore.loadTenantOptions()
+          if (form.model.tenantId) await formRef.value?.reloadOptions('organizationId')
+        } catch {
+          ElMessage.warning('组织选项加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
       },
       onConfirm: async () => {
         try {

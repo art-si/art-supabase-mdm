@@ -339,12 +339,24 @@
 
   async function handleOpen(nextKind: ConfigKind): Promise<void> {
     kind.value = nextKind
-    if (nextKind === 'steward') users.value = await fetchMdmGovernanceUsers()
+    users.value = []
     await dialogRef.value?.handleOpen(undefined, {
       title: { steward: '配置数据责任人', rule: '发布质量规则新版本', consumer: '配置下游消费者' }[
         nextKind
       ],
       confirmText: '保存配置',
+      loading: nextKind === 'steward',
+      loadingText: '正在加载责任人…',
+      onOpen: async (_openData, api) => {
+        if (nextKind !== 'steward') return
+        try {
+          users.value = await fetchMdmGovernanceUsers()
+        } catch {
+          ElMessage.warning('责任人加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: submit
     })
   }

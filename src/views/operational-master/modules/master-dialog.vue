@@ -498,12 +498,6 @@
     addressRegionPath.value = String(form.model.region || '')
       .split('/')
       .filter(Boolean)
-    await Promise.all(
-      data.config.fields
-        .map((field) => field.dictCode)
-        .filter((code): code is string => !!code)
-        .map((code) => userStore.ensureDictLoaded(code))
-    )
     await dialogRef.value?.handleOpen(data, {
       title: dialogHeading.value,
       subtitle: data.row
@@ -515,6 +509,12 @@
       loading: true,
       onOpen: async (_openData, api) => {
         try {
+          await Promise.all(
+            data.config.fields
+              .map((field) => field.dictCode)
+              .filter((code): code is string => !!code)
+              .map((code) => userStore.ensureDictLoaded(code))
+          )
           await reloadReferences()
           await nextTick()
           formRef.value?.resetCollapsedSections()

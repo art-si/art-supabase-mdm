@@ -513,10 +513,6 @@
 
   const handleOpen = async (data: DocumentTypeDialogOpenData): Promise<void> => {
     initializeForm(data)
-    await Promise.all([
-      userStore.ensureDictLoaded('commonBoolean'),
-      userStore.ensureDictLoaded('mdmWarehouseType')
-    ])
     const titleMap: Record<DialogMode, string> = {
       add: '新增单据类型',
       copy: '复制单据类型',
@@ -539,6 +535,10 @@
       loading: true,
       onOpen: async (_openData, api) => {
         try {
+          await Promise.all([
+            userStore.ensureDictLoaded('commonBoolean'),
+            userStore.ensureDictLoaded('mdmWarehouseType')
+          ])
           await refreshSuggestedSort()
           componentTypeOptions.value = form.data.tenantId
             ? await fetchComponentTypeOptions(form.data.tenantId)

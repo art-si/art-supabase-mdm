@@ -78,6 +78,7 @@
 </template>
 <script setup lang="tsx">
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
   import { ref, reactive, shallowRef } from 'vue'
@@ -145,8 +146,13 @@
     {
       prop: 'person',
       label: '人员',
-      minWidth: 160,
-      formatter: (r) => (r.person ? `${r.person.name} · ${r.person.employeeNo}` : '—')
+      minWidth: 190,
+      formatter: (r) =>
+        r.person ? (
+          <BusinessTableIdentityCell primary={r.person.name} secondary={r.person.employeeNo} />
+        ) : (
+          '—'
+        )
     },
     { prop: 'kind', label: '临时调整', width: 110 },
     {

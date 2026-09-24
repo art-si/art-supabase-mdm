@@ -262,6 +262,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -545,8 +546,12 @@
       prop: 'workCenterName',
       label: '工作中心',
       minWidth: 190,
-      formatter: (row) =>
-        [row.workCenterCode, row.workCenterName].filter(Boolean).join(' · ') || '—'
+      formatter: (row) => (
+        <BusinessTableIdentityCell
+          primary={row.workCenterName || '—'}
+          secondary={row.workCenterCode}
+        />
+      )
     },
     {
       prop: 'model',

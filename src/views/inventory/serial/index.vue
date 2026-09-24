@@ -114,6 +114,7 @@
       permission: 'MdmInventorySerial:Add',
       type: 'add',
       label: '新增序列号',
+      buttonProps: { plain: false },
       onClick: () => openDialog()
     }
   ]
@@ -135,7 +136,9 @@
       prop: 'materialId',
       label: '物料',
       minWidth: 210,
-      formatter: (row) => `${row.materialName || '—'} · ${row.materialCode || ''}`
+      formatter: (row) => (
+        <BusinessTableIdentityCell primary={row.materialName} secondary={row.materialCode} />
+      )
     },
     {
       prop: 'materialDescription',

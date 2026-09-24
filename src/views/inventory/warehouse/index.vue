@@ -180,6 +180,7 @@
       permission: 'MdmWarehouseDefinition:Add',
       type: 'add',
       label: '新增仓库',
+      buttonProps: { plain: false },
       onClick: () => openWarehouseDialog()
     },
     { permission: 'MdmWarehouseDefinition:Export', type: 'export', label: '导出' },

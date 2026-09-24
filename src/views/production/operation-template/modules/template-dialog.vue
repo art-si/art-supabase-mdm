@@ -253,7 +253,6 @@
       form.model.items.splice(index + 1, 0, cloneDeep(form.model.items[index]))
   }
   async function handleOpen(data: OpenData) {
-    await user.ensureDictLoaded('mdmCenter_inputMode')
     Object.assign(form, {
       model: data.row ? templatePayload(data.row) : createTemplate(),
       readonly: data.mode === 'view',
@@ -277,6 +276,17 @@
       cancelText: form.readonly ? '关闭' : '取消',
       showConfirmButton: !form.readonly,
       contentMaxHeight: '72vh',
+      loading: true,
+      loadingText: '正在加载填写方式…',
+      onOpen: async (_openData, api) => {
+        try {
+          await user.ensureDictLoaded('mdmCenter_inputMode')
+        } catch {
+          ElMessage.warning('填写方式加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: async () => {
         form.error =
           !form.model.items.length || form.model.items.length > 200

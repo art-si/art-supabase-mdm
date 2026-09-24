@@ -141,7 +141,12 @@
                   <dl>
                     <div>
                       <dt>生产范围</dt>
-                      <dd>{{ row.departmentName }} · {{ row.departmentCode }}</dd>
+                      <dd>
+                        <strong class="block">{{ row.departmentName }}</strong>
+                        <small class="block text-[var(--el-text-color-secondary)]">{{
+                          row.departmentCode
+                        }}</small>
+                      </dd>
                     </div>
                     <div v-if="row.factory">
                       <dt>工厂</dt>

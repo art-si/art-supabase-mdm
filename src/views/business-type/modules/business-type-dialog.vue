@@ -500,11 +500,6 @@
 
   const handleOpen = async (data: BusinessTypeDialogOpenData): Promise<void> => {
     initializeForm(data)
-    await Promise.all([
-      userStore.ensureDictLoaded('commonBoolean'),
-      userStore.ensureDictLoaded('mdmBusinessInventoryDirection'),
-      userStore.ensureDictLoaded('mdmBusinessOwnerType')
-    ])
     const titleMap: Record<DialogMode, string> = {
       add: '新增业务类型',
       copy: '复制业务类型',
@@ -527,6 +522,11 @@
       loading: true,
       onOpen: async (_openData, api) => {
         try {
+          await Promise.all([
+            userStore.ensureDictLoaded('commonBoolean'),
+            userStore.ensureDictLoaded('mdmBusinessInventoryDirection'),
+            userStore.ensureDictLoaded('mdmBusinessOwnerType')
+          ])
           await reloadReferenceOptions()
           const documentType = form.documentTypes.find(
             (item) => item.id === form.data.documentTypeId

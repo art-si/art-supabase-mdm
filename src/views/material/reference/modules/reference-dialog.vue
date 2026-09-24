@@ -765,10 +765,7 @@
     currentKind.value = data.kind
     tenantOptions.value = data.tenantOptions
     form.model.tenantId = data.row?.tenantId || data.tenantId
-    unitOptions.value =
-      data.kind === 'unit-of-measure' && form.model.tenantId
-        ? await fetchMaterialReferenceOptions<UnitOfMeasure>('unit-of-measure', form.model.tenantId)
-        : []
+    unitOptions.value = []
     if (data.row) Object.assign(form.model, cloneDeep(data.row))
     form.model.attributes.forEach((attribute) => {
       valueDrafts[attribute.key] = ''
@@ -792,8 +789,23 @@
         currentKind.value === 'material-type'
           ? 'min(62vh, calc(100vh - 220px))'
           : 'min(72vh, calc(100vh - 200px))',
+      loading: data.kind === 'unit-of-measure' && Boolean(form.model.tenantId),
+      loadingText: '正在加载计量单位…',
       onConfirm: handleSubmit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          if (data.kind === 'unit-of-measure' && form.model.tenantId)
+            unitOptions.value = await fetchMaterialReferenceOptions<UnitOfMeasure>(
+              'unit-of-measure',
+              form.model.tenantId
+            )
+        } catch {
+          ElMessage.warning('计量单位加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   watch(

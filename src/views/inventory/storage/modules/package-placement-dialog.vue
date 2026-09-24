@@ -1,6 +1,10 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
     <div class="space-y-4">
+      <ElAlert v-if="loadError" type="error" :closable="false" show-icon>
+        <template #title>库位加载失败</template>
+        <ElButton link type="primary" @click="loadBins">重新加载</ElButton>
+      </ElAlert>
       <ArtEntitySummary
         icon="ri:archive-drawer-line"
         eyebrow="PACK PLACEMENT"
@@ -43,6 +47,7 @@
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<PackagePlacementContext>()
   const bins = ref<StorageBin[]>([])
+  const loadError = ref(false)
   const form = reactive({ binId: null as string | null })
   const items = computed<FormItem[]>(() =>
     context.value?.warehouse.enableLocations
@@ -65,6 +70,7 @@
       : []
   }))
   async function submit(): Promise<boolean> {
+    if (loadError.value) return false
     try {
       await formRef.value?.validate()
       if (!context.value) return false
@@ -80,15 +86,35 @@
       return false
     }
   }
+  async function loadBins(): Promise<void> {
+    if (!context.value?.warehouse.enableLocations) return
+    const warehouseId = context.value.warehouse.id
+    loadError.value = false
+    dialogRef.value?.setLoading(true)
+    try {
+      const loadedBins = await fetchStorageBins(warehouseId)
+      if (context.value?.warehouse.id === warehouseId) bins.value = loadedBins
+    } catch {
+      loadError.value = true
+    } finally {
+      dialogRef.value?.setLoading(false)
+    }
+  }
   async function handleOpen(data: PackagePlacementContext): Promise<void> {
     context.value = data
     form.binId = data.pack.binId
-    bins.value = await fetchStorageBins(data.warehouse.id)
+    bins.value = []
+    loadError.value = false
     await dialogRef.value?.handleOpen(data, {
       title: data.pack.placementId ? '调整垛包落位' : '垛包落位',
       subtitle: data.warehouse.warehouseName,
+      loading: data.warehouse.enableLocations,
+      loadingText: '正在加载可用库位…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async () => {
+        formRef.value?.clearValidate()
+        await loadBins()
+      }
     })
   }
   defineExpose({ handleOpen })

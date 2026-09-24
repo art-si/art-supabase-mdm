@@ -72,6 +72,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -223,7 +224,6 @@
     refresh()
   }
   const openDialog = async (row?: BomRecord, options?: { copy?: boolean }) => {
-    await ensureOptions()
     const data: BomDialogOpenData = {
       row,
       tenantId: row?.tenantId || tenantId.value,
@@ -232,6 +232,10 @@
         value: tenant.id
       })),
       units: units.value,
+      loadUnits: async () => {
+        await ensureOptions()
+        return units.value
+      },
       groups: groups.value,
       ...options
     }
@@ -380,7 +384,14 @@
       label: '项目归属',
       minWidth: 190,
       formatter: (row) =>
-        row.project ? `${row.project.projectName} · ${row.project.projectCode}` : '通用 BOM'
+        row.project ? (
+          <BusinessTableIdentityCell
+            primary={row.project.projectName}
+            secondary={row.project.projectCode}
+          />
+        ) : (
+          '通用 BOM'
+        )
     },
     {
       prop: 'groupId',

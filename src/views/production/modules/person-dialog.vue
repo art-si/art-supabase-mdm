@@ -225,7 +225,6 @@
     }
   }
   async function handleOpen(data: OpenData) {
-    await tenantScopeStore.loadTenantOptions()
     requestVersion++
     Object.assign(form, {
       id: data.row?.id,
@@ -262,6 +261,17 @@
         : '建立人员生产身份与组织关系',
       confirmText: data.row ? '保存更改' : '创建人员',
       contentMaxHeight: '70vh',
+      loading: true,
+      loadingText: '正在加载租户选项…',
+      onOpen: async (_openData, api) => {
+        try {
+          await tenantScopeStore.loadTenantOptions()
+        } catch {
+          ElMessage.warning('租户选项加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: async () => {
         if (form.sourceLoading) return false
         try {

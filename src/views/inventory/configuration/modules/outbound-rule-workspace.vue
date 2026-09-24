@@ -45,7 +45,7 @@
   import { ElTag } from 'element-plus'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
@@ -111,6 +111,7 @@
       permission: 'MdmOutboundRule:Add',
       type: 'add',
       label: '新增规则',
+      buttonProps: { plain: false },
       onClick: () => openDialog()
     },
     { permission: 'MdmOutboundRule:Export', type: 'export', label: '导出' },
@@ -161,15 +162,11 @@
     }
   ]
   const identity = (row: OutboundRule) => (
-    <div class="outbound-rule-page__identity">
-      <span aria-hidden="true">
-        <ArtSvgIcon icon="ri:route-line" />
-      </span>
-      <span>
-        <strong title={row.ruleName}>{row.ruleName}</strong>
-        <small>{row.ruleCode}</small>
-      </span>
-    </div>
+    <BusinessTableIdentityCell
+      primary={row.ruleName}
+      secondary={row.ruleCode}
+      icon="ri:route-line"
+    />
   )
   const stacked = (sorts: OutboundRuleSort[], value: (row: OutboundRuleSort) => string) => (
     <div class="outbound-rule-page__stack">
@@ -267,47 +264,6 @@
     gap: 14px;
     min-width: 0;
     min-height: 0;
-
-    &__identity {
-      display: grid;
-      grid-template-columns: 36px minmax(0, 1fr);
-      gap: 10px;
-      align-items: center;
-      min-width: 0;
-
-      > span:first-child {
-        display: grid;
-        place-items: center;
-        width: 36px;
-        height: 36px;
-        color: var(--theme-color);
-        background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
-        border-radius: var(--el-border-radius-base);
-      }
-
-      > span:last-child,
-      strong,
-      small {
-        min-width: 0;
-      }
-
-      > span:last-child {
-        display: grid;
-      }
-
-      strong,
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      small {
-        margin-top: 2px;
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-    }
 
     :deep(.outbound-rule-page__stack) {
       display: grid;

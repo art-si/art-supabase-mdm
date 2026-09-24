@@ -210,6 +210,7 @@
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
@@ -295,26 +296,34 @@
     invalidText: '—'
   })
   const formatText = (value?: string | null): string => value?.trim() || '—'
-  const unitIdentity = (row: BomStructureNode): string =>
-    [row.unitName, row.unitCode].filter(Boolean).join(' · ') || '—'
-  const warehouseIdentity = (row: BomStructureNode): string =>
-    [row.defaultIssueWarehouseName, row.defaultIssueWarehouseCode].filter(Boolean).join(' · ') ||
-    '—'
-  const processStepIdentity = (row: BomStructureNode): string => {
-    const identity = [
-      row.processSequenceNo ? `序列 ${row.processSequenceNo}` : '',
-      row.processRouteStepCode,
-      row.processRouteStepName
-    ]
-      .filter(Boolean)
-      .join(' · ')
-    return identity || formatText(row.operationName)
-  }
-  const workCenterIdentity = (row: BomStructureNode): string =>
-    [row.workCenterName, row.workCenterCode].filter(Boolean).join(' · ') ||
-    (row.workCenterIds?.length ? '已配置工作中心' : '—')
-  const bomIdentity = (row: BomStructureNode): string =>
-    [row.bomCode, row.bomVersion].filter(Boolean).join(' · ') || '—'
+  const unitIdentity = (row: BomStructureNode) => (
+    <BusinessTableIdentityCell primary={row.unitName || '—'} secondary={row.unitCode} />
+  )
+  const warehouseIdentity = (row: BomStructureNode) => (
+    <BusinessTableIdentityCell
+      primary={row.defaultIssueWarehouseName || '—'}
+      secondary={row.defaultIssueWarehouseCode}
+    />
+  )
+  const processStepIdentity = (row: BomStructureNode) => (
+    <BusinessTableIdentityCell
+      primary={row.processRouteStepName || formatText(row.operationName)}
+      secondary={
+        [row.processSequenceNo ? `序列 ${row.processSequenceNo}` : '', row.processRouteStepCode]
+          .filter(Boolean)
+          .join(' · ') || undefined
+      }
+    />
+  )
+  const workCenterIdentity = (row: BomStructureNode) => (
+    <BusinessTableIdentityCell
+      primary={row.workCenterName || (row.workCenterIds?.length ? '已配置工作中心' : '—')}
+      secondary={row.workCenterCode}
+    />
+  )
+  const bomIdentity = (row: BomStructureNode) => (
+    <BusinessTableIdentityCell primary={row.bomCode || '—'} secondary={row.bomVersion} />
+  )
   const componentIdentity = (row: BomStructureNode) => {
     const detail = [row.materialCode, row.specificationModel].filter(Boolean).join(' · ') || '—'
     return (

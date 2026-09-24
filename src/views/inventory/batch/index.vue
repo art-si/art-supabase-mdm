@@ -124,6 +124,7 @@
       permission: 'MdmInventoryBatch:Receive',
       label: '办理入库',
       icon: 'ri:inbox-archive-line',
+      buttonProps: { type: 'primary' },
       onClick: () => openMovement('purchase_in')
     },
     {

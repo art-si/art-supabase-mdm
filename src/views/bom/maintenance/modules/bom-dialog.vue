@@ -196,6 +196,7 @@
     tenantId: string
     tenantOptions: Array<{ label: string; value: string }>
     units: UnitOfMeasure[]
+    loadUnits?: () => Promise<UnitOfMeasure[]>
     groups: BomGroup[]
   }
   interface FormExpose {
@@ -978,6 +979,9 @@
       onOpen: async (_openData, api) => {
         try {
           await Promise.all([
+            data.loadUnits?.().then((rows) => {
+              units.value = rows
+            }),
             loadProcessRoutes(form.materialId, data.row?.processRouteId),
             loadMaterialCategories(),
             fetchComponentTypeOptions(form.tenantId).then((rows) => {

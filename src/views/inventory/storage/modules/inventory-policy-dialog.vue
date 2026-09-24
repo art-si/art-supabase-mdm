@@ -1,6 +1,10 @@
 <template>
   <ArtDialog ref="dialogRef" size="sm">
     <div class="space-y-4">
+      <ElAlert v-if="loadError" type="error" :closable="false" show-icon>
+        <template #title>库存口径加载失败</template>
+        <ElButton link type="primary" @click="loadPolicy">重新加载</ElButton>
+      </ElAlert>
       <p class="text-sm text-[var(--el-text-color-secondary)]">
         超过设定天数没有出入库活动的在库批次计为呆滞库存。该口径适用于当前租户的库区和库位统计。
       </p>
@@ -29,9 +33,33 @@
   const context = shallowRef<{ tenantId: string; warehouseName: string }>()
   const staleDays = ref(90)
   const autoReserveOnRelease = ref(true)
+  const loadError = ref(false)
+
+  async function loadPolicy(): Promise<void> {
+    if (!context.value) return
+    const tenantId = context.value.tenantId
+    loadError.value = false
+    dialogRef.value?.setLoading(true)
+    try {
+      const policy = await fetchInventoryPolicy(tenantId)
+      if (context.value?.tenantId !== tenantId) return
+      staleDays.value = policy.staleDays
+      autoReserveOnRelease.value = policy.autoReserveOnRelease
+    } catch {
+      loadError.value = true
+    } finally {
+      dialogRef.value?.setLoading(false)
+    }
+  }
 
   async function submit(): Promise<boolean> {
-    if (!context.value || !Number.isInteger(staleDays.value) || staleDays.value < 1) return false
+    if (
+      loadError.value ||
+      !context.value ||
+      !Number.isInteger(staleDays.value) ||
+      staleDays.value < 1
+    )
+      return false
     try {
       await saveInventoryPolicy(context.value.tenantId, {
         staleDays: staleDays.value,
@@ -46,13 +74,14 @@
 
   async function handleOpen(data: { tenantId: string; warehouseName: string }): Promise<void> {
     context.value = data
-    const policy = await fetchInventoryPolicy(data.tenantId)
-    staleDays.value = policy.staleDays
-    autoReserveOnRelease.value = policy.autoReserveOnRelease
+    loadError.value = false
     await dialogRef.value?.handleOpen(data, {
       title: '配置呆滞库存口径',
       subtitle: `${data.warehouseName} · 当前租户`,
-      onConfirm: submit
+      loading: true,
+      loadingText: '正在加载库存口径…',
+      onConfirm: submit,
+      onOpen: loadPolicy
     })
   }
   defineExpose({ handleOpen })

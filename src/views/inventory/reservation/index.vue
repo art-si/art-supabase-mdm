@@ -43,6 +43,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import ArtTableQuery, {
@@ -112,6 +113,7 @@
       permission: 'MdmInventoryReservation:Add',
       type: 'add',
       label: '新增预留',
+      buttonProps: { plain: false },
       onClick: openDialog
     }
   ]
@@ -132,7 +134,9 @@
       prop: 'materialId',
       label: '原料物料',
       minWidth: 210,
-      formatter: (row) => `${row.materialName || '—'} · ${row.materialCode || ''}`
+      formatter: (row) => (
+        <BusinessTableIdentityCell primary={row.materialName} secondary={row.materialCode} />
+      )
     },
     { prop: 'warehouseName', label: '仓库', minWidth: 145 },
     {

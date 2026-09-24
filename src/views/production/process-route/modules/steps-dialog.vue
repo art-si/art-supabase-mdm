@@ -2318,23 +2318,6 @@
     sequenceState.selectedId = ''
     sequenceStepRows.value = []
     mainStepRows.value = []
-    await Promise.all(
-      [
-        'mdmProcessRouteSequenceType',
-        'mdmProcessOperationMode',
-        'mdmProcessSequenceControlMode',
-        'mdmProcessStepInspectionMode',
-        'mdmProcessingMode',
-        'mdmReportMode',
-        'mdmInspectionMode',
-        'mdmSequenceControl',
-        'mdmReworkMode',
-        'mdmMaterialPurchaseOrganization',
-        'mdmActivityType',
-        'mdmWorkCenterMaintenanceRule',
-        'mdmWorkCenterActivityUnit'
-      ].map((code) => user.ensureDictLoaded(code))
-    )
     await dialogRef.value?.handleOpen(undefined, {
       title: `工艺维护 · ${row.name}`,
       subtitle: `${row.material?.materialCode || '—'} · ${row.material?.materialName || '未关联产品'}`,
@@ -2344,6 +2327,23 @@
       loading: true,
       onOpen: async (_data, api) => {
         try {
+          await Promise.all(
+            [
+              'mdmProcessRouteSequenceType',
+              'mdmProcessOperationMode',
+              'mdmProcessSequenceControlMode',
+              'mdmProcessStepInspectionMode',
+              'mdmProcessingMode',
+              'mdmReportMode',
+              'mdmInspectionMode',
+              'mdmSequenceControl',
+              'mdmReworkMode',
+              'mdmMaterialPurchaseOrganization',
+              'mdmActivityType',
+              'mdmWorkCenterMaintenanceRule',
+              'mdmWorkCenterActivityUnit'
+            ].map((code) => user.ensureDictLoaded(code))
+          )
           const [nextReferences, nextDepartmentTree] = await Promise.all([
             fetchProcessRouteReferences(row.tenantId),
             fetchProductionDepartmentTree(row.tenantId)

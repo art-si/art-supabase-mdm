@@ -341,16 +341,6 @@
       })
     selection.value = row?.material ? [row.material] : []
     materialIds.value = selection.value.map((item) => item.id)
-    await Promise.all(
-      [
-        'mdmProcessRouteType',
-        'mdmProcessRouteAllocationMode',
-        'mdmProcessRouteSource',
-        'mdmMaterialSource',
-        'mdmMaterialSpecialPurchaseType',
-        'commonBoolean'
-      ].map((code) => user.ensureDictLoaded(code))
-    )
     await dialogRef.value?.handleOpen(undefined, {
       title: copy ? '复制工艺路线' : row ? '编辑工艺路线' : '新增工艺路线',
       subtitle: row
@@ -361,6 +351,16 @@
       loading: true,
       onOpen: async (_data, api) => {
         try {
+          await Promise.all(
+            [
+              'mdmProcessRouteType',
+              'mdmProcessRouteAllocationMode',
+              'mdmProcessRouteSource',
+              'mdmMaterialSource',
+              'mdmMaterialSpecialPurchaseType',
+              'commonBoolean'
+            ].map((code) => user.ensureDictLoaded(code))
+          )
           const targetTenantId = row?.tenantId || tenantId || form.tenantId
           const [nextReferences, nextDepartmentTree, nextMaterialCategories, currentPath] =
             await Promise.all([

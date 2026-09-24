@@ -95,6 +95,7 @@
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import type { ColumnOption } from '@/types'
   import type { BomItem, BomRecord } from '@mdm/api'
 
@@ -125,11 +126,6 @@
 
   const unitIdentity = (name?: string | null, code?: string | null): string =>
     [name, code].filter(Boolean).join(' · ') || '—'
-
-  const warehouseIdentity = (row: BomItem): string => {
-    const warehouse = row.defaultIssueWarehouse || row.component?.defaultWarehouse
-    return unitIdentity(warehouse?.warehouseName, warehouse?.warehouseCode)
-  }
 
   const identityItems: ArtDescriptionItem<BomRecord>[] = [
     {
@@ -274,14 +270,24 @@
     {
       prop: 'unitId',
       label: '单位',
-      width: 120,
-      formatter: (row) => unitIdentity(row.unit?.unitName, row.unit?.unitCode)
+      minWidth: 150,
+      formatter: (row) => (
+        <BusinessTableIdentityCell primary={row.unit?.unitName} secondary={row.unit?.unitCode} />
+      )
     },
     {
       prop: 'defaultIssueWarehouseId',
       label: '默认发料仓库',
-      width: 200,
-      formatter: warehouseIdentity
+      minWidth: 200,
+      formatter: (row) => {
+        const warehouse = row.defaultIssueWarehouse || row.component?.defaultWarehouse
+        return (
+          <BusinessTableIdentityCell
+            primary={warehouse?.warehouseName}
+            secondary={warehouse?.warehouseCode}
+          />
+        )
+      }
     },
     {
       prop: 'issueMethod',
@@ -349,13 +355,13 @@
       formatter: (row) => {
         const step = row.processRouteStep
         if (!step) return formatText(row.operationName)
-        return [
-          step.sequence?.sequenceNo ? `序列 ${step.sequence.sequenceNo}` : '',
-          step.code,
-          step.name
-        ]
-          .filter(Boolean)
-          .join(' · ')
+        return (
+          <BusinessTableIdentityCell
+            primary={step.name || '未命名工序'}
+            secondary={step.code}
+            tertiary={step.sequence?.sequenceNo ? `序列 ${step.sequence.sequenceNo}` : undefined}
+          />
+        )
       }
     },
     {

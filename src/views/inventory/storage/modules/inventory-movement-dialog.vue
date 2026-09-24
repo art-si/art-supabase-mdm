@@ -86,7 +86,8 @@
   const warehouses = ref<StorageWarehouse[]>([])
   const workOrders = ref<StorageWorkOrder[]>([])
   const batchOptions = ref<InventoryBatch[]>([])
-  const selectedMaterial = ref<MaterialSelectRecord[]>([])
+  type StorageMaterialSelectRecord = MaterialSelectRecord & { inboundWarehouseId?: string | null }
+  const selectedMaterial = ref<StorageMaterialSelectRecord[]>([])
   const inboundWarehouseError = ref('')
   let destinationRevision = 0
   const isInbound = computed(() => form.movementType.endsWith('_in'))
@@ -347,7 +348,7 @@
     selectedMaterial.value = rows
     if (form.movementType !== 'production_in') return
     const revision = ++destinationRevision
-    const material = rows[0]
+    const material = selectedMaterial.value[0]
     if (material?.materialType !== 'FERT') {
       inboundWarehouseError.value = ''
       form.warehouseId = context.warehouseId
