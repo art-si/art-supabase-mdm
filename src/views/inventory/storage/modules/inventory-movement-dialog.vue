@@ -339,34 +339,49 @@
       thicknessMm: null
     })
     selectedMaterial.value = []
-    const [warehouseRows, binRows, orderRows] = await Promise.all([
-      fetchStorageWarehouses(),
-      fetchStorageBins(data.warehouseId),
-      fetchStorageWorkOrders(data.warehouseId)
-    ])
-    warehouses.value = warehouseRows
-    sourceBins.value = binRows
-    workOrders.value = orderRows
-    targetBins.value = binRows
-    batchOptions.value = isInbound.value
-      ? []
-      : (
-          await fetchInventoryBatches({
-            warehouseId: data.warehouseId,
-            binId: data.binId,
-            zoneBinIds: data.zoneId
-              ? binRows.filter((bin) => bin.zoneId === data.zoneId).map((bin) => bin.id)
-              : undefined,
-            positiveOnly: true,
-            current: 1,
-            size: 100
-          })
-        ).data
+    warehouses.value = []
+    sourceBins.value = []
+    workOrders.value = []
+    targetBins.value = []
+    batchOptions.value = []
     await dialogRef.value?.handleOpen(data, {
       title: `${movementLabel.value} · ${data.label}`,
       subtitle: '库存数量和业务流水将同步更新',
+      loading: true,
+      loadingText: '正在加载仓库、库位与库存批次…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          const [warehouseRows, binRows, orderRows] = await Promise.all([
+            fetchStorageWarehouses(),
+            fetchStorageBins(data.warehouseId),
+            fetchStorageWorkOrders(data.warehouseId)
+          ])
+          warehouses.value = warehouseRows
+          sourceBins.value = binRows
+          workOrders.value = orderRows
+          targetBins.value = binRows
+          batchOptions.value = isInbound.value
+            ? []
+            : (
+                await fetchInventoryBatches({
+                  warehouseId: data.warehouseId,
+                  binId: data.binId,
+                  zoneBinIds: data.zoneId
+                    ? binRows.filter((bin) => bin.zoneId === data.zoneId).map((bin) => bin.id)
+                    : undefined,
+                  positiveOnly: true,
+                  current: 1,
+                  size: 100
+                })
+              ).data
+        } catch {
+          ElMessage.warning('库存基础数据加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   defineExpose({ handleOpen })

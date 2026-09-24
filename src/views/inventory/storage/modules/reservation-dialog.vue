@@ -158,17 +158,29 @@
       remark: ''
     })
     selectedMaterial.value = []
-    const [binRows, orderRows] = await Promise.all([
-      fetchStorageBins(data.warehouse.id),
-      fetchStorageWorkOrders(data.warehouse.id)
-    ])
-    bins.value = binRows
-    orders.value = orderRows
+    bins.value = []
+    orders.value = []
     await dialogRef.value?.handleOpen(data, {
       title: '新增库存预留',
       subtitle: `${data.warehouse.warehouseName} · 工单原料锁定`,
+      loading: true,
+      loadingText: '正在加载库位与工单…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          const [binRows, orderRows] = await Promise.all([
+            fetchStorageBins(data.warehouse.id),
+            fetchStorageWorkOrders(data.warehouse.id)
+          ])
+          bins.value = binRows
+          orders.value = orderRows
+        } catch {
+          ElMessage.warning('库位或工单加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   defineExpose({ handleOpen })

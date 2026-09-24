@@ -254,15 +254,24 @@
       remark: row?.remark ?? null
     })
     selectedMaterial.value = []
-    if (row?.fixedMaterialId) {
-      const material = await fetchStorageMaterial(row.fixedMaterialId)
-      if (material) selectedMaterial.value = [material]
-    }
     await dialogRef.value?.handleOpen(data, {
       title: row ? '编辑库位' : data.parentId ? '新增子单元' : '新增库位',
       subtitle: `${data.warehouse.warehouseName} · ${data.zone?.zoneName ?? '仓库直挂'}`,
+      loading: Boolean(row?.fixedMaterialId),
+      loadingText: '正在加载定容物料…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        if (!row?.fixedMaterialId) return
+        try {
+          const material = await fetchStorageMaterial(row.fixedMaterialId)
+          if (material) selectedMaterial.value = [material]
+        } catch {
+          ElMessage.warning('定容物料加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   defineExpose({ handleOpen })

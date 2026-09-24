@@ -21,6 +21,7 @@
         :search-items="searchItems"
         :columns-factory="columnsFactory"
         :header-actions="headerActions"
+        header-actions-placement="workspace"
         :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
         :table-props="{
           rowKey: 'id',

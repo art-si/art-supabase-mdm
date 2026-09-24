@@ -185,17 +185,29 @@
           }
         ]
       : []
-    const [binRows, orderRows] = await Promise.all([
-      fetchStorageBins(data.warehouse.id),
-      fetchStorageWorkOrders(data.warehouse.id)
-    ])
-    bins.value = binRows
-    orders.value = orderRows
+    bins.value = []
+    orders.value = []
     await dialogRef.value?.handleOpen(data, {
       title: row ? '编辑序列号' : '新增序列号',
       subtitle: `${data.warehouse.warehouseName} · 序列号追踪`,
+      loading: true,
+      loadingText: '正在加载库位与工单…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          const [binRows, orderRows] = await Promise.all([
+            fetchStorageBins(data.warehouse.id),
+            fetchStorageWorkOrders(data.warehouse.id)
+          ])
+          bins.value = binRows
+          orders.value = orderRows
+        } catch {
+          ElMessage.warning('库位或工单加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   defineExpose({ handleOpen })

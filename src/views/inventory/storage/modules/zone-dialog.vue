@@ -157,12 +157,23 @@
       sort: data.row?.sort ?? 10,
       remark: data.row?.remark ?? null
     })
-    categories.value = await fetchMaterialCategories(data.warehouse.tenantId)
+    categories.value = []
     await dialogRef.value?.handleOpen(data, {
       title: data.row ? '编辑库区' : '新增库区',
       subtitle: `${data.warehouse.warehouseName} · 库区主数据`,
+      loading: true,
+      loadingText: '正在加载物料分类…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          categories.value = await fetchMaterialCategories(data.warehouse.tenantId)
+        } catch {
+          ElMessage.warning('物料分类加载失败，请关闭弹窗后重试')
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
   defineExpose({ handleOpen })
