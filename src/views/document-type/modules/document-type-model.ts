@@ -23,6 +23,7 @@ export const createDocumentTypeFormModel = (
   tagStyle: 'primary',
   enabled: true,
   extensionFields: [],
+  allowedIssueWarehouseTypes: ['raw_material'],
   ...patch
 })
 
@@ -39,7 +40,8 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     textColor: source.textColor,
     tagStyle: source.tagStyle,
     enabled: source.enabled,
-    extensionFields: source.extensionFields.map((field) => ({ ...field }))
+    extensionFields: source.extensionFields.map((field) => ({ ...field })),
+    allowedIssueWarehouseTypes: [...source.allowedIssueWarehouseTypes]
   })
 
 export const buildDocumentTypeInput = (
@@ -57,7 +59,8 @@ export const buildDocumentTypeInput = (
     'textColor',
     'tagStyle',
     'enabled',
-    'extensionFields'
+    'extensionFields',
+    'allowedIssueWarehouseTypes'
   ]) as DocumentTypeWriteInput
 
   payload.documentTypeCode = normalizeNonNullableText(payload.documentTypeCode).toUpperCase()

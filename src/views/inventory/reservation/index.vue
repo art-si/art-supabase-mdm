@@ -101,7 +101,10 @@
   ])
   const openDialog = (): void => {
     const warehouse =
-      selectedWarehouse.value ?? warehouses.value.find((item) => item.status === 'enabled')
+      selectedWarehouse.value ??
+      warehouses.value.find(
+        (item) => item.status === 'enabled' && item.businessScopes.includes('picking')
+      )
     if (warehouse) void dialogRef.value?.handleOpen({ warehouse })
   }
   const headerActions: ArtTableQueryHeaderAction[] = [

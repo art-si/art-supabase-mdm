@@ -600,6 +600,27 @@
   const materialGroupSelectOptions = computed(() => namedOptions(materialGroupOptions.value))
   const supplierSelectOptions = computed(() => namedOptions(supplierOptions.value))
   const warehouseSelectOptions = computed(() => namedOptions(warehouseOptions.value))
+  const isFinishedMaterial = computed(
+    () =>
+      scopedMaterialTypes.value.find((item) => item.id === formModel.materialTypeId)?.typeCode ===
+      'FERT'
+  )
+  const finishedReceiptWarehouses = computed(() =>
+    scopedContextOptions(warehouseOptions.value).filter(
+      (item) => item.warehouseType === 'finished' && (item.businessScopes?.length ?? 0) > 0
+    )
+  )
+  const inboundWarehouseSelectOptions = computed(() => {
+    if (!isFinishedMaterial.value) return warehouseSelectOptions.value
+    const options = namedOptions(finishedReceiptWarehouses.value)
+    const configured = formModel.inboundWarehouseId
+      ? warehouseOptions.value.find((item) => item.id === formModel.inboundWarehouseId)
+      : undefined
+    if (configured && !finishedReceiptWarehouses.value.some((item) => item.id === configured.id)) {
+      options.push({ label: `${configured.name} · 原配置不可用于成品入库`, value: configured.id })
+    }
+    return options
+  })
   const outboundRuleSelectOptions = computed(() => namedOptions(outboundRuleOptions.value))
   const batchRuleSelectOptions = computed(() =>
     namedOptions(supplyRuleOptions.value.filter((item) => item.applyBatch))
@@ -1159,7 +1180,7 @@
           label: '入库仓库',
           key: 'inboundWarehouseId',
           type: 'select',
-          options: warehouseSelectOptions.value,
+          options: inboundWarehouseSelectOptions.value,
           props: { clearable: true, filterable: true }
         },
         {
@@ -1389,6 +1410,15 @@
       const type = materialTypes.value.find((item) => item.id === formModel.materialTypeId)
       const baseUnit = units.value.find((item) => item.id === formModel.baseUnitId)
       if (!type || !baseUnit) return false
+      if (
+        type.typeCode === 'FERT' &&
+        formModel.inboundWarehouseId &&
+        !finishedReceiptWarehouses.value.some((item) => item.id === formModel.inboundWarehouseId)
+      ) {
+        activeTab.value = 'production'
+        ElMessage.warning('成品入库仓库必须选择已启用且有业务应用范围的成品仓')
+        return false
+      }
       formModel.materialType = type.typeCode
       formModel.basicUnit = baseUnit.unitCode
       const payload = buildMaterialArchiveWriteInput(formModel)

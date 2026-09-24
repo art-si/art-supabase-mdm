@@ -538,7 +538,11 @@
   }
 
   const openDetail = (record: DocumentTypeRecord): void => {
-    void detailDrawerRef.value?.handleOpen({ record, menuPath: resolveMenuPath(record.menuId) })
+    void detailDrawerRef.value?.handleOpen({
+      record,
+      menuPath: resolveMenuPath(record.menuId),
+      isProductionType: treeUtils.findNode(menu.tree, record.menuId)?.name === 'MesWorkOrder'
+    })
   }
 
   const removeRow = async (row: DocumentTypeRecord): Promise<void> => {

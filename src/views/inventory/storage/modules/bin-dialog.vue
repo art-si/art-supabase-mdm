@@ -28,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -57,6 +59,13 @@
   const dialogRef = ref<ArtDialogExpose<BinDialogContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<BinDialogContext>()
+  const treeUtils = new TreeUtils({ parentKey: 'parentId', deepClone: false })
+  const excludedParentIds = computed(() => {
+    const row = context.value?.row
+    if (!row) return new Set<string>()
+    const tree = treeUtils.listToTree(context.value?.bins ?? [])
+    return new Set(treeUtils.getDescendants(tree, row.id, true).map((bin) => bin.id))
+  })
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   void userStore.ensureDictLoaded('mdmWarehouseBinType')
@@ -110,7 +119,8 @@
         context.value?.bins
           .filter(
             (bin) =>
-              bin.id !== context.value?.row?.id && bin.zoneId === (context.value?.zone?.id ?? null)
+              !excludedParentIds.value.has(bin.id) &&
+              bin.zoneId === (context.value?.zone?.id ?? null)
           )
           .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id })) ?? [],
       props: { clearable: true, filterable: true, placeholder: '顶层库位' }
@@ -219,8 +229,8 @@
           ...form,
           binCode: form.binCode.trim().toUpperCase(),
           binName: form.binName.trim(),
-          shelfCode: form.shelfCode?.trim().toUpperCase() || null,
-          remark: form.remark?.trim() || null
+          shelfCode: normalizeNullableText(form.shelfCode?.toUpperCase()),
+          remark: normalizeNullableText(form.remark)
         },
         context.value.row?.id
       )

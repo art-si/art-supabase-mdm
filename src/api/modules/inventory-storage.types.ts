@@ -4,6 +4,7 @@ export interface StorageWarehouse {
   warehouseCode: string
   warehouseName: string
   warehouseType: string
+  businessScopes: string[]
   enableLocations: boolean
   enableZones: boolean
   singleSkuPerBin: boolean
@@ -94,6 +95,7 @@ export interface StorageMaterial {
   description: string | null
   materialSource: string | null
   materialType: string | null
+  inboundWarehouseId: string | null
   categoryId: string | null
   grossWeight: number | null
 }
@@ -104,6 +106,7 @@ export interface StorageWorkOrder {
   workOrderNo: string
   materialId: string | null
   constructionNo: string | null
+  allowedIssueWarehouseTypes: string[]
 }
 
 export interface InventoryBatch {

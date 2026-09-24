@@ -21,6 +21,7 @@ export interface DocumentTypeRecord {
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
   extensionFields: WorkOrderExtensionField[]
+  allowedIssueWarehouseTypes: string[]
   createBy?: string | null
   createTime?: string
   updateBy?: string | null
@@ -40,6 +41,7 @@ export interface DocumentTypeWriteInput {
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
   extensionFields: WorkOrderExtensionField[]
+  allowedIssueWarehouseTypes: string[]
 }
 
 export type DocumentTypeUpdateInput = Omit<DocumentTypeWriteInput, 'tenantId'>
@@ -82,7 +84,10 @@ export interface DocumentTypeExportQuery {
   limit?: number
 }
 
-export interface DocumentTypeExportRecord extends DocumentTypeRecord {
+export interface DocumentTypeExportRecord extends Omit<
+  DocumentTypeRecord,
+  'allowedIssueWarehouseTypes' | 'extensionFields'
+> {
   tenantName?: string | null
   tenantCode?: string | null
 }

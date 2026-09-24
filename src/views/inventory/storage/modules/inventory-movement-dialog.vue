@@ -5,7 +5,13 @@
         icon="ri:swap-2-line"
         eyebrow="INVENTORY MOVEMENT"
         :title="movementLabel"
-        :description="context.label"
+        :description="inboundDestinationDescription"
+      />
+      <ElAlert
+        v-if="inboundWarehouseError"
+        :title="inboundWarehouseError"
+        type="warning"
+        :closable="false"
       />
       <ArtForm
         ref="formRef"
@@ -26,7 +32,7 @@
             title="选择入库物料"
             @update:model-value="form.materialId = $event || null"
             subtitle="仅显示当前仓库所属租户的已启用物料"
-            @update:selected-data="selectedMaterial = $event"
+            @update:selected-data="handleMaterialSelection"
           />
         </template>
       </ArtForm>
@@ -81,6 +87,8 @@
   const workOrders = ref<StorageWorkOrder[]>([])
   const batchOptions = ref<InventoryBatch[]>([])
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
+  const inboundWarehouseError = ref('')
+  let destinationRevision = 0
   const isInbound = computed(() => form.movementType.endsWith('_in'))
   const movementLabel = computed(
     () =>
@@ -88,13 +96,31 @@
         ?.label || '库存业务'
   )
   const currentWarehouse = computed(() =>
-    warehouses.value.find((warehouse) => warehouse.id === context.warehouseId)
+    warehouses.value.find(
+      (warehouse) => warehouse.id === (isInbound.value ? form.warehouseId : context.warehouseId)
+    )
+  )
+  const inboundDestinationDescription = computed(() =>
+    form.movementType === 'production_in'
+      ? currentWarehouse.value
+        ? `入库目标：${currentWarehouse.value.warehouseName} · ${currentWarehouse.value.warehouseCode}`
+        : '选择成品物料后自动确定入库仓库'
+      : context.label
+  )
+  const eligibleFinishedWarehouses = computed(() =>
+    warehouses.value.filter(
+      (warehouse) =>
+        warehouse.tenantId === context.tenantId &&
+        warehouse.status === 'enabled' &&
+        warehouse.warehouseType === 'finished' &&
+        warehouse.businessScopes.length > 0
+    )
   )
   const targetWarehouse = computed(() =>
     warehouses.value.find((warehouse) => warehouse.id === form.targetWarehouseId)
   )
   const availableSourceBins = computed(() =>
-    context.zoneId
+    context.zoneId && form.warehouseId === context.warehouseId
       ? sourceBins.value.filter((bin) => bin.zoneId === context.zoneId)
       : sourceBins.value
   )
@@ -187,6 +213,22 @@
           }
         ]
       : []),
+    ...(form.movementType === 'production_in'
+      ? [
+          {
+            label: '入库仓库',
+            key: 'warehouseId',
+            type: 'select' as const,
+            options: warehouses.value
+              .filter((warehouse) => warehouse.tenantId === context.tenantId)
+              .map((warehouse) => ({
+                label: `${warehouse.warehouseName} · ${warehouse.warehouseCode}`,
+                value: warehouse.id
+              })),
+            props: { disabled: true, placeholder: '选择物料后自动确定入库仓库' }
+          }
+        ]
+      : []),
     ...(isInbound.value && currentWarehouse.value?.enableLocations
       ? [
           {
@@ -194,7 +236,11 @@
             key: 'binId',
             type: 'select' as const,
             options: sourceBinOptions.value,
-            props: { filterable: true, disabled: Boolean(context.binId), placeholder: '选择库位' }
+            props: {
+              filterable: true,
+              disabled: Boolean(context.binId && form.warehouseId === context.warehouseId),
+              placeholder: '选择库位'
+            }
           }
         ]
       : []),
@@ -251,6 +297,10 @@
       ? [{ required: true, message: '请选择物料', trigger: 'change' }]
       : [],
     batchNo: isInbound.value ? [{ required: true, message: '请输入批号', trigger: 'blur' }] : [],
+    warehouseId:
+      form.movementType === 'production_in'
+        ? [{ required: true, message: '请先配置可用于成品入库的仓库', trigger: 'change' }]
+        : [],
     batchId: !isInbound.value
       ? [{ required: true, message: '请选择来源批次', trigger: 'change' }]
       : [],
@@ -285,10 +335,47 @@
         materialCode: material.materialCode,
         materialName: material.materialName,
         specificationModel: material.specificationModel,
-        description: material.description
+        description: material.description,
+        materialType: material.materialType,
+        inboundWarehouseId: material.inboundWarehouseId
       })),
       total: result.total
     }
+  }
+
+  async function handleMaterialSelection(rows: MaterialSelectRecord[]): Promise<void> {
+    selectedMaterial.value = rows
+    if (form.movementType !== 'production_in') return
+    const revision = ++destinationRevision
+    const material = rows[0]
+    if (material?.materialType !== 'FERT') {
+      inboundWarehouseError.value = ''
+      form.warehouseId = context.warehouseId
+      form.binId = context.binId ?? null
+      const bins = await fetchStorageBins(context.warehouseId)
+      if (revision === destinationRevision) sourceBins.value = bins
+      return
+    }
+    const finishedWarehouses = eligibleFinishedWarehouses.value
+    const preferred = finishedWarehouses.find(
+      (warehouse) => warehouse.id === material.inboundWarehouseId
+    )
+    const destination =
+      preferred ?? (finishedWarehouses.length === 1 ? finishedWarehouses[0] : null)
+    if (!destination) {
+      inboundWarehouseError.value = finishedWarehouses.length
+        ? '存在多个成品仓，请先在物料主数据中指定入库仓库。'
+        : '暂无可用于业务的成品仓，请先启用成品仓并配置入库仓库。'
+      form.warehouseId = null
+      form.binId = null
+      sourceBins.value = []
+      return
+    }
+    inboundWarehouseError.value = ''
+    form.warehouseId = destination.id
+    form.binId = destination.id === context.warehouseId ? (context.binId ?? null) : null
+    const bins = await fetchStorageBins(destination.id)
+    if (revision === destinationRevision) sourceBins.value = bins
   }
 
   watch(
@@ -301,10 +388,11 @@
 
   async function submit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
+      if (inboundWarehouseError.value) return false
+      if ((await formRef.value?.validate()) === false) return false
       await postInventoryMovement({
         ...form,
-        warehouseId: isInbound.value ? context.warehouseId : undefined,
+        warehouseId: isInbound.value ? form.warehouseId : undefined,
         binId: isInbound.value ? (form.binId ?? null) : undefined,
         targetWarehouseId: form.movementType === 'transfer' ? form.targetWarehouseId : undefined,
         targetBinId: form.movementType === 'transfer' ? (form.targetBinId ?? null) : undefined
@@ -317,6 +405,8 @@
   }
 
   async function handleOpen(type: string, data: StorageActionContext): Promise<void> {
+    destinationRevision += 1
+    inboundWarehouseError.value = ''
     Object.assign(context, { zoneId: undefined, binId: undefined }, data)
     Object.assign(form, {
       movementType: type,
@@ -324,8 +414,8 @@
       areaSqm: null,
       unitCost: null,
       materialId: null,
-      warehouseId: data.warehouseId,
-      binId: data.binId ?? null,
+      warehouseId: type === 'production_in' ? null : data.warehouseId,
+      binId: type === 'production_in' ? null : (data.binId ?? null),
       targetWarehouseId: data.warehouseId,
       targetBinId: null,
       batchId: data.batchId ?? null,
@@ -345,7 +435,8 @@
     targetBins.value = []
     batchOptions.value = []
     await dialogRef.value?.handleOpen(data, {
-      title: `${movementLabel.value} · ${data.label}`,
+      title:
+        type === 'production_in' ? movementLabel.value : `${movementLabel.value} · ${data.label}`,
       subtitle: '库存数量和业务流水将同步更新',
       loading: true,
       loadingText: '正在加载仓库、库位与库存批次…',

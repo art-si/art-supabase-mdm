@@ -40,7 +40,7 @@ export async function fetchStorageWarehouses(): Promise<StorageWarehouse[]> {
       supabase
         .from('mdm_warehouse')
         .select(
-          'id,tenant_id,warehouse_code,warehouse_name,warehouse_type,enable_locations,enable_zones,single_sku_per_bin,status'
+          'id,tenant_id,warehouse_code,warehouse_name,warehouse_type,business_scopes,enable_locations,enable_zones,single_sku_per_bin,status'
         )
         .order('warehouse_code'),
     readOptions
@@ -101,7 +101,7 @@ export async function fetchInventoryPolicy(tenantId: string): Promise<InventoryP
         .maybeSingle(),
     readOptions
   )
-  return data ?? { staleDays: 90, autoReserveOnRelease: false }
+  return data ?? { staleDays: 90, autoReserveOnRelease: true }
 }
 
 export async function saveInventoryPolicy(
@@ -125,7 +125,7 @@ export async function fetchStorageMaterials(
   let query = supabase
     .from('mdm_material')
     .select(
-      'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,category_id,gross_weight'
+      'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,inbound_warehouse_id,category_id,gross_weight'
     )
     .eq('tenant_id', tenantId)
     .eq('status', 'enabled')
@@ -146,7 +146,7 @@ export async function fetchStorageMaterialsPage(
   let query = supabase
     .from('mdm_material')
     .select(
-      'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,category_id,gross_weight',
+      'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,inbound_warehouse_id,category_id,gross_weight',
       { count: 'exact' }
     )
     .eq('tenant_id', tenantId)
@@ -165,7 +165,7 @@ export async function fetchStorageMaterial(id: string): Promise<StorageMaterial 
       supabase
         .from('mdm_material')
         .select(
-          'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,category_id,gross_weight'
+          'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,inbound_warehouse_id,category_id,gross_weight'
         )
         .eq('id', id)
         .maybeSingle(),

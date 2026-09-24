@@ -314,6 +314,29 @@
         ...(isProductionType.value
           ? [
               {
+                label: '领料仓库范围',
+                key: 'issueWarehouseSection',
+                type: 'divider',
+                span: 24
+              } as FormItem,
+              {
+                label: '允许领料的仓库类型',
+                key: 'allowedIssueWarehouseTypes',
+                type: 'select',
+                span: 24,
+                options: getDictMap.value.mdmWarehouseType ?? [],
+                props: {
+                  multiple: true,
+                  filterable: true,
+                  disabled: form.mode === 'copy',
+                  placeholder: '选择该工单类型允许领料的仓库类型'
+                },
+                description:
+                  form.mode === 'copy'
+                    ? '副本沿用源类型的领料仓库范围，创建后可单独修改。'
+                    : '工单下达自动预留与关联工单领料均受此范围约束。'
+              } as FormItem,
+              {
                 label: '生产工单专用字段',
                 key: 'extensionSection',
                 type: 'divider',
@@ -439,6 +462,17 @@
     }
 
     if (isProductionType.value) {
+      if (!form.data.allowedIssueWarehouseTypes.length) {
+        ElMessage.warning('请至少选择一种允许领料的仓库类型')
+        return false
+      }
+      const warehouseTypeCodes = new Set(
+        (getDictMap.value.mdmWarehouseType ?? []).map((item) => String(item.value))
+      )
+      if (form.data.allowedIssueWarehouseTypes.some((type) => !warehouseTypeCodes.has(type))) {
+        ElMessage.warning('允许领料的仓库类型已失效，请重新选择')
+        return false
+      }
       const fields = form.data.extensionFields
       if (
         fields.some(
@@ -479,7 +513,10 @@
 
   const handleOpen = async (data: DocumentTypeDialogOpenData): Promise<void> => {
     initializeForm(data)
-    await userStore.ensureDictLoaded('commonBoolean')
+    await Promise.all([
+      userStore.ensureDictLoaded('commonBoolean'),
+      userStore.ensureDictLoaded('mdmWarehouseType')
+    ])
     const titleMap: Record<DialogMode, string> = {
       add: '新增单据类型',
       copy: '复制单据类型',

@@ -372,6 +372,8 @@ export interface MaterialContextOption {
   name: string
   applyBatch?: boolean
   applySerial?: boolean
+  warehouseType?: string
+  businessScopes?: string[]
 }
 
 export async function fetchMaterialGroupOptions(tenantId: string) {
@@ -414,12 +416,19 @@ export async function fetchMaterialSupplierOptions(tenantId: string) {
 
 export async function fetchMaterialWarehouseOptions(tenantId: string) {
   const { data } = await responseHandle<
-    Array<{ id: string; tenantId: string; warehouseCode: string; warehouseName: string }>
+    Array<{
+      id: string
+      tenantId: string
+      warehouseCode: string
+      warehouseName: string
+      warehouseType: string
+      businessScopes: string[]
+    }>
   >(
     () =>
       supabase
         .from('mdm_warehouse')
-        .select('id,tenant_id,warehouse_code,warehouse_name')
+        .select('id,tenant_id,warehouse_code,warehouse_name,warehouse_type,business_scopes')
         .eq('tenant_id', tenantId)
         .eq('status', 'enabled')
         .order('warehouse_code'),
@@ -429,7 +438,9 @@ export async function fetchMaterialWarehouseOptions(tenantId: string) {
     id: item.id,
     tenantId: item.tenantId,
     code: item.warehouseCode,
-    name: item.warehouseName
+    name: item.warehouseName,
+    warehouseType: item.warehouseType,
+    businessScopes: item.businessScopes
   }))
 }
 

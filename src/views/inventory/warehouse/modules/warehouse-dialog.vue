@@ -75,7 +75,7 @@
   void userStore.ensureDictLoaded('mdmWarehouseBusinessScope')
   const dialogRef = ref<ArtDialogExpose<WarehouseDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const initialForm = (): WarehouseInput & { id?: string } => ({
+  const initialForm = (): WarehouseInput & { id?: string; singleSkuPerBinChoice: string } => ({
     id: undefined,
     groupId: null,
     warehouseCode: '',
@@ -86,6 +86,7 @@
     enableLocations: false,
     enableZones: false,
     singleSkuPerBin: false,
+    singleSkuPerBinChoice: 'false',
     remark: '',
     status: 'enabled'
   })
@@ -178,9 +179,10 @@
           },
           {
             label: '一位一品',
-            key: 'singleSkuPerBin',
-            type: 'switch' as const,
-            props: { activeText: '启用', inactiveText: '关闭' },
+            key: 'singleSkuPerBinChoice',
+            type: 'select' as const,
+            options: getDictMap.value.commonBoolean ?? [],
+            props: { placeholder: '请选择是否一位一品' },
             help: '启用后每个库位只能存放一种物料。'
           }
         ]
@@ -225,6 +227,7 @@
       if (!enabled) {
         form.model.enableZones = false
         form.model.singleSkuPerBin = false
+        form.model.singleSkuPerBinChoice = 'false'
       }
     }
   )
@@ -242,7 +245,8 @@
           businessScopes: form.model.businessScopes,
           enableLocations: form.model.enableLocations,
           enableZones: form.model.enableLocations && form.model.enableZones,
-          singleSkuPerBin: form.model.enableLocations && form.model.singleSkuPerBin,
+          singleSkuPerBin:
+            form.model.enableLocations && form.model.singleSkuPerBinChoice === 'true',
           remark: form.model.remark.trim(),
           status: form.model.status
         },
@@ -256,6 +260,7 @@
   }
 
   async function handleOpen(data: WarehouseDialogOpenData): Promise<void> {
+    await userStore.ensureDictLoaded('commonBoolean')
     Object.assign(form.model, initialForm())
     Object.assign(form, {
       tenantId: data.row?.tenantId || data.tenantId,
@@ -264,6 +269,7 @@
     form.selectedEmployee = []
     if (data.row) {
       Object.assign(form.model, cloneDeep(data.row))
+      form.model.singleSkuPerBinChoice = data.row.singleSkuPerBin ? 'true' : 'false'
       if (data.row.responsible) {
         form.selectedEmployee = [
           {

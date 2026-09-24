@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -152,7 +153,7 @@
         {
           ...form,
           serialNo: form.serialNo.trim(),
-          remark: form.remark?.trim() || null
+          remark: normalizeNullableText(form.remark)
         },
         context.value.row?.id
       )

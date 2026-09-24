@@ -1,5 +1,13 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg">
+    <ElAlert
+      v-if="!eligibleOrders.length"
+      class="mb-4"
+      title="当前仓库没有可领料的工单，请检查工单类型的领料仓库范围。"
+      type="info"
+      show-icon
+      :closable="false"
+    />
     <ArtForm
       ref="formRef"
       v-model="form"
@@ -27,6 +35,8 @@
 </template>
 
 <script setup lang="ts">
+  import { ElMessage } from 'element-plus'
+  import { normalizeNullableText } from '@/utils/form/normalize'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -53,6 +63,11 @@
   const context = shallowRef<ReservationDialogContext>()
   const bins = ref<StorageBin[]>([])
   const orders = ref<StorageWorkOrder[]>([])
+  const eligibleOrders = computed(() =>
+    orders.value.filter((order) =>
+      order.allowedIssueWarehouseTypes.includes(context.value?.warehouse.warehouseType ?? '')
+    )
+  )
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
   const form = reactive({
     workOrderId: '',
@@ -68,7 +83,7 @@
       key: 'workOrderId',
       label: '工单',
       type: 'select',
-      options: orders.value.map((order) => ({
+      options: eligibleOrders.value.map((order) => ({
         label: `${order.workOrderNo}${order.constructionNo ? ` · ${order.constructionNo}` : ''}`,
         value: order.id
       })),
@@ -139,7 +154,7 @@
       await saveInventoryReservation(context.value.warehouse.tenantId, {
         ...form,
         binId: form.binId || null,
-        remark: form.remark.trim() || null
+        remark: normalizeNullableText(form.remark)
       })
       emit('success')
       return true
@@ -148,6 +163,10 @@
     }
   }
   async function handleOpen(data: ReservationDialogContext): Promise<void> {
+    if (!data.warehouse.businessScopes.includes('picking')) {
+      ElMessage.warning('该仓库未启用拣货，不能预留原料')
+      return
+    }
     context.value = data
     Object.assign(form, {
       workOrderId: '',

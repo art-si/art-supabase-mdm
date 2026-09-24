@@ -28,7 +28,7 @@
   const dialogRef = ref<ArtDialogExpose<{ tenantId: string; warehouseName: string }>>()
   const context = shallowRef<{ tenantId: string; warehouseName: string }>()
   const staleDays = ref(90)
-  const autoReserveOnRelease = ref(false)
+  const autoReserveOnRelease = ref(true)
 
   async function submit(): Promise<boolean> {
     if (!context.value || !Number.isInteger(staleDays.value) || staleDays.value < 1) return false

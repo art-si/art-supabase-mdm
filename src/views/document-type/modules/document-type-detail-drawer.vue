@@ -39,6 +39,22 @@
       </ArtSectionCard>
 
       <ArtSectionCard
+        v-if="detail.isProductionType"
+        title="领料仓库范围"
+        subtitle="工单下达锁料和关联工单出库均按此范围执行。"
+      >
+        <div class="flex flex-wrap gap-2">
+          <ArtDictDisplay
+            v-for="warehouseType in detail.record.allowedIssueWarehouseTypes"
+            :key="warehouseType"
+            dict-code="mdmWarehouseType"
+            :value="warehouseType"
+            display="tag"
+          />
+        </div>
+      </ArtSectionCard>
+
+      <ArtSectionCard
         v-if="detail.record.extensionFields?.length"
         title="生产工单专用字段"
         subtitle="按当前单据类型显示，并可从 BOM 组件类型取值。"
@@ -92,6 +108,7 @@
   export interface DocumentTypeDetailData {
     record: DocumentTypeRecord
     menuPath: string
+    isProductionType: boolean
   }
 
   const drawerRef = ref<ArtDrawerExpose<DocumentTypeDetailData>>()
@@ -108,9 +125,11 @@
       textColor: '',
       tagStyle: 'primary',
       enabled: true,
-      extensionFields: []
+      extensionFields: [],
+      allowedIssueWarehouseTypes: ['raw_material']
     },
-    menuPath: ''
+    menuPath: '',
+    isProductionType: false
   })
 
   const tagPreviewStyle = computed<CSSProperties>(() => ({

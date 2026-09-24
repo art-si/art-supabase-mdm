@@ -106,7 +106,7 @@
     {
       prop: 'packNo',
       label: '包号',
-      minWidth: 180,
+      minWidth: 220,
       fixed: 'left',
       formatter: (row) => (
         <BusinessTableIdentityCell

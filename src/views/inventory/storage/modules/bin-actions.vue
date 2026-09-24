@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-1 flex items-center justify-end gap-1">
+  <div class="bin-actions mt-2 flex items-center justify-end gap-1.5">
     <ArtIconButton
       icon="ri:edit-line"
       :label="`编辑${bin.binName}`"
@@ -29,3 +29,11 @@
   defineProps<{ bin: StorageBin }>()
   defineEmits<{ edit: []; child: []; remove: [] }>()
 </script>
+
+<style scoped>
+  .bin-actions :deep(.art-icon-button) {
+    border: 1px solid var(--el-border-color);
+    background-color: var(--el-bg-color);
+    font-size: 1rem;
+  }
+</style>

@@ -14,7 +14,7 @@
       />
 
       <div
-        class="grid min-h-0 gap-4 lg:flex-1 lg:grid-cols-[210px_190px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]"
+        class="grid min-h-0 gap-4 lg:flex-1 lg:grid-cols-2 lg:grid-rows-[minmax(150px,1fr)_minmax(0,2fr)] xl:grid-cols-[210px_190px_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)]"
       >
         <ArtSectionCard
           title="仓库"
@@ -122,7 +122,7 @@
               ? `${selectedWarehouse.warehouseName}${selectedZone ? ` · ${selectedZone.zoneName}` : ''} · 点击库位办理业务，双击查看库存。`
               : '请先在仓库定义中启用仓位。'
           "
-          root-class="flex min-h-0 flex-col"
+          root-class="flex min-h-0 flex-col lg:col-span-2 xl:col-span-1"
           body-class="min-h-0 flex-1 overflow-y-auto"
           :loading="loadingBins"
           :error="binError"
@@ -184,22 +184,18 @@
                     {{ level.number }}F
                   </span>
                   <div v-for="bin in level.bins" :key="bin.id" class="w-44 shrink-0">
-                    <StorageTile
-                      :code="bin.binCode"
-                      :name="bin.binName"
-                      :tone="binTone(bin)"
-                      :stock="binStat(bin.id)"
-                      :stale-days="overview.staleDays"
-                      :fixed="Boolean(bin.fixedMaterialId)"
-                      compact
-                      @select="selectBin(bin)"
-                      @detail="openDetail(bin)"
-                    />
-                    <BinActions
+                    <BinNode
                       :bin="bin"
-                      @edit="openBinDialog(bin)"
-                      @child="openBinDialog(undefined, bin.id)"
-                      @remove="removeBin(bin)"
+                      :tone-for="binTone"
+                      :stock-for="binStat"
+                      :stale-days="overview.staleDays"
+                      :parent-code="bin.parentId ? binById[bin.parentId]?.binCode : undefined"
+                      compact
+                      @select="selectBin"
+                      @detail="openDetail"
+                      @edit="openBinDialog"
+                      @child="openBinDialog(undefined, $event.id)"
+                      @remove="removeBin"
                     />
                   </div>
                 </div>
@@ -214,21 +210,17 @@
               </header>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 <div v-for="bin in blockBins" :key="bin.id" class="min-w-0">
-                  <StorageTile
-                    :code="bin.binCode"
-                    :name="bin.binName"
-                    :tone="binTone(bin)"
-                    :stock="binStat(bin.id)"
-                    :stale-days="overview.staleDays"
-                    :fixed="Boolean(bin.fixedMaterialId)"
-                    @select="selectBin(bin)"
-                    @detail="openDetail(bin)"
-                  />
-                  <BinActions
+                  <BinNode
                     :bin="bin"
-                    @edit="openBinDialog(bin)"
-                    @child="openBinDialog(undefined, bin.id)"
-                    @remove="removeBin(bin)"
+                    :tone-for="binTone"
+                    :stock-for="binStat"
+                    :stale-days="overview.staleDays"
+                    :parent-code="bin.parentId ? binById[bin.parentId]?.binCode : undefined"
+                    @select="selectBin"
+                    @detail="openDetail"
+                    @edit="openBinDialog"
+                    @child="openBinDialog(undefined, $event.id)"
+                    @remove="removeBin"
                   />
                 </div>
               </div>
@@ -247,6 +239,8 @@
 </template>
 
 <script setup lang="ts">
+  import { keyBy } from 'lodash-es'
+  import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
@@ -264,8 +258,7 @@
     type StorageWarehouse,
     type StorageZone
   } from '@mdm/api'
-  import StorageTile from '../storage/modules/storage-tile.vue'
-  import BinActions from '../storage/modules/bin-actions.vue'
+  import BinNode from '../storage/modules/bin-node.vue'
   import BinDialog from '../storage/modules/bin-dialog.vue'
   import ShelfGeneratorDialog from '../storage/modules/shelf-generator-dialog.vue'
   import StorageActionDialog, {
@@ -275,6 +268,8 @@
   import InventoryDetailDialog from '../storage/modules/inventory-detail-dialog.vue'
 
   defineOptions({ name: 'MdmWarehouseBin' })
+  type BinBranch = StorageBin & { children?: BinBranch[] }
+  const treeUtils = new TreeUtils({ parentKey: 'parentId', deepClone: false })
   const { confirmDelete } = useArtFeedback()
   const warehouses = ref<StorageWarehouse[]>([])
   const zones = ref<StorageZone[]>([])
@@ -320,8 +315,8 @@
     staleUnpricedCount: 0,
     quantity: 0
   }
-  const binStat = (id: string): StorageStockStat =>
-    overview.value.bins.find((stat) => stat.binId === id) ?? emptyStock
+  const stockByBinId = computed(() => keyBy(overview.value.bins, 'binId'))
+  const binStat = (id: string): StorageStockStat => stockByBinId.value[id] ?? emptyStock
   const binTone = (bin: StorageBin): 'available' | 'occupied' | 'abnormal' | 'disabled' => {
     if (bin.status === 'disabled') return 'disabled'
     if (bin.status !== 'available') return 'abnormal'
@@ -335,22 +330,24 @@
         (!fixedOnly.value || Boolean(bin.fixedMaterialId))
     )
   )
+  const binById = computed(() => keyBy(bins.value, 'id'))
+  const visibleBinTree = computed(() => treeUtils.listToTree<BinBranch>(visibleBins.value))
   const shelfGroups = computed(() => {
     const shelfCodes = [
       ...new Set(
-        visibleBins.value
+        visibleBinTree.value
           .filter((bin) => bin.binType === 'shelf')
           .map((bin) => bin.shelfCode || '未分组')
       )
     ]
     return shelfCodes.map((code) => {
-      const groupBins = visibleBins.value.filter(
+      const groupBins = visibleBinTree.value.filter(
         (bin) => bin.binType === 'shelf' && (bin.shelfCode || '未分组') === code
       )
       const numbers = [...new Set(groupBins.map((bin) => bin.levelNo ?? 0))].sort((a, b) => b - a)
       return {
         code,
-        bins: groupBins,
+        bins: treeUtils.treeToList(groupBins),
         levels: numbers.map((number) => ({
           number,
           bins: groupBins
@@ -360,7 +357,7 @@
       }
     })
   })
-  const blockBins = computed(() => visibleBins.value.filter((bin) => bin.binType !== 'shelf'))
+  const blockBins = computed(() => visibleBinTree.value.filter((bin) => bin.binType !== 'shelf'))
 
   async function loadWarehouses(): Promise<void> {
     loadingWarehouses.value = true

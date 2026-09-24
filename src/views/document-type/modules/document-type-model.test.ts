@@ -19,7 +19,8 @@ const source: DocumentTypeRecord = {
   textColor: '#409eff',
   tagStyle: 'primary',
   enabled: true,
-  extensionFields: []
+  extensionFields: [],
+  allowedIssueWarehouseTypes: ['raw_material', 'outsourced']
 }
 
 test('copy model keeps presentation but clears the unique code and default state', () => {
@@ -31,6 +32,7 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.equal(copy.documentTypeName, '运输订单（副本）')
   assert.equal(copy.isDefault, false)
   assert.equal(copy.sortOrder, 30)
+  assert.deepEqual(copy.allowedIssueWarehouseTypes, source.allowedIssueWarehouseTypes)
 })
 
 test('write payload normalizes text and only includes tenant when required', () => {
@@ -52,4 +54,5 @@ test('write payload normalizes text and only includes tenant when required', () 
   assert.equal(tenantPayload.textColor, '#409EFF')
   assert.equal(tenantPayload.tenantId, 'tenant-id')
   assert.equal('tenantId' in ordinaryPayload, false)
+  assert.deepEqual(tenantPayload.allowedIssueWarehouseTypes, ['raw_material'])
 })
