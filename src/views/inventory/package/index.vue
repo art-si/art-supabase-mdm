@@ -20,7 +20,7 @@
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
-        :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
+        :search-bar-props="{ span: 8, labelWidth: 112, showExpand: false }"
         :table-props="{
           rowKey: 'id',
           tableLayout: 'fixed',

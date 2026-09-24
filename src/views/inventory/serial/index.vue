@@ -21,7 +21,7 @@
         :search-items="searchItems"
         :columns-factory="columnsFactory"
         :header-actions="headerActions"
-        :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
+        :search-bar-props="{ span: 8, labelWidth: 112, showExpand: false }"
         :table-props="{
           rowKey: 'id',
           tableLayout: 'fixed',
@@ -120,7 +120,7 @@
     {
       prop: 'serialNo',
       label: '序列号',
-      minWidth: 180,
+      minWidth: 220,
       fixed: 'left',
       formatter: (row) => (
         <BusinessTableIdentityCell
