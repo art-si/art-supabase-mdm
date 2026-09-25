@@ -45,7 +45,7 @@
     warehouseId: string
     label: string
     binId?: string
-    zoneBinIds?: string[]
+    zoneId?: string
   }
 
   const dialogRef = ref<ArtDialogExpose<InventoryDetailContext>>()
@@ -73,7 +73,7 @@
       prop: 'binId',
       label: '库位',
       minWidth: 120,
-      formatter: (row) => row.bin?.binCode || '仓库直存'
+      formatter: (row) => row.bin?.binCode || row.zone?.zoneName || '仓库直存'
     },
     { prop: 'quantity', label: '在库数量', minWidth: 105, align: 'right' },
     {
@@ -114,7 +114,7 @@
       const result = await fetchInventoryBatches({
         warehouseId: context.warehouseId,
         binId: context.binId,
-        zoneBinIds: context.zoneBinIds,
+        zoneId: context.zoneId,
         positiveOnly: true,
         current: pagination.current,
         size: pagination.size
@@ -140,7 +140,7 @@
   async function handleOpen(data: InventoryDetailContext): Promise<void> {
     Object.assign(
       context,
-      { warehouseId: '', label: '', binId: undefined, zoneBinIds: undefined },
+      { warehouseId: '', label: '', binId: undefined, zoneId: undefined },
       data
     )
     pagination.current = 1

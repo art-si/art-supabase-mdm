@@ -253,6 +253,12 @@
       dict: { code: 'mdmWarehouseType', display: 'auto' }
     },
     {
+      prop: 'organizationName',
+      label: '库存组织',
+      minWidth: 180,
+      formatter: (row) => row.organizationName || '未配置'
+    },
+    {
       prop: 'businessScopes',
       label: '业务应用范围',
       minWidth: 240,
@@ -285,17 +291,6 @@
         )
     },
     {
-      prop: 'enableLocations',
-      label: '启用仓位',
-      width: 112,
-      align: 'center',
-      formatter: (row) => (
-        <ElTag type={row.enableLocations ? 'primary' : 'info'} effect="light">
-          {row.enableLocations ? '已开启' : '未开启'}
-        </ElTag>
-      )
-    },
-    {
       prop: 'enableZones',
       label: '启用库区',
       width: 112,
@@ -303,6 +298,17 @@
       formatter: (row) => (
         <ElTag type={row.enableZones ? 'primary' : 'info'} effect="light">
           {row.enableZones ? '已开启' : '未开启'}
+        </ElTag>
+      )
+    },
+    {
+      prop: 'enableLocations',
+      label: '启用库位',
+      width: 112,
+      align: 'center',
+      formatter: (row) => (
+        <ElTag type={row.enableLocations ? 'primary' : 'info'} effect="light">
+          {row.enableLocations ? '已开启' : '未开启'}
         </ElTag>
       )
     },

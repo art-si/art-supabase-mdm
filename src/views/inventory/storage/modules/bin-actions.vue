@@ -1,39 +1,33 @@
 <template>
-  <div class="bin-actions mt-2 flex items-center justify-end gap-1.5">
-    <ArtIconButton
-      icon="ri:edit-line"
-      :label="`编辑${bin.binName}`"
-      permission="MdmWarehouseBin:Edit"
-      @click="$emit('edit')"
-    />
-    <ArtIconButton
-      icon="ri:add-line"
-      :label="`为${bin.binName}新增子单元`"
-      permission="MdmWarehouseBin:Add"
-      @click="$emit('child')"
-    />
-    <ArtIconButton
-      icon="ri:delete-bin-line"
-      :label="`删除${bin.binName}`"
-      permission="MdmWarehouseBin:Delete"
-      tone="danger"
-      @click="$emit('remove')"
-    />
-  </div>
+  <StorageCardActions
+    :name="bin.binName"
+    :actions="actions"
+    :overlay="overlay"
+    @click="handleAction"
+  />
 </template>
 
 <script setup lang="ts">
-  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import type { StorageBin } from '@mdm/api'
+  import StorageCardActions from './storage-card-actions.vue'
 
-  defineProps<{ bin: StorageBin }>()
-  defineEmits<{ edit: []; child: []; remove: [] }>()
-</script>
+  defineProps<{ bin: StorageBin; overlay?: boolean }>()
+  const emit = defineEmits<{ edit: []; child: []; remove: [] }>()
+  const actions: ButtonMoreItem[] = [
+    { key: 'edit', label: '编辑库位', auth: 'MdmWarehouseBin:Edit' },
+    { key: 'child', label: '新增子单元', auth: 'MdmWarehouseBin:Add' },
+    {
+      key: 'remove',
+      label: '删除库位',
+      auth: 'MdmWarehouseBin:Delete',
+      color: 'var(--el-color-danger)'
+    }
+  ]
 
-<style scoped>
-  .bin-actions :deep(.art-icon-button) {
-    border: 1px solid var(--el-border-color);
-    background-color: var(--el-bg-color);
-    font-size: 1rem;
+  function handleAction(item: ButtonMoreItem): void {
+    if (item.key === 'edit') emit('edit')
+    if (item.key === 'child') emit('child')
+    if (item.key === 'remove') emit('remove')
   }
-</style>
+</script>

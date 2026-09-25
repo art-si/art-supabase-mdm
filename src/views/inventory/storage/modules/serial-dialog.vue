@@ -61,6 +61,27 @@
   void userStore.ensureDictLoaded('mdmInventorySerialStatus')
   const bins = ref<StorageBin[]>([])
   const orders = ref<StorageWorkOrder[]>([])
+  const workOrderOptions = computed(() => {
+    const options = orders.value.map((order) => ({ label: order.workOrderNo, value: order.id }))
+    const row = context.value?.row
+    if (row?.workOrderId && !options.some((option) => option.value === row.workOrderId)) {
+      options.unshift({
+        label: row.workOrderNo || '已关联工单（当前不可选）',
+        value: row.workOrderId
+      })
+    }
+    return options
+  })
+  const binOptions = computed(() => {
+    const options = bins.value
+      .filter((bin) => bin.supportsSerial && bin.status === 'available')
+      .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id }))
+    const row = context.value?.row
+    if (row?.binId && !options.some((option) => option.value === row.binId)) {
+      options.unshift({ label: row.binCode || '已关联库位（当前不可选）', value: row.binId })
+    }
+    return options
+  })
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
   const transitions: Record<string, string[]> = {
     pending_in: ['pending_in', 'in_stock'],
@@ -104,16 +125,14 @@
       key: 'workOrderId',
       label: '工单',
       type: 'select',
-      options: orders.value.map((order) => ({ label: order.workOrderNo, value: order.id })),
+      options: workOrderOptions.value,
       props: { clearable: true, filterable: true, placeholder: '按需关联工单' }
     },
     {
       key: 'binId',
-      label: '仓位',
+      label: '库位',
       type: 'select',
-      options: bins.value
-        .filter((bin) => bin.supportsSerial && bin.status === 'available')
-        .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id })),
+      options: binOptions.value,
       props: { clearable: true, filterable: true, placeholder: '选择支持 SN 的库位' },
       help: '在库状态且仓库启用仓位时必填。'
     },

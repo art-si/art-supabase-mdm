@@ -30,6 +30,8 @@ export interface WarehouseRecord {
   id: string
   tenantId: string
   groupId: string | null
+  organizationId: string
+  organizationName: string
   warehouseCode: string
   warehouseName: string
   responsibleEmployeeId: string | null
@@ -70,6 +72,7 @@ export interface WarehouseWorkspaceResult {
 
 export interface WarehouseInput {
   groupId: string | null
+  organizationId: string
   warehouseCode: string
   warehouseName: string
   responsibleEmployeeId: string | null

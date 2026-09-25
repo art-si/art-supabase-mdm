@@ -229,6 +229,7 @@
           ...form,
           binCode: form.binCode.trim().toUpperCase(),
           binName: form.binName.trim(),
+          parentId: normalizeNullableText(form.parentId),
           shelfCode: normalizeNullableText(form.shelfCode?.toUpperCase()),
           remark: normalizeNullableText(form.remark)
         },

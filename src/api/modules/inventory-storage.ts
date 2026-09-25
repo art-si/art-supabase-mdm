@@ -253,6 +253,7 @@ export async function deleteStorageBin(id: string): Promise<void> {
 
 export interface InventoryBatchQuery {
   warehouseId?: string
+  zoneId?: string
   zoneBinIds?: string[]
   binId?: string
   keyword?: string
@@ -265,11 +266,12 @@ export async function fetchInventoryBatches(params: InventoryBatchQuery) {
   let query = supabase
     .from('wms_inventory_batch')
     .select(
-      '*,warehouse:mdm_warehouse!wms_inventory_batch_warehouse_fk(id,warehouse_code,warehouse_name),bin:mdm_warehouse_bin!wms_inventory_batch_bin_fk(id,bin_code,bin_name,zone_id),material:mdm_material!wms_inventory_batch_material_fk(id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,category_id,gross_weight)',
+      '*,warehouse:mdm_warehouse!wms_inventory_batch_warehouse_fk(id,warehouse_code,warehouse_name),zone:mdm_warehouse_zone!wms_inventory_batch_zone_id_fkey(id,zone_code,zone_name),bin:mdm_warehouse_bin!wms_inventory_batch_bin_fk(id,bin_code,bin_name,zone_id),material:mdm_material!wms_inventory_batch_material_fk(id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,category_id,gross_weight)',
       { count: 'exact' }
     )
     .order('last_movement_at', { ascending: false })
   if (params.warehouseId) query = query.eq('warehouse_id', params.warehouseId)
+  if (params.zoneId) query = query.eq('zone_id', params.zoneId)
   if (params.binId) query = query.eq('bin_id', params.binId)
   if (params.zoneBinIds) {
     if (!params.zoneBinIds.length)

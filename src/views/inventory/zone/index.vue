@@ -72,19 +72,12 @@
           :subtitle="
             selectedWarehouse?.enableZones
               ? `${selectedWarehouse.warehouseName} · 点击库区办理业务，双击查看库存明细；拖动卡片可调整顺序。`
-              : '请先在仓库定义中开启仓位和库区，才能创建库区。'
+              : '请先在仓库定义中启用库区，再创建库区。'
           "
           root-class="flex min-h-0 flex-col"
-          body-class="min-h-0 flex-1 overflow-y-auto"
+          body-class="flex min-h-0 flex-1 flex-col"
           :loading="loadingZones"
           :error="zoneError"
-          :empty="!loadingZones && !zoneError && !visibleZones.length"
-          :empty-title="selectedWarehouse?.enableZones ? '当前仓库暂无库区' : '库区层级未启用'"
-          :empty-description="
-            selectedWarehouse?.enableZones
-              ? '点击新增库区，建立第一条库区主数据。'
-              : '该仓库暂不能维护库区业务数据。'
-          "
           @retry="loadZones"
         >
           <template #actions>
@@ -107,64 +100,77 @@
           <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
             <ElCheckboxGroup v-model="selectedTones" size="small">
-              <ElCheckbox v-for="option in toneOptions" :key="option.value" :value="option.value">
+              <ElCheckbox
+                v-for="option in toneOptions"
+                :key="option.value"
+                :value="option.value"
+                :style="{
+                  '--el-checkbox-checked-bg-color': option.color,
+                  '--el-checkbox-checked-input-border-color': option.color,
+                  '--el-checkbox-checked-text-color': option.color,
+                  '--el-checkbox-input-border-color-hover': option.color
+                }"
+              >
                 {{ option.label }}
               </ElCheckbox>
             </ElCheckboxGroup>
-            <ElCheckbox v-model="fixedOnly">仅看定容</ElCheckbox>
+            <ElCheckbox v-model="fixedOnly" size="small">仅看定容</ElCheckbox>
+            <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
+              重置筛选
+            </ElButton>
           </div>
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            <div
-              v-for="zone in visibleZones"
-              :key="zone.id"
-              class="min-w-0 space-y-2"
-              :draggable="canSortZones"
-              @dragstart="startZoneDrag(zone.id)"
-              @dragover="allowZoneDrop"
-              @drop.prevent="dropZone(zone.id)"
-            >
-              <StorageTile
-                :code="zone.zoneCode"
-                :name="zone.zoneName"
-                :tone="zoneTone(zone)"
-                :stock="zoneStat(zone.id)"
-                :stale-days="overview.staleDays"
-                :fixed="zoneFixed(zone.id)"
-                :selected="selectedZoneId === zone.id"
-                @select="selectZone(zone)"
-                @detail="openDetail(zone)"
-              />
-              <div class="flex min-w-0 items-center justify-between gap-2 px-1 text-xs">
-                <span class="truncate text-[var(--el-text-color-secondary)]">
-                  {{ zone.category?.categoryName || '不限物料分类' }}
-                </span>
-                <span class="flex shrink-0 items-center gap-1">
-                  <ElButton
-                    v-auth="'MdmWarehouseZone:Edit'"
-                    text
-                    size="small"
-                    :aria-label="`编辑${zone.zoneName}`"
-                    @click="openZoneDialog(zone)"
-                  >
-                    <ArtSvgIcon icon="ri:edit-line" class="mr-1" aria-hidden="true" />
-                    编辑
-                  </ElButton>
-                  <ElButton
-                    v-auth="'MdmWarehouseZone:Delete'"
-                    text
-                    type="danger"
-                    size="small"
-                    :aria-label="`删除${zone.zoneName}`"
-                    @click="removeZone(zone)"
-                  >
-                    <ArtSvgIcon icon="ri:delete-bin-line" class="mr-1" aria-hidden="true" />
-                    删除
-                  </ElButton>
-                </span>
+          <ArtEmptyState
+            v-if="!visibleZones.length"
+            class="min-h-0 flex-1"
+            :title="selectedWarehouse?.enableZones ? '暂无匹配库区' : '库区层级未启用'"
+            :description="
+              hasActiveFilters
+                ? '调整上方状态筛选，或重置筛选查看全部库区。'
+                : selectedWarehouse?.enableZones
+                  ? '点击新增库区，建立第一条库区主数据。'
+                  : '该仓库暂不能维护库区业务数据。'
+            "
+            size="compact"
+            :visual-size="80"
+          >
+            <ElButton v-if="hasActiveFilters" type="primary" plain @click="resetFilters">
+              重置筛选
+            </ElButton>
+          </ArtEmptyState>
+          <ElScrollbar v-else class="min-h-0 flex-1">
+            <div class="grid grid-cols-1 gap-4 pr-2 pb-2 sm:grid-cols-2 2xl:grid-cols-3">
+              <div
+                v-for="zone in visibleZones"
+                :key="zone.id"
+                class="zone-tile min-w-0"
+                :draggable="canSortZones"
+                @dragstart="startZoneDrag(zone.id)"
+                @dragover="allowZoneDrop"
+                @drop.prevent="dropZone(zone.id)"
+              >
+                <StorageTile
+                  :code="zone.zoneCode"
+                  :name="zone.zoneName"
+                  :detail="zone.category?.categoryName || '不限物料分类'"
+                  :tone="zoneTone(zone)"
+                  :stock="zoneStat(zone.id)"
+                  :stale-days="overview.staleDays"
+                  :fixed="zoneFixed(zone.id)"
+                  :selected="selectedZoneId === zone.id"
+                  with-actions
+                  @select="selectZone(zone)"
+                  @detail="openDetail(zone)"
+                />
+                <StorageCardActions
+                  :name="zone.zoneName"
+                  :actions="zoneActions"
+                  overlay
+                  @click="handleZoneAction($event, zone)"
+                />
               </div>
             </div>
-          </div>
+          </ElScrollbar>
         </ArtSectionCard>
       </div>
 
@@ -179,6 +185,8 @@
 <script setup lang="ts">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
+  import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -197,6 +205,8 @@
     type StorageZone
   } from '@mdm/api'
   import StorageTile from '../storage/modules/storage-tile.vue'
+  import StorageCardActions from '../storage/modules/storage-card-actions.vue'
+  import { storageToneOptions } from '../storage/modules/storage-tone'
   import ZoneDialog from '../storage/modules/zone-dialog.vue'
   import StorageActionDialog, {
     type StorageActionContext
@@ -207,6 +217,7 @@
   defineOptions({ name: 'MdmWarehouseZone' })
   const { confirmDelete } = useArtFeedback()
   const { hasAuth } = useAuth()
+  const router = useRouter()
   const canSortZones = computed(() => hasAuth('MdmWarehouseZone:Sort'))
   const warehouses = ref<StorageWarehouse[]>([])
   const zones = ref<StorageZone[]>([])
@@ -216,12 +227,21 @@
   const selectedZoneId = ref('')
   const selectedTones = ref<string[]>(['available', 'occupied', 'abnormal', 'disabled'])
   const fixedOnly = ref(false)
-  const toneOptions = [
-    { value: 'available', label: '可存' },
-    { value: 'occupied', label: '有库存' },
-    { value: 'abnormal', label: '异常' },
-    { value: 'disabled', label: '停用' }
+  const toneOptions = storageToneOptions
+  const zoneActions: ButtonMoreItem[] = [
+    { key: 'edit', label: '编辑库区', auth: 'MdmWarehouseZone:Edit' },
+    {
+      key: 'remove',
+      label: '删除库区',
+      auth: 'MdmWarehouseZone:Delete',
+      color: 'var(--el-color-danger)'
+    }
   ]
+  const hasActiveFilters = computed(() => selectedTones.value.length !== 4 || fixedOnly.value)
+  function resetFilters(): void {
+    selectedTones.value = storageToneOptions.map((option) => option.value)
+    fixedOnly.value = false
+  }
   const loadingWarehouses = ref(false)
   const loadingZones = ref(false)
   const warehouseError = ref('')
@@ -318,13 +338,17 @@
   function openDetail(zone: StorageZone): void {
     void detailDialogRef.value?.handleOpen({
       warehouseId: zone.warehouseId,
-      zoneBinIds: bins.value.filter((bin) => bin.zoneId === zone.id).map((bin) => bin.id),
+      zoneId: zone.id,
       label: zone.zoneName
     })
   }
   function openZoneDialog(row?: StorageZone): void {
     if (!selectedWarehouse.value) return
     void zoneDialogRef.value?.handleOpen({ warehouse: selectedWarehouse.value, row })
+  }
+  function handleZoneAction(item: ButtonMoreItem, zone: StorageZone): void {
+    if (item.key === 'edit') openZoneDialog(zone)
+    if (item.key === 'remove') void removeZone(zone)
   }
   async function removeZone(zone: StorageZone): Promise<void> {
     await confirmDelete(`确定删除库区“${zone.zoneName}”吗？已有库位或库存时无法删除。`)
@@ -356,7 +380,28 @@
     if (canSortZones.value) event.preventDefault()
   }
   function openMovement(type: string, context: StorageActionContext): void {
+    if (type === 'sales_out' || type === 'production_in') {
+      void router.push({
+        path: '/wms/receipt-issue/stock-operation',
+        query: { movementType: type, warehouseId: context.warehouseId }
+      })
+      return
+    }
     void movementDialogRef.value?.handleOpen(type, context)
   }
   onMounted(loadWarehouses)
 </script>
+
+<style scoped lang="scss">
+  .zone-tile {
+    position: relative;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .zone-tile:hover :deep(.storage-card-actions.is-overlay),
+    .zone-tile:focus-within :deep(.storage-card-actions.is-overlay) {
+      pointer-events: auto;
+      opacity: 1;
+    }
+  }
+</style>

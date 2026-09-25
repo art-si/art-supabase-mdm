@@ -54,8 +54,10 @@
   import { useUserStore } from '@/store/modules/user'
   import {
     fetchInventorySerials,
+    fetchMaterialReferenceOptions,
     fetchStorageWarehouses,
     type InventorySerial,
+    type MaterialType,
     type StorageWarehouse
   } from '@mdm/api'
   import SerialDialog from '../storage/modules/serial-dialog.vue'
@@ -64,9 +66,13 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   void userStore.ensureDictLoaded('mdmInventorySerialStatus')
+  void userStore.ensureDictLoaded('mdmMaterialSource')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof SerialDialog>>()
   const warehouses = ref<StorageWarehouse[]>([])
+  const materialTypes = ref<MaterialType[]>([])
+  const materialTypeLabel = (code?: string | null): string =>
+    code ? materialTypes.value.find((type) => type.typeCode === code)?.typeName || code : '—'
   const search = reactive({ warehouseId: '', status: '', keyword: '' })
   const selectedWarehouse = computed(() =>
     warehouses.value.find((warehouse) => warehouse.id === search.warehouseId)
@@ -158,13 +164,18 @@
       prop: 'materialSource',
       label: '物料来源',
       minWidth: 115,
-      formatter: (row) => row.materialSource || '—'
+      formatter: (row) =>
+        row.materialSource ? (
+          <ArtDictDisplay dictCode="mdmMaterialSource" value={row.materialSource} />
+        ) : (
+          '—'
+        )
     },
     {
       prop: 'materialType',
       label: '物料类型',
       minWidth: 115,
-      formatter: (row) => row.materialType || '—'
+      formatter: (row) => materialTypeLabel(row.materialType)
     },
     {
       prop: 'status',
@@ -180,7 +191,7 @@
       minWidth: 140,
       formatter: (row) => row.warehouseName || '—'
     },
-    { prop: 'binCode', label: '仓位', minWidth: 120, formatter: (row) => row.binCode || '—' },
+    { prop: 'binCode', label: '库位', minWidth: 120, formatter: (row) => row.binCode || '—' },
     {
       prop: 'createTime',
       label: '创建时间',
@@ -215,5 +226,16 @@
   }
   onMounted(async () => {
     warehouses.value = await fetchStorageWarehouses()
+    const tenantId = warehouses.value[0]?.tenantId
+    if (tenantId) {
+      try {
+        materialTypes.value = await fetchMaterialReferenceOptions<MaterialType>(
+          'material-type',
+          tenantId
+        )
+      } catch {
+        materialTypes.value = []
+      }
+    }
   })
 </script>

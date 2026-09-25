@@ -113,6 +113,7 @@ export interface InventoryBatch {
   id: string
   tenantId: string
   warehouseId: string
+  zoneId: string | null
   binId: string | null
   materialId: string
   batchNo: string
@@ -129,6 +130,7 @@ export interface InventoryBatch {
   status: string
   remark: string | null
   warehouse?: Pick<StorageWarehouse, 'id' | 'warehouseCode' | 'warehouseName'> | null
+  zone?: Pick<StorageZone, 'id' | 'zoneCode' | 'zoneName'> | null
   bin?: Pick<StorageBin, 'id' | 'binCode' | 'binName' | 'zoneId'> | null
   material?: StorageMaterial | null
   workOrder?: Pick<StorageWorkOrder, 'id' | 'workOrderNo'> | null
@@ -142,8 +144,10 @@ export interface InventoryMovementInput {
   unitCost?: number | null
   materialId?: string | null
   warehouseId?: string | null
+  zoneId?: string | null
   binId?: string | null
   targetWarehouseId?: string | null
+  targetZoneId?: string | null
   targetBinId?: string | null
   batchId?: string | null
   workOrderId?: string | null

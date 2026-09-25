@@ -72,19 +72,9 @@
         </div>
       </ArtWorkspaceSplitter>
     </div>
-    <component
-      :is="routeDialogComponent"
-      v-if="routeDialogComponent"
-      ref="routeDialog"
-      @success="refresh"
-    />
-    <component :is="stepsDialogComponent" v-if="stepsDialogComponent" ref="stepsDialog" />
-    <component
-      :is="groupDialogComponent"
-      v-if="groupDialogComponent"
-      ref="groupDialog"
-      @success="handleGroupSaved"
-    />
+    <RouteDialog ref="routeDialog" @success="refresh" />
+    <StepsDialog ref="stepsDialog" />
+    <GroupDialog ref="groupDialog" @success="handleGroupSaved" />
   </div>
 </template>
 <script setup lang="tsx">
@@ -105,7 +95,6 @@
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { BusinessWorkspaceMetric } from '@/components/business/business-workspace-header/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useUserStore } from '@/store/modules/user'
   import { exportExcel } from '@/utils/file'
@@ -125,6 +114,9 @@
   } from '@mdm/api'
   import MasterGroupPanel from '../../operational-master/modules/master-group-panel.vue'
   import type { GroupDialogOpenData } from '../../operational-master/modules/group-dialog.vue'
+  import GroupDialog from '../../operational-master/modules/group-dialog.vue'
+  import RouteDialog from './modules/route-dialog.vue'
+  import StepsDialog from './modules/steps-dialog.vue'
   import ProductionWorkspaceHeader from '../modules/production-workspace-header.vue'
   defineOptions({ name: 'MdmProcessRoute' })
   const declaredPermissions = [
@@ -149,15 +141,6 @@
   interface StepsDialogExpose {
     handleOpen: (row: ProcessRoute, viewOnly?: boolean) => Promise<void>
   }
-  const { component: routeDialogComponent, load: loadRouteDialog } = useLazyComponent(
-    () => import('./modules/route-dialog.vue')
-  )
-  const { component: stepsDialogComponent, load: loadStepsDialog } = useLazyComponent(
-    () => import('./modules/steps-dialog.vue')
-  )
-  const { component: groupDialogComponent, load: loadGroupDialog } = useLazyComponent(
-    () => import('../../operational-master/modules/group-dialog.vue')
-  )
   const tableRef = ref<ArtTableQueryExpose>()
   const routeDialog = ref<RouteDialogExpose>()
   const stepsDialog = ref<StepsDialogExpose>()
@@ -208,11 +191,9 @@
     }))
   )
   async function openRouteDialog(row?: ProcessRoute, tenantId?: string): Promise<void> {
-    await loadRouteDialog()
     await routeDialog.value?.handleOpen(row, tenantId)
   }
   async function openStepsDialog(row: ProcessRoute, viewOnly = false): Promise<void> {
-    await loadStepsDialog()
     await stepsDialog.value?.handleOpen(row, viewOnly)
   }
   const fetchRows = (p: WorkspaceQuery, o?: { signal?: AbortSignal }) =>
@@ -519,7 +500,6 @@
     void tableRef.value?.getData()
   }
   async function openGroupAdd(parent?: MasterGroup): Promise<void> {
-    await loadGroupDialog()
     await groupDialog.value?.handleOpen({
       domain: 'process-route',
       tenantId: parent?.tenantId || effectiveTenantId.value || '',
@@ -529,7 +509,6 @@
     })
   }
   async function openGroupEdit(row: MasterGroup): Promise<void> {
-    await loadGroupDialog()
     await groupDialog.value?.handleOpen({
       domain: 'process-route',
       tenantId: row.tenantId,

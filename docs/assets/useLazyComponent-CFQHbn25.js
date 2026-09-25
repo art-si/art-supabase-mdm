@@ -1,1 +1,0 @@
-import{Ti as e,ar as t}from"./useApi-s_02lHjl-LGPls--9.js";function n(n){let r=e();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await t()}}}export{n as t};

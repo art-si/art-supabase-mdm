@@ -14,22 +14,40 @@
       class="storage-tile"
       :class="[
         `storage-tile--${tone}`,
-        { 'is-selected': selected, 'is-fixed': fixed, 'is-compact': compact }
+        {
+          'is-selected': selected,
+          'is-fixed': fixed,
+          'is-compact': compact,
+          'is-rack': rack,
+          'has-detail': Boolean(detail),
+          'has-actions': withActions
+        }
       ]"
       :aria-label="`${name}，${toneLabel}，点击办理业务，双击查看库存明细`"
       :aria-pressed="selected"
       @click="scheduleSelect"
       @dblclick="openDetail"
     >
-      <span class="storage-tile__top">
-        <span class="storage-tile__code" :title="code">{{ code }}</span>
-        <span class="storage-tile__status">{{ toneLabel }}</span>
-      </span>
-      <span class="storage-tile__name" :title="name">{{ name }}</span>
-      <span class="storage-tile__footer">
-        <span>{{ stock.materialCount }} 种物料</span>
-        <span v-if="fixed">定容</span>
-      </span>
+      <template v-if="rack">
+        <span class="storage-tile__rack-label"
+          ><strong>{{ rackLabel }}</strong
+          ><small>列</small></span
+        >
+        <span class="storage-tile__rack-status">{{ toneLabel }}</span>
+        <span class="storage-tile__rack-count">{{ stock.materialCount }} 种物料</span>
+      </template>
+      <template v-else>
+        <span class="storage-tile__top">
+          <span class="storage-tile__code" :title="code">{{ code }}</span>
+        </span>
+        <span class="storage-tile__name" :title="name">{{ name }}</span>
+        <span v-if="detail" class="storage-tile__detail" :title="detail">{{ detail }}</span>
+        <span class="storage-tile__footer">
+          <span class="storage-tile__status">{{ toneLabel }}</span>
+          <span>{{ stock.materialCount }} 种物料</span>
+          <span v-if="fixed">定容</span>
+        </span>
+      </template>
     </button>
   </ArtTooltip>
 </template>
@@ -42,12 +60,16 @@
   const props = defineProps<{
     code: string
     name: string
+    detail?: string
     tone: 'available' | 'occupied' | 'abnormal' | 'disabled'
     stock: StorageStockStat
     staleDays: number
     selected?: boolean
     fixed?: boolean
     compact?: boolean
+    rack?: boolean
+    rackLabel?: string
+    withActions?: boolean
   }>()
   const emit = defineEmits<{ select: []; detail: [] }>()
   let selectTimer: ReturnType<typeof setTimeout> | undefined
@@ -105,12 +127,11 @@
     border-radius: var(--el-border-radius-base);
     transition:
       border-color 150ms ease,
-      transform 150ms ease,
       box-shadow 150ms ease;
 
     &:hover {
       border-color: var(--tile-color);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--tile-color) 14%, transparent);
     }
 
     &:focus-visible {
@@ -136,6 +157,78 @@
       }
     }
 
+    &.has-detail {
+      min-height: 140px;
+    }
+
+    &.is-rack {
+      gap: 1px;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 84px;
+      padding: 10px 9px 8px;
+      text-align: left;
+      background: color-mix(in srgb, var(--tile-color) 25%, var(--el-bg-color));
+      border-color: color-mix(in srgb, var(--tile-color) 70%, var(--el-border-color));
+      border-radius: 4px;
+      box-shadow: inset 0 2px 0 color-mix(in srgb, var(--el-bg-color) 62%, transparent);
+
+      &:hover {
+        background: color-mix(in srgb, var(--tile-color) 32%, var(--el-bg-color));
+      }
+
+      .storage-tile__rack-label {
+        display: flex;
+        gap: 3px;
+        align-items: baseline;
+        font-variant-numeric: tabular-nums;
+        line-height: 25px;
+        color: color-mix(in srgb, var(--tile-color) 70%, var(--el-text-color-primary));
+
+        strong {
+          font-size: 20px;
+          font-weight: 750;
+        }
+
+        small {
+          font-size: 11px;
+          font-weight: 600;
+        }
+      }
+
+      .storage-tile__rack-status {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 16px;
+
+        &::before {
+          width: 5px;
+          height: 5px;
+          content: '';
+          background: var(--tile-color);
+          border-radius: 50%;
+        }
+      }
+
+      .storage-tile__rack-count {
+        margin-top: 3px;
+        font-size: 10px;
+        line-height: 14px;
+        color: var(--el-text-color-secondary);
+      }
+
+      &.is-fixed {
+        border-width: 2px;
+      }
+    }
+
+    &.has-actions:not(.is-rack) .storage-tile__top {
+      padding-right: 30px;
+    }
+
     &--occupied {
       --tile-color: var(--el-color-primary);
       --tile-fill: var(--el-color-primary-light-9);
@@ -154,14 +247,14 @@
     &__top {
       display: flex;
       gap: 6px;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       min-width: 0;
     }
 
     &__status {
       flex: 0 0 auto;
-      padding: 2px 6px;
+      padding: 1px 6px;
       font-size: 11px;
       line-height: 16px;
       color: var(--tile-color);
@@ -170,29 +263,41 @@
     }
 
     &__code {
+      display: -webkit-box;
       min-width: 0;
       overflow: hidden;
-      text-overflow: ellipsis;
+      -webkit-line-clamp: 2;
       font-size: 15px;
       font-weight: 700;
       color: var(--tile-color);
       letter-spacing: 0.02em;
-      white-space: nowrap;
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
     }
 
     &__name {
+      display: -webkit-box;
       overflow: hidden;
-      text-overflow: ellipsis;
+      -webkit-line-clamp: 2;
       font-size: 13px;
       font-weight: 600;
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+    }
+
+    &__detail {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 11px;
+      color: var(--el-text-color-secondary);
       white-space: nowrap;
     }
 
     &__footer {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       align-items: center;
-      justify-content: space-between;
       margin-top: auto;
       font-size: 11px;
       color: var(--el-text-color-secondary);

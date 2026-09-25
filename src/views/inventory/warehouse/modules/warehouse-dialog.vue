@@ -14,6 +14,11 @@
         </template>
       </ArtEntitySummary>
 
+      <ElAlert v-if="organizationLoadError" type="warning" :closable="false" show-icon>
+        库存组织加载失败，请重试后保存仓库。
+        <ElButton link type="primary" @click="loadOrganizations">重新加载</ElButton>
+      </ElAlert>
+
       <ArtForm
         ref="formRef"
         v-model="form.model"
@@ -24,6 +29,7 @@
         label-position="top"
         :show-reset="false"
         :show-submit="false"
+        root-class="warehouse-identity-form"
       >
         <template #responsibleEmployeeId>
           <ArtEmployeeSelect
@@ -48,6 +54,7 @@
   import { storeToRefs } from 'pinia'
   import { useUserStore } from '@/store/modules/user'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
+  import { fetchGetEnableOrganizationOptionsList } from '@/api/system-manage'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -75,9 +82,11 @@
   void userStore.ensureDictLoaded('mdmWarehouseBusinessScope')
   const dialogRef = ref<ArtDialogExpose<WarehouseDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
+  const organizationLoadError = ref(false)
   const initialForm = (): WarehouseInput & { id?: string; singleSkuPerBinChoice: string } => ({
     id: undefined,
     groupId: null,
+    organizationId: '',
     warehouseCode: '',
     warehouseName: '',
     responsibleEmployeeId: null,
@@ -94,6 +103,7 @@
     model: initialForm(),
     tenantId: '',
     groups: [] as WarehouseGroup[],
+    organizations: [] as Array<{ id: string; organizationCode: string; organizationName: string }>,
     selectedEmployee: [] as EmployeeIntegrationItem[]
   })
   const warehouseDescription = computed(() =>
@@ -129,6 +139,17 @@
       props: { placeholder: '选择仓库类型' }
     },
     {
+      label: '库存组织',
+      key: 'organizationId',
+      type: 'select',
+      options: form.organizations.map((item) => ({
+        label: `${item.organizationName} · ${item.organizationCode}`,
+        value: item.id
+      })),
+      props: { filterable: true, placeholder: '选择库存所属组织' },
+      help: '新入库默认归属此组织；跨组织物料转移须走 WMS 调拨单。'
+    },
+    {
       label: '仓库分组',
       key: 'groupId',
       type: 'select',
@@ -162,21 +183,21 @@
       }
     },
     {
-      label: '启用仓位',
+      label: '启用库区',
+      key: 'enableZones',
+      type: 'switch',
+      props: { activeText: '启用', inactiveText: '关闭' },
+      help: '可单独启用库区。未启用库位时，物料可存放在仓库或具体库区。'
+    },
+    {
+      label: '启用库位',
       key: 'enableLocations',
       type: 'switch',
       props: { activeText: '启用', inactiveText: '关闭' },
-      help: '开启后，该仓库可继续维护库区与仓位层级。'
+      help: '可单独启用库位并直挂仓库；启用后出入库必须选择具体库位。'
     },
     ...(form.model.enableLocations
       ? [
-          {
-            label: '启用库区',
-            key: 'enableZones',
-            type: 'switch' as const,
-            props: { activeText: '启用', inactiveText: '关闭' },
-            help: '启用后库位必须归属库区；关闭时可直接挂在仓库下。'
-          },
           {
             label: '一位一品',
             key: 'singleSkuPerBinChoice',
@@ -211,6 +232,7 @@
     ],
     warehouseName: [{ required: true, message: '请输入仓库名称', trigger: 'blur' }],
     warehouseType: [{ required: true, message: '请选择仓库类型', trigger: 'change' }],
+    organizationId: [{ required: true, message: '请选择库存组织', trigger: 'change' }],
     businessScopes: [
       {
         required: true,
@@ -225,7 +247,6 @@
     () => form.model.enableLocations,
     (enabled) => {
       if (!enabled) {
-        form.model.enableZones = false
         form.model.singleSkuPerBin = false
         form.model.singleSkuPerBinChoice = 'false'
       }
@@ -235,16 +256,18 @@
   const submit = async (): Promise<boolean> => {
     try {
       await formRef.value?.validate()
+      if (organizationLoadError.value) return false
       await saveWarehouse(
         {
           groupId: form.model.groupId || null,
+          organizationId: form.model.organizationId,
           warehouseCode: form.model.warehouseCode.trim().toUpperCase(),
           warehouseName: form.model.warehouseName.trim(),
           responsibleEmployeeId: form.model.responsibleEmployeeId || null,
           warehouseType: form.model.warehouseType,
           businessScopes: form.model.businessScopes,
           enableLocations: form.model.enableLocations,
-          enableZones: form.model.enableLocations && form.model.enableZones,
+          enableZones: form.model.enableZones,
           singleSkuPerBin:
             form.model.enableLocations && form.model.singleSkuPerBinChoice === 'true',
           remark: form.model.remark.trim(),
@@ -259,12 +282,30 @@
     }
   }
 
+  async function loadOrganizations(): Promise<void> {
+    organizationLoadError.value = false
+    try {
+      const result = await fetchGetEnableOrganizationOptionsList(form.tenantId)
+      form.organizations = (result.data ?? []).filter(
+        (item): item is typeof item & { id: string } => Boolean(item.id)
+      )
+      if (!form.model.organizationId && form.organizations.length) {
+        form.model.organizationId =
+          form.organizations.find((item) => item.organizationCode === 'ROOT')?.id ||
+          form.organizations[0].id
+      }
+    } catch {
+      form.organizations = []
+      organizationLoadError.value = true
+    }
+  }
+
   async function handleOpen(data: WarehouseDialogOpenData): Promise<void> {
-    await userStore.ensureDictLoaded('commonBoolean')
     Object.assign(form.model, initialForm())
     Object.assign(form, {
       tenantId: data.row?.tenantId || data.tenantId,
-      groups: cloneDeep(data.groups)
+      groups: cloneDeep(data.groups),
+      organizations: []
     })
     form.selectedEmployee = []
     if (data.row) {
@@ -291,11 +332,20 @@
     }
     await dialogRef.value?.handleOpen(data, {
       title: data.copy ? '复制仓库' : form.model.id ? '编辑仓库' : '新增仓库',
-      subtitle: '维护仓库身份、负责人和仓位启用策略',
+      subtitle: '库区与库位可独立启用，也可组合使用',
       confirmText: form.model.id ? '保存更改' : '创建仓库',
       contentMaxHeight: 'min(70vh, calc(100vh - 200px))',
+      loading: true,
+      loadingText: '正在加载库存组织与表单选项…',
       onConfirm: submit,
-      onOpen: () => formRef.value?.clearValidate()
+      onOpen: async (_openData, api) => {
+        formRef.value?.clearValidate()
+        try {
+          await Promise.all([userStore.ensureDictLoaded('commonBoolean'), loadOrganizations()])
+        } finally {
+          api.setLoading(false)
+        }
+      }
     })
   }
 
@@ -306,5 +356,12 @@
   .warehouse-dialog {
     display: grid;
     gap: 18px;
+  }
+
+  @media (width <= 767px) {
+    :deep(.warehouse-identity-form .el-col) {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
   }
 </style>

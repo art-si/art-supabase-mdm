@@ -45,12 +45,7 @@
           />
         </div>
       </div>
-      <component
-        :is="archiveDialogComponent"
-        v-if="archiveDialogComponent"
-        ref="dialogRef"
-        @success="refresh"
-      />
+      <ArchiveDialog ref="dialogRef" @success="refresh" />
       <ArtDrawer
         ref="detailDrawerRef"
         title="物料编码"
@@ -239,7 +234,6 @@
 
   import { ElImage, ElTag } from 'element-plus'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -283,6 +277,7 @@
     type UnitOfMeasure
   } from '@mdm/api'
   import type { ArchiveDialogOpenData } from './modules/archive-dialog.vue'
+  import ArchiveDialog from './modules/archive-dialog.vue'
   import CategoryTreePanel from '../category/modules/category-tree-panel.vue'
 
   defineOptions({ name: 'MdmMaterialArchive' })
@@ -295,9 +290,6 @@
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
-  const { component: archiveDialogComponent, load: loadArchiveDialog } = useLazyComponent(
-    () => import('./modules/archive-dialog.vue')
-  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const detailDrawerRef = ref<ArtDrawerExpose<MaterialArchive>>()
@@ -397,7 +389,6 @@
     supplyRuleOptions: supplyRuleOptions.value
   })
   const openDialog = async (row?: MaterialArchive, copy = false): Promise<void> => {
-    await loadArchiveDialog()
     await dialogRef.value?.handleOpen(dialogData(row, copy))
   }
   const isMaterialArchiveRecord = (

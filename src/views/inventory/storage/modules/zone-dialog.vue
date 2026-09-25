@@ -132,6 +132,8 @@
           ...form,
           zoneCode: form.zoneCode.trim().toUpperCase(),
           zoneName: form.zoneName.trim(),
+          categoryId: normalizeNullableText(form.categoryId),
+          purpose: normalizeNullableText(form.purpose),
           remark: normalizeNullableText(form.remark)
         },
         context.value.row?.id

@@ -59,12 +59,14 @@
     fetchStorageMaterialsPage,
     fetchStorageWarehouses,
     fetchStorageWorkOrders,
+    fetchStorageZones,
     postInventoryMovement,
     type InventoryBatch,
     type InventoryMovementInput,
     type StorageBin,
     type StorageWarehouse,
-    type StorageWorkOrder
+    type StorageWorkOrder,
+    type StorageZone
   } from '@mdm/api'
   import type { MaterialSelectRecord } from '@/components/business/art-material-select/index.vue'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
@@ -83,6 +85,8 @@
   })
   const sourceBins = ref<StorageBin[]>([])
   const targetBins = ref<StorageBin[]>([])
+  const sourceZones = ref<StorageZone[]>([])
+  const targetZones = ref<StorageZone[]>([])
   const warehouses = ref<StorageWarehouse[]>([])
   const workOrders = ref<StorageWorkOrder[]>([])
   const batchOptions = ref<InventoryBatch[]>([])
@@ -121,8 +125,8 @@
     warehouses.value.find((warehouse) => warehouse.id === form.targetWarehouseId)
   )
   const availableSourceBins = computed(() =>
-    context.zoneId && form.warehouseId === context.warehouseId
-      ? sourceBins.value.filter((bin) => bin.zoneId === context.zoneId)
+    currentWarehouse.value?.enableZones
+      ? sourceBins.value.filter((bin) => bin.zoneId === form.zoneId)
       : sourceBins.value
   )
   const sourceBinOptions = computed(() =>
@@ -132,7 +136,11 @@
   )
   const targetBinOptions = computed(() =>
     targetBins.value
-      .filter((bin) => bin.status === 'available')
+      .filter(
+        (bin) =>
+          bin.status === 'available' &&
+          (!targetWarehouse.value?.enableZones || bin.zoneId === form.targetZoneId)
+      )
       .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id }))
   )
   const formItems = computed<FormItem[]>(() => [
@@ -174,7 +182,7 @@
             type: 'select' as const,
             span: 24,
             options: batchOptions.value.map((batch) => ({
-              label: `${batch.material?.materialName || '物料'} · ${batch.batchNo} · ${batch.bin?.binCode || '仓库直存'} · 余 ${batch.quantity}`,
+              label: `${batch.material?.materialName || '物料'} · ${batch.batchNo} · ${batch.bin?.binCode || batch.zone?.zoneName || '仓库直存'} · 余 ${batch.quantity}`,
               value: batch.id
             })),
             props: { filterable: true, placeholder: '选择当前范围的在库批次' }
@@ -230,6 +238,28 @@
           }
         ]
       : []),
+    ...(isInbound.value && currentWarehouse.value?.enableZones
+      ? [
+          {
+            label: '入库库区',
+            key: 'zoneId',
+            type: 'select' as const,
+            options: sourceZones.value
+              .filter((zone) => zone.status === 'enabled' && !zone.abnormal)
+              .map((zone) => ({ label: `${zone.zoneName} · ${zone.zoneCode}`, value: zone.id })),
+            props: {
+              clearable: !currentWarehouse.value.enableLocations,
+              filterable: true,
+              placeholder: currentWarehouse.value.enableLocations
+                ? '请选择库区'
+                : '不选则存放在仓库',
+              onChange: () => {
+                form.binId = null
+              }
+            }
+          }
+        ]
+      : []),
     ...(isInbound.value && currentWarehouse.value?.enableLocations
       ? [
           {
@@ -262,6 +292,31 @@
               })),
             props: { filterable: true, placeholder: '选择目标仓库' }
           },
+          ...(targetWarehouse.value?.enableZones
+            ? [
+                {
+                  label: '目标库区',
+                  key: 'targetZoneId',
+                  type: 'select' as const,
+                  options: targetZones.value
+                    .filter((zone) => zone.status === 'enabled' && !zone.abnormal)
+                    .map((zone) => ({
+                      label: `${zone.zoneName} · ${zone.zoneCode}`,
+                      value: zone.id
+                    })),
+                  props: {
+                    clearable: !targetWarehouse.value.enableLocations,
+                    filterable: true,
+                    placeholder: targetWarehouse.value.enableLocations
+                      ? '请选择库区'
+                      : '不选则存放在仓库',
+                    onChange: () => {
+                      form.targetBinId = null
+                    }
+                  }
+                }
+              ]
+            : []),
           ...(targetWarehouse.value?.enableLocations
             ? [
                 {
@@ -318,6 +373,12 @@
       isInbound.value && currentWarehouse.value?.enableLocations
         ? [{ required: true, message: '请选择入库库位', trigger: 'change' }]
         : [],
+    zoneId:
+      isInbound.value &&
+      currentWarehouse.value?.enableLocations &&
+      currentWarehouse.value.enableZones
+        ? [{ required: true, message: '请选择入库库区', trigger: 'change' }]
+        : [],
     targetWarehouseId:
       form.movementType === 'transfer'
         ? [{ required: true, message: '请选择目标仓库', trigger: 'change' }]
@@ -325,6 +386,12 @@
     targetBinId:
       form.movementType === 'transfer' && targetWarehouse.value?.enableLocations
         ? [{ required: true, message: '请选择目标库位', trigger: 'change' }]
+        : [],
+    targetZoneId:
+      form.movementType === 'transfer' &&
+      targetWarehouse.value?.enableLocations &&
+      targetWarehouse.value.enableZones
+        ? [{ required: true, message: '请选择目标库区', trigger: 'change' }]
         : []
   }))
 
@@ -352,9 +419,16 @@
     if (material?.materialType !== 'FERT') {
       inboundWarehouseError.value = ''
       form.warehouseId = context.warehouseId
+      form.zoneId = context.zoneId ?? null
       form.binId = context.binId ?? null
-      const bins = await fetchStorageBins(context.warehouseId)
-      if (revision === destinationRevision) sourceBins.value = bins
+      const [bins, zones] = await Promise.all([
+        fetchStorageBins(context.warehouseId),
+        fetchStorageZones(context.warehouseId)
+      ])
+      if (revision === destinationRevision) {
+        sourceBins.value = bins
+        sourceZones.value = zones
+      }
       return
     }
     const finishedWarehouses = eligibleFinishedWarehouses.value
@@ -368,22 +442,36 @@
         ? '存在多个成品仓，请先在物料主数据中指定入库仓库。'
         : '暂无可用于业务的成品仓，请先启用成品仓并配置入库仓库。'
       form.warehouseId = null
+      form.zoneId = null
       form.binId = null
       sourceBins.value = []
+      sourceZones.value = []
       return
     }
     inboundWarehouseError.value = ''
     form.warehouseId = destination.id
+    form.zoneId = destination.id === context.warehouseId ? (context.zoneId ?? null) : null
     form.binId = destination.id === context.warehouseId ? (context.binId ?? null) : null
-    const bins = await fetchStorageBins(destination.id)
-    if (revision === destinationRevision) sourceBins.value = bins
+    const [bins, zones] = await Promise.all([
+      fetchStorageBins(destination.id),
+      fetchStorageZones(destination.id)
+    ])
+    if (revision === destinationRevision) {
+      sourceBins.value = bins
+      sourceZones.value = zones
+    }
   }
 
   watch(
     () => form.targetWarehouseId,
     async (id) => {
       form.targetBinId = null
-      targetBins.value = id ? await fetchStorageBins(id) : []
+      form.targetZoneId = null
+      const [bins, zones] = id
+        ? await Promise.all([fetchStorageBins(id), fetchStorageZones(id)])
+        : [[], []]
+      targetBins.value = bins
+      targetZones.value = zones
     }
   )
 
@@ -394,8 +482,10 @@
       await postInventoryMovement({
         ...form,
         warehouseId: isInbound.value ? form.warehouseId : undefined,
+        zoneId: isInbound.value ? (form.zoneId ?? null) : undefined,
         binId: isInbound.value ? (form.binId ?? null) : undefined,
         targetWarehouseId: form.movementType === 'transfer' ? form.targetWarehouseId : undefined,
+        targetZoneId: form.movementType === 'transfer' ? (form.targetZoneId ?? null) : undefined,
         targetBinId: form.movementType === 'transfer' ? (form.targetBinId ?? null) : undefined
       })
       emit('success')
@@ -416,8 +506,10 @@
       unitCost: null,
       materialId: null,
       warehouseId: type === 'production_in' ? null : data.warehouseId,
+      zoneId: type === 'production_in' ? null : (data.zoneId ?? null),
       binId: type === 'production_in' ? null : (data.binId ?? null),
       targetWarehouseId: data.warehouseId,
+      targetZoneId: null,
       targetBinId: null,
       batchId: data.batchId ?? null,
       workOrderId: null,
@@ -432,8 +524,10 @@
     selectedMaterial.value = []
     warehouses.value = []
     sourceBins.value = []
+    sourceZones.value = []
     workOrders.value = []
     targetBins.value = []
+    targetZones.value = []
     batchOptions.value = []
     await dialogRef.value?.handleOpen(data, {
       title:
@@ -445,24 +539,25 @@
       onOpen: async (_openData, api) => {
         formRef.value?.clearValidate()
         try {
-          const [warehouseRows, binRows, orderRows] = await Promise.all([
+          const [warehouseRows, binRows, zoneRows, orderRows] = await Promise.all([
             fetchStorageWarehouses(),
             fetchStorageBins(data.warehouseId),
+            fetchStorageZones(data.warehouseId),
             fetchStorageWorkOrders(data.warehouseId)
           ])
           warehouses.value = warehouseRows
           sourceBins.value = binRows
+          sourceZones.value = zoneRows
           workOrders.value = orderRows
           targetBins.value = binRows
+          targetZones.value = zoneRows
           batchOptions.value = isInbound.value
             ? []
             : (
                 await fetchInventoryBatches({
                   warehouseId: data.warehouseId,
                   binId: data.binId,
-                  zoneBinIds: data.zoneId
-                    ? binRows.filter((bin) => bin.zoneId === data.zoneId).map((bin) => bin.id)
-                    : undefined,
+                  zoneId: data.zoneId,
                   positiveOnly: true,
                   current: 1,
                   size: 100
