@@ -215,6 +215,7 @@
                   v-for="group in shelfGroups"
                   :key="group.code"
                   :code="group.code"
+                  :expanded="isShelfExpanded(group.code)"
                   :levels="group.levels"
                   :bin-count="group.bins.length"
                   :children="group.children"
@@ -227,6 +228,8 @@
                   @edit="openBinDialog"
                   @child="openBinDialog(undefined, $event.id)"
                   @remove="removeBin"
+                  @toggle="toggleShelf(group.code)"
+                  @edit-shelf="openShelfEditor(group.code)"
                 />
 
                 <section v-if="blockBins.length" class="min-w-0">
@@ -260,6 +263,7 @@
 
       <BinDialog ref="binDialogRef" @success="loadBins" />
       <ShelfGeneratorDialog ref="shelfDialogRef" @success="loadBins" />
+      <ShelfEditorDialog ref="shelfEditorRef" @success="handleShelfUpdated" />
       <StorageActionDialog ref="actionDialogRef" @choose="openMovement" />
       <InventoryMovementDialog ref="movementDialogRef" @success="loadBins" />
       <InventoryDetailDialog ref="detailDialogRef" />
@@ -294,6 +298,7 @@
   import RackFacade from './modules/rack-facade.vue'
   import BinDialog from '../storage/modules/bin-dialog.vue'
   import ShelfGeneratorDialog from '../storage/modules/shelf-generator-dialog.vue'
+  import ShelfEditorDialog from './modules/shelf-editor-dialog.vue'
   import StorageActionDialog, {
     type StorageActionContext
   } from '../storage/modules/storage-action-dialog.vue'
@@ -311,6 +316,7 @@
   const overview = ref<StorageOverview>({ staleDays: 90, zones: [], bins: [] })
   const selectedWarehouseId = ref('')
   const selectedZoneId = ref('')
+  const expandedShelfCodes = ref<string[] | null>(null)
   const selectedTones = ref<string[]>(['available', 'occupied', 'abnormal', 'disabled'])
   const fixedOnly = ref(false)
   const toneOptions = storageToneOptions
@@ -325,6 +331,7 @@
   const binError = ref('')
   const binDialogRef = ref<InstanceType<typeof BinDialog>>()
   const shelfDialogRef = ref<InstanceType<typeof ShelfGeneratorDialog>>()
+  const shelfEditorRef = ref<InstanceType<typeof ShelfEditorDialog>>()
   const actionDialogRef = ref<InstanceType<typeof StorageActionDialog>>()
   const movementDialogRef = ref<InstanceType<typeof InventoryMovementDialog>>()
   const detailDialogRef = ref<InstanceType<typeof InventoryDetailDialog>>()
@@ -393,6 +400,21 @@
     })
   })
   const blockBins = computed(() => visibleBinTree.value.filter((bin) => bin.binType !== 'shelf'))
+  watch([selectedWarehouseId, selectedZoneId], () => {
+    expandedShelfCodes.value = null
+  })
+  function isShelfExpanded(code: string): boolean {
+    return expandedShelfCodes.value === null
+      ? code === shelfGroups.value[0]?.code
+      : expandedShelfCodes.value.includes(code)
+  }
+  function toggleShelf(code: string): void {
+    const expanded =
+      expandedShelfCodes.value ?? shelfGroups.value.slice(0, 1).map((group) => group.code)
+    expandedShelfCodes.value = expanded.includes(code)
+      ? expanded.filter((item) => item !== code)
+      : [...expanded, code]
+  }
   const parentCodeFor = (bin: StorageBin): string | undefined =>
     bin.parentId ? binById.value[bin.parentId]?.binCode : undefined
 
@@ -479,6 +501,19 @@
       warehouse: selectedWarehouse.value,
       zone: selectedZone.value
     })
+  }
+  function openShelfEditor(code: string): void {
+    if (!selectedWarehouse.value) return
+    void shelfEditorRef.value?.handleOpen({
+      warehouse: selectedWarehouse.value,
+      zone: selectedZone.value,
+      code,
+      bins: bins.value
+    })
+  }
+  function handleShelfUpdated(code: string): void {
+    expandedShelfCodes.value = [code]
+    void loadBins()
   }
   async function removeBin(bin: StorageBin): Promise<void> {
     await confirmDelete(`确定删除库位“${bin.binName}”吗？存在库存或子单元时无法删除。`)

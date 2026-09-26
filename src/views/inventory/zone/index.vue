@@ -139,7 +139,9 @@
             </ElButton>
           </ArtEmptyState>
           <ElScrollbar v-else class="min-h-0 flex-1">
-            <div class="grid grid-cols-1 gap-4 pr-2 pb-2 sm:grid-cols-2 2xl:grid-cols-3">
+            <div
+              class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),240px))] gap-4 pr-2 pb-2"
+            >
               <div
                 v-for="zone in visibleZones"
                 :key="zone.id"

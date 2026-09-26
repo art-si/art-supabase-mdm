@@ -12,6 +12,7 @@ import type {
   StorageBinInput,
   StorageMaterial,
   StorageOverview,
+  StorageShelfUpdate,
   StorageWarehouse,
   StorageWorkOrder,
   StorageZone,
@@ -241,6 +242,24 @@ export async function createShelfBins(tenantId: string, bins: StorageBinInput[])
         .insert(bins.map((bin) => ({ ...keysToSnakeDeep(bin), tenant_id: tenantId })))
         .select('id'),
     { ...writeOptions, message: '货架库位已生成' }
+  )
+}
+
+export async function updateStorageShelf(payload: StorageShelfUpdate): Promise<void> {
+  await responseHandle(
+    () =>
+      supabase.rpc('mdm_update_warehouse_shelf_secure', {
+        p_warehouse_id: payload.warehouseId,
+        p_zone_id: payload.zoneId,
+        p_current_shelf_code: payload.currentShelfCode,
+        p_shelf_code: payload.shelfCode,
+        p_levels: payload.levels,
+        p_columns: payload.columns,
+        p_apply_max_quantity: payload.applyMaxQuantity,
+        p_max_quantity: payload.maxQuantity,
+        p_expected_bin_ids: payload.expectedBinIds
+      }),
+    { ...writeOptions, requireAffected: false, message: '货架已更新' }
   )
 }
 

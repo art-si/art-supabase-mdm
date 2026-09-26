@@ -1,15 +1,35 @@
 <template>
   <section class="min-w-0" :aria-label="`${code}货架`">
-    <header
-      class="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--el-border-color)] pb-2"
-    >
-      <strong class="text-sm">{{ code }} 货架</strong>
-      <span class="text-xs text-[var(--el-text-color-secondary)]">
-        {{ levels.length }} 层 · {{ columnCount }} 列 · {{ binCount }} 个库位
-      </span>
+    <header class="mb-3 flex items-center gap-2 border-b border-[var(--el-border-color)] pb-2">
+      <button
+        type="button"
+        class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+        :aria-expanded="expanded"
+        @click="emit('toggle')"
+      >
+        <ArtSvgIcon
+          :icon="expanded ? 'ri:arrow-down-s-line' : 'ri:arrow-right-s-line'"
+          class="shrink-0 text-[var(--el-text-color-secondary)]"
+          aria-hidden="true"
+        />
+        <strong class="text-sm">{{ code }} 货架</strong>
+        <span class="text-xs text-[var(--el-text-color-secondary)]">
+          {{ levels.length }} 层 · {{ columnCount }} 列 · {{ binCount }} 个库位
+        </span>
+      </button>
+      <ElButton
+        v-if="code !== '未分组'"
+        v-auth="'MdmWarehouseBin:Edit'"
+        size="small"
+        plain
+        @click="emit('editShelf')"
+      >
+        <ArtSvgIcon icon="ri:edit-line" class="mr-1" aria-hidden="true" />
+        编辑货架
+      </ElButton>
     </header>
 
-    <ElScrollbar class="w-full">
+    <ElScrollbar v-if="expanded" class="w-full">
       <div class="rack-scroll-content">
         <div class="rack-facade">
           <div v-for="level in levels" :key="level.number" class="rack-level">
@@ -47,11 +67,14 @@
       </div>
     </ElScrollbar>
 
-    <div v-if="children.length" class="mt-3 border-t border-[var(--el-border-color)] pt-3">
+    <div
+      v-if="expanded && children.length"
+      class="mt-3 border-t border-[var(--el-border-color)] pt-3"
+    >
       <p class="mb-2 text-xs font-medium text-[var(--el-text-color-secondary)]">
         子单元 {{ children.length }}
       </p>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <BinNode
           v-for="child in children"
           :key="child.id"
@@ -74,6 +97,7 @@
 
 <script setup lang="ts">
   import type { StorageBin, StorageStockStat } from '@mdm/api'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import StorageTile from '../../storage/modules/storage-tile.vue'
   import BinActions from '../../storage/modules/bin-actions.vue'
   import BinNode from '../../storage/modules/bin-node.vue'
@@ -83,6 +107,7 @@
 
   const props = defineProps<{
     code: string
+    expanded: boolean
     levels: RackLevel[]
     binCount: number
     children: RackBin[]
@@ -97,6 +122,8 @@
     edit: [bin: StorageBin]
     child: [bin: StorageBin]
     remove: [bin: StorageBin]
+    toggle: []
+    editShelf: []
   }>()
 
   const columnCount = computed(() =>
