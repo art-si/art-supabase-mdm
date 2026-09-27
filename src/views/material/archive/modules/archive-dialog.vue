@@ -243,7 +243,6 @@
   } from '@mdm/api'
   import { buildMaterialArchiveWriteInput } from './archive-payload'
   import { buildMaterialDescription } from './material-description'
-  import { MATERIAL_DESCRIPTION_FIELD_LABELS } from '../../modules/material-description-fields'
 
   type ArchiveTab =
     'base' | 'purchase' | 'sales' | 'inventory' | 'production' | 'finance' | 'conversion'
@@ -660,7 +659,9 @@
   )
   const descriptionRuleLabels = computed(() => {
     return (selectedCategory.value?.compositionColumns ?? []).map(
-      (column) => MATERIAL_DESCRIPTION_FIELD_LABELS[column] ?? column
+      (column) =>
+        getDictMap.value.mdmMaterialCoreAttribute?.find((item) => item.value === column)?.label ??
+        column
     )
   })
   const isTabConfigured = (tab: ArchiveTab): boolean => {
@@ -1221,11 +1222,7 @@
           key: 'schedulingStrategy',
           type: 'select',
           help: '继承表示使用所选排产规则的方向。',
-          options: [
-            { label: '继承排产规则', value: 'inherit' },
-            { label: '正向排产', value: 'forward' },
-            { label: '反向排产', value: 'backward' }
-          ]
+          options: getDictMap.value.mdmMaterialSchedulingStrategy ?? []
         },
         {
           label: '计划冻结期(天)',
@@ -1354,7 +1351,9 @@
       'mdmMaterialBatchPolicy',
       'mdmMaterialIssueMethod',
       'mdmMaterialBackflushMethod',
-      'mdmMaterialOverIssueControl'
+      'mdmMaterialOverIssueControl',
+      'mdmMaterialCoreAttribute',
+      'mdmMaterialSchedulingStrategy'
     ].map((code) => userStore.ensureDictLoaded(code))
   )
   const formRules: FormRules<Record<string, unknown>> = {

@@ -448,7 +448,7 @@
                   {{ formatQuantity(activity.basicQuantity) }}
                 </span>
                 <span class="route-maintenance__activity-value">
-                  {{ dictLabel('mdmWorkCenterActivityUnit', activity.activityUnit) }}
+                  {{ dictLabel('mdmActivityUnit', activity.activityUnit) }}
                 </span>
                 <span class="route-maintenance__activity-value is-code">
                   {{ activity.planExpression || '—' }}
@@ -516,7 +516,7 @@
                   placeholder="活动单位"
                 >
                   <ElOption
-                    v-for="item in getDictMap.mdmWorkCenterActivityUnit ?? []"
+                    v-for="item in getDictMap.mdmActivityUnit ?? []"
                     :key="item.value"
                     :label="item.label"
                     :value="item.value"
@@ -2341,7 +2341,7 @@
               'mdmMaterialPurchaseOrganization',
               'mdmActivityType',
               'mdmWorkCenterMaintenanceRule',
-              'mdmWorkCenterActivityUnit'
+              'mdmActivityUnit'
             ].map((code) => user.ensureDictLoaded(code))
           )
           const [nextReferences, nextDepartmentTree] = await Promise.all([

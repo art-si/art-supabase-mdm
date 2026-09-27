@@ -73,7 +73,17 @@
   </div>
 </template>
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+
+  const commonEnabledDisabledStatusOptions = useDictionaryOptions(
+    'commonEnabledDisabledStatus',
+    (value) => value === 'enabled'
+  )
+  const mdmOperationTemplateBindingStatusOptions = useDictionaryOptions(
+    'mdmOperationTemplateBindingStatus',
+    (value) => value === 'true'
+  )
   const { confirmAction } = useArtFeedback()
   import { ref, reactive, computed } from 'vue'
   import { ElButton, ElTag, ElMessage } from 'element-plus'
@@ -191,10 +201,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '启用', value: true },
-          { label: '禁用', value: false }
-        ]
+        options: commonEnabledDisabledStatusOptions
       }
     }
   ]
@@ -211,10 +218,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '已绑定', value: true },
-          { label: '未绑定', value: false }
-        ]
+        options: mdmOperationTemplateBindingStatusOptions
       }
     }
   ]

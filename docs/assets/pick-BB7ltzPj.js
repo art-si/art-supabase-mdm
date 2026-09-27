@@ -1,0 +1,1 @@
+import{b as e,t,v as n}from"./hasIn-C41LmZ5W.js";import{t as r}from"./_baseSet-BxEO-kuL.js";import{t as i}from"./_flatRest-G4s0pW2V.js";function a(t,i,a){for(var o=-1,s=i.length,c={};++o<s;){var l=i[o],u=n(t,l);a(u,l)&&r(c,e(l,t),u)}return c}function o(e,n){return a(e,n,function(n,r){return t(e,r)})}var s=i(function(e,t){return e==null?{}:o(e,t)});export{s as t};

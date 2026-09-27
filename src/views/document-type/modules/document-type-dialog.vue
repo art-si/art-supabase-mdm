@@ -49,12 +49,14 @@
               <span>工单类型切换时，专用字段组随之切换；物料字段可按 BOM 组件类型自动带入。</span>
               <ElButton type="primary" plain @click="addExtensionField">新增字段</ElButton>
             </div>
-            <div
+            <ArtEmptyState
               v-if="!form.data.extensionFields.length"
               class="document-type-dialog__extension-empty"
-            >
-              暂无专用字段，生产工单沿用通用表单。
-            </div>
+              title="暂无专用字段"
+              description="生产工单沿用通用表单。"
+              size="compact"
+              :visual-size="64"
+            />
             <div
               v-for="(field, index) in form.data.extensionFields"
               :key="index"
@@ -71,9 +73,12 @@
                 placeholder="显示名称，如 外板"
               />
               <ElSelect v-model="field.valueType" :aria-label="`第 ${index + 1} 个字段类型`">
-                <ElOption label="文本" value="text" />
-                <ElOption label="数字" value="number" />
-                <ElOption label="物料" value="material" />
+                <ElOption
+                  v-for="option in getDictMap.mdmDocumentExtensionValueType ?? []"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
               <ElSelect
                 v-model="field.sourceComponentTypeId"
@@ -114,6 +119,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
@@ -537,7 +543,8 @@
         try {
           await Promise.all([
             userStore.ensureDictLoaded('commonBoolean'),
-            userStore.ensureDictLoaded('mdmWarehouseType')
+            userStore.ensureDictLoaded('mdmWarehouseType'),
+            userStore.ensureDictLoaded('mdmDocumentExtensionValueType')
           ])
           await refreshSuggestedSort()
           componentTypeOptions.value = form.data.tenantId
@@ -600,8 +607,6 @@
       font-size: 12px;
     }
     &__extension-empty {
-      padding: var(--art-space-4);
-      color: var(--el-text-color-secondary);
       background: var(--art-gray-100);
       border-radius: var(--el-border-radius-base);
     }

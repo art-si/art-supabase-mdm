@@ -101,6 +101,7 @@
   </div>
 </template>
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed, watch } from 'vue'
   import { ElAvatar, ElMessage, ElTag } from 'element-plus'
@@ -147,6 +148,11 @@
     parseDepartmentImport,
     parsePeopleImport
   } from '../modules/production-transfer'
+
+  const commonEnabledDisabledStatusOptions = useDictionaryOptions(
+    'commonEnabledDisabledStatus',
+    (value) => value === 'enabled'
+  )
   defineOptions({ name: 'MdmProductionPersonnel' })
   const props = withDefaults(
     defineProps<{
@@ -271,10 +277,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '启用', value: true },
-          { label: '禁用', value: false }
-        ]
+        options: commonEnabledDisabledStatusOptions
       }
     }
   ]
@@ -297,10 +300,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '启用', value: true },
-          { label: '禁用', value: false }
-        ]
+        options: commonEnabledDisabledStatusOptions
       }
     }
   ]

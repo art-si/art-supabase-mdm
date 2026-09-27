@@ -47,7 +47,7 @@
           key: 'operationUnit',
           label: '时限单位',
           type: 'select',
-          options: ['秒', '分钟'].map((value) => ({ label: value, value }))
+          options: user.getDictMap.mdmWorkCenterOperationUnit ?? []
         },
         {
           key: 'customLimit',

@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { cloneDeep } from 'lodash-es'
   import { storeToRefs } from 'pinia'
   import { useUserStore } from '@/store/modules/user'
@@ -66,6 +67,8 @@
     type WarehouseInput,
     type WarehouseRecord
   } from '@mdm/api'
+
+  const commonEnabledDisabledStatusOptions = useDictionaryOptions('commonEnabledDisabledStatus')
 
   export interface WarehouseDialogOpenData {
     row?: WarehouseRecord
@@ -212,10 +215,7 @@
       label: '启用状态',
       key: 'status',
       type: 'segment',
-      options: [
-        { label: '启用', value: 'enabled' },
-        { label: '禁用', value: 'disabled' }
-      ]
+      options: commonEnabledDisabledStatusOptions
     },
     {
       label: '备注',

@@ -8,7 +8,7 @@
     "node": ">=22.0.0",
     "pnpm": ">=11.9.0"
   },
-  "description": "Art Supabase Pro 的 MDM 主数据治理应用",
+  "description": "亿企工场的 MDM 主数据治理应用",
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*"

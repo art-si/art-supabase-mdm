@@ -66,7 +66,6 @@
               :show-table-header="false"
               table-layout="fixed"
               height="auto"
-              :max-height="500"
               scrollbar-always-on
               empty-height="220px"
               empty-text="尚未添加属性"
@@ -86,10 +85,12 @@
               class="material-reference-dialog__builder-row is-segment"
             >
               <ElSelect v-model="segment.source" aria-label="号段来源">
-                <ElOption label="物料类型前缀" value="material_type" />
-                <ElOption label="物料分类前缀" value="material_category" />
-                <ElOption label="固定字符" value="fixed" />
-                <ElOption label="日期" value="date" />
+                <ElOption
+                  v-for="option in segmentSourceOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
               <ElInput
                 v-if="segment.source === 'fixed'"
@@ -102,9 +103,12 @@
                 v-model="segment.format"
                 aria-label="日期格式"
               >
-                <ElOption label="YYYY" value="YYYY" />
-                <ElOption label="YYYYMM" value="YYYYMM" />
-                <ElOption label="YYYYMMDD" value="YYYYMMDD" />
+                <ElOption
+                  v-for="option in materialCodeDateFormatOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
               <span v-else class="material-reference-dialog__segment-note">
                 {{ segmentSourceDescription(segment.source) }}
@@ -161,6 +165,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
@@ -296,6 +301,10 @@
       .map((unit) => ({ label: `${unit.unitName} · ${unit.unitCode}`, value: unit.id }))
   )
   const statusOptions = computed(() => getDictMap.value.commonEnabledStatus ?? [])
+  const segmentSourceOptions = computed(() => getDictMap.value.mdmMaterialCodeSegmentSource ?? [])
+  const materialCodeDateFormatOptions = computed(
+    () => getDictMap.value.mdmMaterialCodeDateFormat ?? []
+  )
   const tenantItems = (): FormItem[] => [
     {
       label: '目标租户',
@@ -532,9 +541,12 @@
     }
   })
   void Promise.all(
-    ['commonEnabledStatus', 'mdmMaterialCodeStrategy'].map((code) =>
-      userStore.ensureDictLoaded(code)
-    )
+    [
+      'commonEnabledStatus',
+      'mdmMaterialCodeStrategy',
+      'mdmMaterialCodeSegmentSource',
+      'mdmMaterialCodeDateFormat'
+    ].map((code) => userStore.ensureDictLoaded(code))
   )
   const rulePreview = computed(() =>
     buildMaterialCodePreview({
@@ -626,8 +638,9 @@
       fixed: 'right',
       showOverflowTooltip: false,
       formatter: (row) => (
-        <ArtIconButton
-          icon="ri:delete-bin-line"
+        <ArtButtonTable
+          type="delete"
+          permission="MdmMaterialAttributeGroup:Edit"
           label="删除属性"
           onClick={() => removeAttribute(formModel.attributes.indexOf(row))}
         />

@@ -123,6 +123,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
+  import { useUserStore } from '@/store/modules/user'
   import {
     fetchShiftSchedulePatterns,
     fetchShiftSchedulePersonnel,
@@ -158,6 +159,8 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
+  const userStore = useUserStore()
+  void userStore.ensureDictLoaded('mdmShiftScheduleDateMode')
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const state = reactive({
@@ -223,7 +226,7 @@
     { key: 'memberCount', field: 'memberCount', label: '班组人数' },
     { key: 'note', field: 'note', label: '备注' }
   ]
-  const formItems: FormItem[] = [
+  const formItems = computed<FormItem[]>(() => [
     {
       key: 'source',
       label: '班次安排',
@@ -245,11 +248,7 @@
       label: '有效方式',
       type: 'segment',
       span: 24,
-      options: [
-        { label: '单个日期', value: 'single' },
-        { label: '从此日期开始长期有效', value: 'ongoing' },
-        { label: '在此期间有效', value: 'range' }
-      ]
+      options: userStore.getDictMap.mdmShiftScheduleDateMode ?? []
     },
     {
       key: 'startDate',
@@ -303,7 +302,7 @@
       span: 24,
       props: { type: 'textarea', rows: 3, maxlength: 300, showWordLimit: true }
     }
-  ]
+  ])
   const rules = {
     patternId: [{ required: true, message: '请选择轮班模式', trigger: 'change' }],
     shiftIndex: [{ required: true, message: '请选择班次', trigger: 'change' }],

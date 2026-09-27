@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>Art Supabase MDM</h1>
-  <p><strong>Enterprise master-data governance and production-foundation management for Art Supabase Pro</strong></p>
+  <h1>Yiqi Workshop MDM</h1>
+  <p><strong>Enterprise master-data governance and production-foundation management for Yiqi Workshop</strong></p>
   <p>Unified catalogs, source traceability, data-quality review, production organizations, factory calendars, work centers, standard operations, and process routes.</p>
 
   <p>
@@ -18,7 +18,7 @@
 
 ## Positioning
 
-Art Supabase MDM is the master-data governance and production-foundation application for Art Supabase Pro. It provides a unified read-only catalog over authoritative records owned by Platform, HR, TMS, VMS, and SMIS, while owning production-specific configuration such as departments, personnel settings, factory calendars, standard operations, work centers, and process routes.
+Yiqi Workshop MDM is the master-data governance and production-foundation application for Yiqi Workshop. It provides a unified read-only catalog over authoritative records owned by Platform, HR, TMS, VMS, and SMIS, while owning production-specific configuration such as departments, personnel settings, factory calendars, standard operations, work centers, and process routes.
 
 Authentication, tenancy, navigation, authorization, layout, shared components, stores, and the common Supabase client remain owned by [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro).
 

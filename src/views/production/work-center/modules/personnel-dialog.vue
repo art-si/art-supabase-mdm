@@ -81,11 +81,12 @@
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
-  import { ref, reactive, shallowRef } from 'vue'
+  import { computed, ref, reactive, shallowRef } from 'vue'
   import { ElMessage } from 'element-plus'
   import { formatWithDayjs } from '@/utils/time'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import { useUserStore } from '@/store/modules/user'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ColumnOption } from '@/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
@@ -100,6 +101,8 @@
     type CenterAdjustment
   } from '@mdm/api'
   const emit = defineEmits<{ success: [] }>()
+  const userStore = useUserStore()
+  void userStore.ensureDictLoaded('mdmWorkCenterPersonnelAdjustmentKind')
   const dialogRef = ref<ArtDialogExpose>()
   const adjustmentDialog = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -118,13 +121,13 @@
     kind: '短期加入',
     range: [] as string[]
   })
-  const items: FormItem[] = [
+  const items = computed<FormItem[]>(() => [
     { key: 'personId', label: '人员' },
     {
       key: 'kind',
       label: '临时调整',
       type: 'radio',
-      options: ['短期加入', '短期离开'].map((value) => ({ label: value, value }))
+      options: userStore.getDictMap.mdmWorkCenterPersonnelAdjustmentKind ?? []
     },
     {
       key: 'range',
@@ -137,7 +140,7 @@
         endPlaceholder: '结束时间'
       }
     }
-  ]
+  ])
   const rules = {
     personId: [{ required: true, message: '请选择人员', trigger: 'change' }],
     range: [{ required: true, message: '请选择开始和结束时间', trigger: 'change' }]

@@ -178,11 +178,14 @@
               prefix-icon="Search"
               placeholder="搜索参数名称或编码"
             />
-            <div v-if="!model.purpose" class="parameter-panel__empty">
-              <ArtSvgIcon icon="ri:git-branch-line" />
-              <strong>请先选择用途</strong>
-              <span>参数会按所选用途自动级联</span>
-            </div>
+            <ArtEmptyState
+              v-if="!model.purpose"
+              class="parameter-panel__state"
+              title="请先选择用途"
+              description="参数会按所选用途自动级联。"
+              size="compact"
+              :visual-size="64"
+            />
             <div v-else-if="parameterError" class="parameter-panel__empty is-error">
               <ArtSvgIcon icon="ri:error-warning-line" />
               <strong>参数加载失败</strong>
@@ -190,12 +193,14 @@
               <ElButton link type="primary" @click="loadParameters">重新加载</ElButton>
             </div>
             <ElSkeleton v-else-if="loadingParameters" :rows="7" animated />
-            <div v-else-if="!parameterTree.length" class="parameter-panel__empty">
-              <span class="parameter-panel__empty-icon">
-                <ArtSvgIcon icon="ri:folder-add-line" />
-              </span>
-              <strong>尚未配置公式参数</strong>
-              <span>先新建分组，再在分组下维护可参与计算的参数。</span>
+            <ArtEmptyState
+              v-else-if="!parameterTree.length"
+              class="parameter-panel__state"
+              title="尚未配置公式参数"
+              description="先新建分组，再在分组下维护可参与计算的参数。"
+              size="compact"
+              :visual-size="64"
+            >
               <ElButton
                 v-if="!readonly"
                 v-auth="'MdmActivityFormula:ManageParameter'"
@@ -206,7 +211,7 @@
                 创建第一个节点
                 <ArtSvgIcon icon="ri:arrow-right-line" />
               </ElButton>
-            </div>
+            </ArtEmptyState>
             <ElTree
               v-else
               class="parameter-panel__tree"
@@ -492,6 +497,7 @@
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
@@ -1078,16 +1084,11 @@
     color: var(--el-color-danger);
   }
 
-  .parameter-panel__empty-icon {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    font-size: 26px;
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
-    border: 1px solid var(--el-color-primary-light-8);
-    border-radius: 16px;
+  .parameter-panel__state {
+    min-height: 280px;
+    background: color-mix(in srgb, var(--el-fill-color-lighter) 52%, transparent);
+    border: 1px dashed var(--el-border-color-lighter);
+    border-radius: var(--art-control-radius);
   }
 
   .parameter-node {

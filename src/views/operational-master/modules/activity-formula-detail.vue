@@ -53,11 +53,14 @@
             </div>
           </template>
         </ElTree>
-        <div v-else class="formula-detail__empty">
-          <span><ArtSvgIcon icon="ri:folder-open-line" /></span>
-          <strong>当前用途暂无参数</strong>
-          <small>公式仍可使用已保存的常量或历史表达式。</small>
-        </div>
+        <ArtEmptyState
+          v-else
+          class="formula-detail__empty"
+          title="当前用途暂无参数"
+          description="公式仍可使用已保存的常量或历史表达式。"
+          size="compact"
+          :visual-size="64"
+        />
       </aside>
 
       <main class="formula-detail__section formula-detail__result art-card-xs">
@@ -119,6 +122,7 @@
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -311,29 +315,7 @@
   }
 
   .formula-detail__empty {
-    display: flex;
-    flex-direction: column;
-    gap: var(--art-space-2);
-    align-items: center;
-    justify-content: center;
     min-height: 300px;
-    color: var(--el-text-color-secondary);
-    text-align: center;
-  }
-
-  .formula-detail__empty > span {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    font-size: 26px;
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
-    border-radius: 16px;
-  }
-
-  .formula-detail__empty strong {
-    color: var(--el-text-color-primary);
   }
 
   .formula-detail__result {

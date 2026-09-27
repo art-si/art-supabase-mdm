@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
@@ -103,6 +104,8 @@
     type WarehouseGroupDialogOpenData
   } from './modules/warehouse-group-dialog.vue'
   import WarehouseGroupPanel from './modules/warehouse-group-panel.vue'
+
+  const commonEnabledDisabledStatusOptions = useDictionaryOptions('commonEnabledDisabledStatus')
 
   defineOptions({ name: 'MdmWarehouseDefinition' })
 
@@ -140,10 +143,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: [
-          { label: '启用', value: 'enabled' },
-          { label: '禁用', value: 'disabled' }
-        ]
+        options: commonEnabledDisabledStatusOptions
       }
     }
   ]

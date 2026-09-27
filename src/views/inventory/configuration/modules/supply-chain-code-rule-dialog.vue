@@ -110,6 +110,7 @@
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
+  import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import {
     fetchSupplyChainCodeAttributes,
@@ -137,6 +138,13 @@
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const segmentTableRef = ref<ArtTableExpose>()
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  void Promise.all(
+    ['commonEnabledStatus', 'mdmSupplyChainCodeUseMode', 'mdmSupplyChainCodeDateFormat'].map(
+      (code) => userStore.ensureDictLoaded(code)
+    )
+  )
 
   const initialForm = (): RuleFormModel => ({
     id: undefined,
@@ -220,10 +228,7 @@
       label: '启用状态',
       key: 'status',
       type: 'segment',
-      options: [
-        { label: '启用', value: 'enabled' },
-        { label: '停用', value: 'disabled' }
-      ]
+      options: getDictMap.value.commonEnabledStatus ?? []
     },
     { label: '适用范围', key: 'scopeDivider', type: 'divider', span: 24 },
     { label: '业务对象', key: 'scope', type: 'slot', span: 16 },
@@ -290,8 +295,9 @@
       width: 120,
       formatter: (row) => (
         <ElSelect v-model={row.useMode} aria-label="使用模式">
-          <ElOption label="完全取值" value="full" />
-          <ElOption label="设置值" value="configured" />
+          {(getDictMap.value.mdmSupplyChainCodeUseMode ?? []).map((option) => (
+            <ElOption key={option.value} label={option.label} value={option.value} />
+          ))}
         </ElSelect>
       )
     },
@@ -307,9 +313,9 @@
       formatter: (row) =>
         row.attribute?.attributeType === 'date' ? (
           <ElSelect v-model={row.format} aria-label="日期格式">
-            <ElOption label="yyMMdd" value="yyMMdd" />
-            <ElOption label="yyyyMMdd" value="yyyyMMdd" />
-            <ElOption label="yyyyMM" value="yyyyMM" />
+            {(getDictMap.value.mdmSupplyChainCodeDateFormat ?? []).map((option) => (
+              <ElOption key={option.value} label={option.label} value={option.value} />
+            ))}
           </ElSelect>
         ) : (
           <ElInput

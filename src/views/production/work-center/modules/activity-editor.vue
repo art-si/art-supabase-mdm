@@ -161,7 +161,7 @@
       minWidth: 120,
       required: true,
       requiredMessage: '请选择活动单位',
-      formatter: (row) => select(row, 'activityUnit', 'mdmWorkCenterActivityUnit', '请选择活动单位')
+      formatter: (row) => select(row, 'activityUnit', 'mdmActivityUnit', '请选择活动单位')
     },
     {
       prop: 'planFormulaId',

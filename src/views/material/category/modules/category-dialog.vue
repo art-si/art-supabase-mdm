@@ -49,7 +49,6 @@
     type MaterialContextOption
   } from '@mdm/api'
   import { buildMaterialCategoryWriteInput } from './category-payload'
-  import { MATERIAL_DESCRIPTION_FIELD_OPTIONS } from '../../modules/material-description-fields'
 
   export interface CategoryDialogOpenData {
     row?: MaterialCategory
@@ -203,7 +202,7 @@
       key: 'compositionColumns',
       type: 'select',
       span: 24,
-      options: [...MATERIAL_DESCRIPTION_FIELD_OPTIONS],
+      options: getDictMap.value.mdmMaterialCoreAttribute ?? [],
       help: '物料档案将按所选字段顺序与连接符实时生成“物料描述”。',
       props: { multiple: true, clearable: true, filterable: true }
     },
@@ -279,7 +278,7 @@
     }
   ])
   void Promise.all(
-    ['mdmMaterialValuationMethod', 'commonEnabledStatus'].map((code) =>
+    ['mdmMaterialValuationMethod', 'commonEnabledStatus', 'mdmMaterialCoreAttribute'].map((code) =>
       userStore.ensureDictLoaded(code)
     )
   )

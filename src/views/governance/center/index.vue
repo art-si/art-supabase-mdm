@@ -178,6 +178,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { useUserStore } from '@/store/modules/user'
   import {
     fetchMdmChangeRequests,
     fetchMdmGovernanceOverview,
@@ -221,6 +222,22 @@
   }
 
   const activeTab = ref<ActiveTab>(props.initialView)
+  const userStore = useUserStore()
+  const { getDictMap } = storeToRefs(userStore)
+  const dictOptions = (code: string) =>
+    (getDictMap.value[code] ?? []).map((item) => ({
+      label: item.label ?? item.value,
+      value: item.value
+    }))
+  void Promise.all(
+    [
+      'mdmGovernanceQualityIssueStatus',
+      'mdmGovernanceChangeStatus',
+      'mdmGovernanceMatchStatus',
+      'mdmGovernanceOutboxStatus',
+      'mdmGovernanceSeverity'
+    ].map((code) => userStore.ensureDictLoaded(code))
+  )
   const pageHeaders: Record<
     ActiveTab,
     { eyebrow: string; title: string; description: string; icon: string }
@@ -325,75 +342,45 @@
     type: 'select',
     props: { options, clearable: true, placeholder: '全部状态' }
   })
-  const qualitySearchItems: SearchFormItem[] = [
+  const qualitySearchItems = computed<SearchFormItem[]>(() => [
     {
       label: '主档',
       key: 'keyword',
       type: 'input',
       props: { clearable: true, placeholder: '搜索编码或名称' }
     },
-    stateSearch([
-      { label: '待处理', value: 'open' },
-      { label: '整改中', value: 'in_progress' },
-      { label: '待复核', value: 'pending_verification' },
-      { label: '已解决', value: 'resolved' },
-      { label: '已豁免', value: 'waived' },
-      { label: '重新打开', value: 'reopened' }
-    ]),
+    stateSearch(dictOptions('mdmGovernanceQualityIssueStatus')),
     {
       label: '严重级别',
       key: 'severity',
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '低', value: 'low' },
-          { label: '中', value: 'medium' },
-          { label: '高', value: 'high' },
-          { label: '关键', value: 'critical' }
-        ]
+        options: dictOptions('mdmGovernanceSeverity')
       }
     }
-  ]
-  const changeSearchItems: SearchFormItem[] = [
+  ])
+  const changeSearchItems = computed<SearchFormItem[]>(() => [
     {
       label: '申请',
       key: 'keyword',
       type: 'input',
       props: { clearable: true, placeholder: '编号、标题或申请人' }
     },
-    stateSearch([
-      { label: '草稿', value: 'draft' },
-      { label: '待审核', value: 'submitted' },
-      { label: '已通过', value: 'approved' },
-      { label: '已驳回', value: 'rejected' },
-      { label: '已发布', value: 'published' },
-      { label: '已撤回', value: 'cancelled' }
-    ])
-  ]
-  const matchSearchItems: SearchFormItem[] = [
+    stateSearch(dictOptions('mdmGovernanceChangeStatus'))
+  ])
+  const matchSearchItems = computed<SearchFormItem[]>(() => [
     {
       label: '来源记录',
       key: 'keyword',
       type: 'input',
       props: { clearable: true, placeholder: '输入完整 UUID' }
     },
-    stateSearch([
-      { label: '待评审', value: 'pending' },
-      { label: '已接受', value: 'accepted' },
-      { label: '已驳回', value: 'rejected' },
-      { label: '已取代', value: 'superseded' }
-    ])
-  ]
-  const outboxSearchItems: SearchFormItem[] = [
-    stateSearch([
-      { label: '待投递', value: 'pending' },
-      { label: '处理中', value: 'processing' },
-      { label: '等待重试', value: 'retry' },
-      { label: '已送达', value: 'delivered' },
-      { label: '死信', value: 'dead_letter' }
-    ])
-  ]
+    stateSearch(dictOptions('mdmGovernanceMatchStatus'))
+  ])
+  const outboxSearchItems = computed<SearchFormItem[]>(() => [
+    stateSearch(dictOptions('mdmGovernanceOutboxStatus'))
+  ])
 
   const activeTabDescription = computed(
     () =>

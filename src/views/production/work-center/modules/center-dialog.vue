@@ -231,7 +231,9 @@
     'mdmWorkCenterActivityName',
     'mdmActivityType',
     'mdmWorkCenterMaintenanceRule',
-    'mdmWorkCenterActivityUnit',
+    'mdmActivityUnit',
+    'mdmWorkCenterCapacityMode',
+    'mdmWorkCenterOperationUnit',
     'commonBoolean'
   ]
   const rules = {
@@ -283,10 +285,7 @@
       key: 'capacityMode',
       label: '产能模式',
       type: 'select',
-      options: [
-        { label: '有限产能', value: 'finite' },
-        { label: '无限产能', value: 'infinite' }
-      ],
+      options: user.getDictMap.mdmWorkCenterCapacityMode ?? [],
       help: '有限产能会避让同一工作中心已有排程。'
     },
     {

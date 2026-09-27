@@ -25,12 +25,18 @@
 </template>
 
 <script setup lang="ts">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { cloneDeep } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { saveWarehouseGroup, type WarehouseGroup, type WarehouseGroupInput } from '@mdm/api'
+
+  const commonEnabledStatusOptions = useDictionaryOptions(
+    'commonEnabledStatus',
+    (value) => value === 'enabled'
+  )
 
   export interface WarehouseGroupDialogOpenData {
     row?: WarehouseGroup
@@ -81,10 +87,7 @@
       label: '启用状态',
       key: 'enabled',
       type: 'segment',
-      options: [
-        { label: '启用', value: true },
-        { label: '停用', value: false }
-      ]
+      options: commonEnabledStatusOptions
     },
     {
       label: '显示顺序',

@@ -1,0 +1,1 @@
+import{Br as e,Ii as t,Zr as n}from"./supabase-EmMNj2BB.js";import{t as r}from"./center-BP-Vijys.js";var i=n({name:`MdmDataQuality`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{"initial-view":`quality`}))}});export{i as default};

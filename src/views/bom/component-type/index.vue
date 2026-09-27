@@ -150,6 +150,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElTag, type ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -185,6 +186,11 @@
   } from '@mdm/api'
   import ComponentTypeDialog from './modules/component-type-dialog.vue'
   import IndustryGroupDialog from './modules/industry-group-dialog.vue'
+
+  const commonEnabledDisabledStatusOptions = useDictionaryOptions(
+    'commonEnabledDisabledStatus',
+    (value) => value === 'enabled'
+  )
 
   defineOptions({ name: 'MdmComponentType' })
   const { confirmDelete } = useArtFeedback()
@@ -237,10 +243,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '启用', value: true },
-          { label: '禁用', value: false }
-        ]
+        options: commonEnabledDisabledStatusOptions
       }
     }
   ]

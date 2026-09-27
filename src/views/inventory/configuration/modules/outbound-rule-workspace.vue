@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import dayjs from 'dayjs'
   import { cloneDeep } from 'lodash-es'
   import { ElTag } from 'element-plus'
@@ -67,6 +68,8 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import OutboundRuleDialog, { type OutboundRuleDialogOpenData } from './outbound-rule-dialog.vue'
+
+  const commonEnabledStatusOptions = useDictionaryOptions('commonEnabledStatus')
 
   defineOptions({ name: 'MdmOutboundRule' })
 
@@ -97,10 +100,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: [
-          { label: '启用', value: 'enabled' },
-          { label: '停用', value: 'disabled' }
-        ]
+        options: commonEnabledStatusOptions
       }
     }
   ]

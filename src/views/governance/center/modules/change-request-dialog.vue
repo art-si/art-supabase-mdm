@@ -24,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -69,21 +70,8 @@
     effectiveAt: new Date(Date.now() + 10 * 60 * 1000).toISOString()
   })
 
-  const domainOptions = [
-    { label: '组织与人员', value: 'organization' },
-    { label: '往来主体', value: 'partner' },
-    { label: '物流基础', value: 'logistics' },
-    { label: '资产设备', value: 'asset' },
-    { label: '物料与场所', value: 'material' }
-  ]
-  const operationOptions = [
-    { label: '新增', value: 'create' },
-    { label: '修改', value: 'update' },
-    { label: '启用', value: 'enable' },
-    { label: '停用', value: 'disable' },
-    { label: '退役', value: 'retire' },
-    { label: '受控合并', value: 'merge' }
-  ]
+  const domainOptions = useDictionaryOptions('mdmGovernanceDomain')
+  const operationOptions = useDictionaryOptions('mdmGovernanceOperation')
   const sourceOptions = computed(() => {
     const scopeByDomain: Record<MdmGovernanceDomain, (keyof typeof mdmCatalogSourceDefinitions)[]> =
       {

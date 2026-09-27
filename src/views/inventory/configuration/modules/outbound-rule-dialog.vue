@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { cloneDeep } from 'lodash-es'
   import { ElOption, ElSelect } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -88,6 +89,8 @@
     type OutboundRuleSort,
     type OutboundSortField
   } from '@mdm/api'
+
+  const commonEnabledStatusOptions = useDictionaryOptions('commonEnabledStatus')
 
   export interface OutboundRuleDialogOpenData {
     row?: OutboundRule
@@ -149,10 +152,7 @@
       label: '启用状态',
       key: 'status',
       type: 'segment',
-      options: [
-        { label: '启用', value: 'enabled' },
-        { label: '停用', value: 'disabled' }
-      ]
+      options: commonEnabledStatusOptions
     },
     {
       label: '规则说明',
