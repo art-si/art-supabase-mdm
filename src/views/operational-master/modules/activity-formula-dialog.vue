@@ -482,6 +482,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
   import type { ElTree } from 'element-plus'
@@ -690,8 +691,10 @@
     return unitOptions.value.find((item) => item.value === value)?.label ?? value
   }
   function filterParameterNode(keyword: string, rawData: Record<string, unknown>): boolean {
-    const data = rawData as unknown as ActivityFormulaParameterTreeNode
-    return !keyword || `${data.name} ${data.code}`.toLowerCase().includes(keyword.toLowerCase())
+    if (!keyword) return true
+    const name = typeof rawData.name === 'string' ? rawData.name : ''
+    const code = typeof rawData.code === 'string' ? rawData.code : ''
+    return `${name} ${code}`.toLowerCase().includes(keyword.toLowerCase())
   }
 
   async function loadParameters(): Promise<void> {
@@ -707,7 +710,7 @@
         model.purpose as ActivityFormulaPurpose
       )
     } catch (error) {
-      parameterError.value = error instanceof Error ? error.message : '请稍后重试'
+      parameterError.value = getFriendlySupabaseErrorMessage(error, '公式参数加载失败，请重试')
     } finally {
       loadingParameters.value = false
     }

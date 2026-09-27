@@ -312,9 +312,7 @@ export async function fetchMaterialArchives(
 }
 
 export async function saveMaterialArchive(payload: MaterialArchiveInput, id?: string) {
-  const databasePayload = alignMaterialArchiveDatabaseKeys(
-    keysToSnakeDeep(payload) as unknown as Record<string, unknown>
-  )
+  const databasePayload = alignMaterialArchiveDatabaseKeys(keysToSnakeDeep({ ...payload }))
   await responseHandle(
     () =>
       supabase.rpc('mdm_save_material_secure', {

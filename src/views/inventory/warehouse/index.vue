@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
@@ -383,7 +384,7 @@
       groups.value = result.groups
       return { records: result.data, total: result.total }
     } catch (error) {
-      groupState.error = error instanceof Error ? error.message : '仓库分组加载失败，请重试'
+      groupState.error = getFriendlySupabaseErrorMessage(error, '仓库分组加载失败，请重试')
       throw error
     } finally {
       groupState.loading = false

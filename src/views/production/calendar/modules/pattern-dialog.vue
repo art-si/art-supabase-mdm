@@ -86,6 +86,7 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
   import { cloneDeep, pick } from 'lodash-es'
   import { ElMessage } from 'element-plus'
@@ -161,7 +162,7 @@
     } catch (error) {
       return {
         shifts: [] as ProductionShift[],
-        error: error instanceof Error ? error.message : '班次配置无效'
+        error: getFriendlySupabaseErrorMessage(error, '班次配置无效')
       }
     }
   })

@@ -177,7 +177,7 @@
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import {
     fetchMdmChangeRequests,
     fetchMdmGovernanceOverview,
@@ -474,7 +474,7 @@
       return 'warning'
     return 'info'
   }
-  const formatDate = (value?: string | null) => (value ? formatWithDayjs(value) : '—')
+  const formatDate = createDateTimeFormatter({ emptyText: '—' })
   const statusCell = (state: string) => (
     <ElTag type={statusType(state)} effect="light">
       {stateLabels[state] || state}

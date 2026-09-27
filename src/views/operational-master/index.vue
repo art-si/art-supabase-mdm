@@ -69,6 +69,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
@@ -589,7 +590,7 @@
     try {
       groupState.rows = await fetchMasterGroups(config.value.groupDomain, effectiveTenantId.value)
     } catch (error) {
-      groupState.error = error instanceof Error ? error.message : '分组加载失败，请重试'
+      groupState.error = getFriendlySupabaseErrorMessage(error, '分组加载失败，请重试')
     } finally {
       groupState.loading = false
     }

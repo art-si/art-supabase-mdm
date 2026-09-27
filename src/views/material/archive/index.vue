@@ -230,6 +230,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
   import { ElImage, ElTag } from 'element-plus'
@@ -843,7 +844,7 @@
       outboundRuleOptions.value = outboundRows
       supplyRuleOptions.value = supplyRows
     } catch (error) {
-      optionsError.value = error instanceof Error ? error.message : '物料选项加载失败'
+      optionsError.value = getFriendlySupabaseErrorMessage(error, '物料选项加载失败')
     } finally {
       optionsLoading.value = false
     }

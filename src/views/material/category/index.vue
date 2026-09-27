@@ -54,6 +54,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -355,7 +356,7 @@
       const start = (params.current - 1) * params.size
       return { records: filtered.slice(start, start + params.size), total: filtered.length }
     } catch (error) {
-      treeError.value = error instanceof Error ? error.message : '分类层级加载失败，请重试'
+      treeError.value = getFriendlySupabaseErrorMessage(error, '分类层级加载失败，请重试')
       throw error
     } finally {
       treeLoading.value = false

@@ -1,0 +1,1 @@
+import{Bn as e,Tr as t,kn as n}from"./useApi-s_02lHjl-DArTDKCX.js";import{t as r}from"./center-CKsB_3R1.js";var i=e({name:`MdmDataQuality`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`quality`}))}});export{i as default};

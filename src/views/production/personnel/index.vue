@@ -101,6 +101,7 @@
   </div>
 </template>
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed, watch } from 'vue'
   import { ElAvatar, ElMessage, ElTag } from 'element-plus'
   import type { ColumnOption } from '@/types'
@@ -718,7 +719,7 @@
     try {
       payload = parseDepartmentImport(rows, scope.departments)
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '导入数据无效')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入数据无效'))
       return
     }
     table.importing = true
@@ -736,7 +737,7 @@
     try {
       payload = parsePeopleImport(rows, scope.departments, scope.selected)
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '导入数据无效')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入数据无效'))
       return
     }
     try {

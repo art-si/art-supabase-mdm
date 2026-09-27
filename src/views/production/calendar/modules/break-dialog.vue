@@ -51,6 +51,7 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import { ElMessage } from 'element-plus'
@@ -66,7 +67,7 @@
     try {
       return { minutes: calculateBreaks(form.shift, form.rows), error: '' }
     } catch (error) {
-      return { minutes: 0, error: error instanceof Error ? error.message : '休息时间无效' }
+      return { minutes: 0, error: getFriendlySupabaseErrorMessage(error, '休息时间无效') }
     }
   })
   async function handleOpen(shift: ProductionShift, onSave: (rows: ShiftBreak[]) => void) {

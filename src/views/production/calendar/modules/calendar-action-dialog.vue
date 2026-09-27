@@ -28,6 +28,7 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
@@ -218,7 +219,7 @@
           try {
             datesInRange(form.model.range?.[0], form.model.range?.[1], form.model.weekdays)
           } catch (error) {
-            ElMessage.warning(error instanceof Error ? error.message : '日期范围无效')
+            ElMessage.warning(getFriendlySupabaseErrorMessage(error, '日期范围无效'))
             return false
           }
         }

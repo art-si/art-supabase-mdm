@@ -288,6 +288,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
   import { Search } from '@element-plus/icons-vue'
@@ -809,7 +810,7 @@
       for (const input of inputs) await saveEsopDocument(input)
       await refresh()
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '导入失败，请检查模板内容')
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入失败，请检查模板内容'))
     }
   }
   const headerActions: ArtTableQueryHeaderAction[] = [

@@ -46,7 +46,7 @@
             <div class="material-reference-dialog__attribute-toolbar">
               <div>
                 <span>{{ attributeSummary }}</span>
-                <small>候选值支持回车添加；属性与候选值均可用箭头调整描述顺序。</small>
+                <small>候选值支持回车添加；拖拽手柄或候选值标签可调整描述顺序。</small>
               </div>
               <ElButton
                 type="primary"
@@ -57,125 +57,24 @@
                 <ArtSvgIcon icon="ri:add-line" />新增属性
               </ElButton>
             </div>
-            <div
-              v-if="formModel.attributes.length"
+            <ArtTable
               class="material-reference-dialog__attribute-table"
-              role="table"
+              :data="formModel.attributes"
+              :columns="attributeColumns"
+              row-key="key"
+              :pagination="false"
+              :show-table-header="false"
+              table-layout="fixed"
+              height="auto"
+              :max-height="500"
+              scrollbar-always-on
+              empty-height="220px"
+              empty-text="尚未添加属性"
+              empty-description="点击右上角的“新增属性”，再维护属性名与候选值。"
               aria-label="属性明细"
-            >
-              <ElScrollbar max-height="min(46vh, 500px)" always>
-                <div class="material-reference-dialog__attribute-grid">
-                  <div class="material-reference-dialog__attribute-header" role="row">
-                    <span role="columnheader">顺序</span>
-                    <span role="columnheader">属性名</span>
-                    <span role="columnheader">候选值</span>
-                    <span role="columnheader">配置</span>
-                    <span role="columnheader">操作</span>
-                  </div>
-                  <div
-                    v-for="(attribute, index) in formModel.attributes"
-                    :key="attribute.key"
-                    class="material-reference-dialog__attribute-row"
-                    role="row"
-                  >
-                    <div class="material-reference-dialog__attribute-order" role="cell">
-                      <span>{{ Number(index) + 1 }}</span>
-                      <div class="material-reference-dialog__row-actions">
-                        <ArtIconButton
-                          icon="ri:arrow-up-line"
-                          label="上移属性"
-                          :disabled="index === 0"
-                          @click="moveItem(formModel.attributes, Number(index), -1)"
-                        />
-                        <ArtIconButton
-                          icon="ri:arrow-down-line"
-                          label="下移属性"
-                          :disabled="index === formModel.attributes.length - 1"
-                          @click="moveItem(formModel.attributes, Number(index), 1)"
-                        />
-                      </div>
-                    </div>
-                    <div role="cell">
-                      <ElInput
-                        v-model="attribute.name"
-                        maxlength="40"
-                        placeholder="如 颜色"
-                        :aria-label="`第 ${Number(index) + 1} 项属性名`"
-                      />
-                    </div>
-                    <div class="material-reference-dialog__value-cell" role="cell">
-                      <div
-                        v-if="attribute.values.length"
-                        class="material-reference-dialog__value-list"
-                      >
-                        <span
-                          v-for="(value, valueIndex) in attribute.values"
-                          :key="`${attribute.key}-${value}`"
-                          class="material-reference-dialog__value-chip"
-                        >
-                          <span :title="value">{{ value }}</span>
-                          <ArtIconButton
-                            icon="ri:arrow-left-s-line"
-                            :label="`前移属性值 ${value}`"
-                            :disabled="valueIndex === 0"
-                            @click="moveItem(attribute.values, Number(valueIndex), -1)"
-                          />
-                          <ArtIconButton
-                            icon="ri:arrow-right-s-line"
-                            :label="`后移属性值 ${value}`"
-                            :disabled="valueIndex === attribute.values.length - 1"
-                            @click="moveItem(attribute.values, Number(valueIndex), 1)"
-                          />
-                          <ArtIconButton
-                            icon="ri:close-line"
-                            :label="`删除属性值 ${value}`"
-                            @click="attribute.values.splice(Number(valueIndex), 1)"
-                          />
-                        </span>
-                      </div>
-                      <span v-else class="material-reference-dialog__value-empty">
-                        暂无候选值，可直接输入后回车
-                      </span>
-                      <div class="material-reference-dialog__value-add">
-                        <ElInput
-                          v-model="valueDrafts[attribute.key]"
-                          maxlength="120"
-                          clearable
-                          placeholder="输入候选值"
-                          :aria-label="`为${attribute.name || '当前属性'}添加候选值`"
-                          @keyup.enter="addAttributeValue(attribute)"
-                        />
-                        <ElButton plain @click="addAttributeValue(attribute)">
-                          <ArtSvgIcon icon="ri:add-line" />添加
-                        </ElButton>
-                      </div>
-                    </div>
-                    <div class="material-reference-dialog__attribute-flags" role="cell">
-                      <ElCheckbox v-model="attribute.required">必填</ElCheckbox>
-                      <ElSwitch
-                        v-model="attribute.enabled"
-                        inline-prompt
-                        active-text="启"
-                        inactive-text="停"
-                        :aria-label="`${attribute.name || '当前属性'}启用状态`"
-                      />
-                    </div>
-                    <div role="cell">
-                      <ArtIconButton
-                        icon="ri:delete-bin-line"
-                        label="删除属性"
-                        @click="removeAttribute(Number(index))"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </ElScrollbar>
-            </div>
-            <div v-else class="material-reference-dialog__attribute-empty">
-              <ArtSvgIcon icon="ri:list-check-3" />
-              <strong>尚未添加属性</strong>
-              <span>点击“新增属性”建立属性名，再逐项维护候选值。</span>
-            </div>
+              @row-drag-end="handleAttributeDragEnd"
+              @keydown="handleAttributeReorderKeydown"
+            />
           </div>
         </template>
 
@@ -248,15 +147,24 @@
   </ArtDialog>
 </template>
 
-<script setup lang="ts">
-  import { ElMessage, type FormRules } from 'element-plus'
-  import { cloneDeep } from 'lodash-es'
+<script setup lang="tsx">
+  import {
+    ElCheckbox,
+    ElInput,
+    ElInputTag,
+    ElMessage,
+    ElSwitch,
+    type FormRules
+  } from 'element-plus'
+  import { cloneDeep, uniqBy } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import type { ColumnOption } from '@/types/component'
   import { useUserStore } from '@/store/modules/user'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import {
@@ -323,7 +231,6 @@
   const currentKind = ref<MaterialReferenceKind>('unit-of-measure')
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
   const unitOptions = ref<UnitOfMeasure[]>([])
-  const valueDrafts = reactive<Record<string, string>>({})
   const initialForm = (): ReferenceFormModel => ({
     id: undefined,
     tenantId: '',
@@ -648,6 +555,101 @@
       ? `共 ${form.model.attributes.length} 个属性、${attributeValueCount.value} 个候选值`
       : '从第一项属性开始建立结构化值域'
   )
+  const attributeColumns: ColumnOption<MaterialAttributeDefinition>[] = [
+    {
+      prop: 'order',
+      label: '顺序',
+      width: 100,
+      draggable: true,
+      showOverflowTooltip: false,
+      formatter: (row) => (
+        <span class="inline-grid size-7 place-items-center rounded-full bg-[var(--el-color-primary-light-9)] text-xs text-[var(--theme-color)] tabular-nums">
+          {formModel.attributes.indexOf(row) + 1}
+        </span>
+      )
+    },
+    {
+      prop: 'name',
+      label: '属性名',
+      minWidth: 205,
+      showOverflowTooltip: false,
+      formatter: (row) => (
+        <ElInput
+          v-model={row.name}
+          maxlength={40}
+          placeholder="如 颜色"
+          aria-label={`第 ${formModel.attributes.indexOf(row) + 1} 项属性名`}
+          class="w-full!"
+        />
+      )
+    },
+    {
+      prop: 'values',
+      label: '候选值',
+      minWidth: 500,
+      showOverflowTooltip: false,
+      formatter: (row) => (
+        <ElInputTag
+          v-model={row.values}
+          max={100}
+          maxlength={120}
+          draggable
+          placeholder="输入候选值，按回车添加"
+          aria-label={`为${row.name || '当前属性'}添加候选值`}
+          class="w-full!"
+          onChange={() => normalizeAttributeValues(row)}
+        />
+      )
+    },
+    {
+      prop: 'settings',
+      label: '配置',
+      width: 145,
+      showOverflowTooltip: false,
+      formatter: (row) => (
+        <div class="flex min-h-9 items-center justify-between gap-2">
+          <ElCheckbox v-model={row.required}>必填</ElCheckbox>
+          <ElSwitch
+            v-model={row.enabled}
+            inlinePrompt
+            activeText="启"
+            inactiveText="停"
+            aria-label={`${row.name || '当前属性'}启用状态`}
+          />
+        </div>
+      )
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 66,
+      fixed: 'right',
+      showOverflowTooltip: false,
+      formatter: (row) => (
+        <ArtIconButton
+          icon="ri:delete-bin-line"
+          label="删除属性"
+          onClick={() => removeAttribute(formModel.attributes.indexOf(row))}
+        />
+      )
+    }
+  ]
+  const handleAttributeDragEnd = (payload: { oldIndex?: number; newIndex?: number }): void => {
+    const { oldIndex, newIndex } = payload
+    if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+    const [attribute] = formModel.attributes.splice(oldIndex, 1)
+    if (attribute) formModel.attributes.splice(newIndex, 0, attribute)
+  }
+  const handleAttributeReorderKeydown = (event: KeyboardEvent): void => {
+    if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const key = target.closest<HTMLElement>('.art-table__drag-handle')?.dataset.rowKey
+    const index = formModel.attributes.findIndex((attribute) => attribute.key === key)
+    if (index < 0) return
+    event.preventDefault()
+    moveItem(formModel.attributes, index, event.key === 'ArrowUp' ? -1 : 1)
+  }
   function moveItem<T>(items: T[], index: number, offset: number): void {
     const target = index + offset
     if (target < 0 || target >= items.length) return
@@ -662,25 +664,22 @@
       required: false,
       enabled: true
     })
-    valueDrafts[key] = ''
   }
-  const addAttributeValue = (attribute: MaterialAttributeDefinition): void => {
-    const value = (valueDrafts[attribute.key] ?? '').trim()
-    if (!value) return
-    if (attribute.values.some((item) => item.toLowerCase() === value.toLowerCase())) {
-      ElMessage.warning('该属性值已存在')
-      return
-    }
-    if (attribute.values.length >= 100) {
+  const normalizeAttributeValues = (attribute: MaterialAttributeDefinition): void => {
+    const normalized = attribute.values.map((value) => value.trim()).filter(Boolean)
+    if (normalized.length > 100) {
       ElMessage.warning('单个属性最多维护 100 个属性值')
-      return
+      normalized.length = 100
     }
-    attribute.values.push(value)
-    valueDrafts[attribute.key] = ''
+    const unique = uniqBy(normalized, (value) => value.toLowerCase())
+    if (unique.length !== normalized.length) {
+      ElMessage.warning('该属性值已存在')
+    }
+    attribute.values = unique
   }
   const removeAttribute = (index: number): void => {
-    const [removed] = form.model.attributes.splice(index, 1)
-    if (removed) delete valueDrafts[removed.key]
+    if (index < 0) return
+    form.model.attributes.splice(index, 1)
   }
   const addSegment = (): void => {
     if (form.model.segments.length < 5) form.model.segments.push({ source: 'fixed', value: '' })
@@ -761,15 +760,11 @@
   }
   const handleOpen = async (data: ReferenceDialogOpenData): Promise<void> => {
     Object.assign(form.model, initialForm())
-    Object.keys(valueDrafts).forEach((key) => delete valueDrafts[key])
     currentKind.value = data.kind
     tenantOptions.value = data.tenantOptions
     form.model.tenantId = data.row?.tenantId || data.tenantId
     unitOptions.value = []
     if (data.row) Object.assign(form.model, cloneDeep(data.row))
-    form.model.attributes.forEach((attribute) => {
-      valueDrafts[attribute.key] = ''
-    })
     if (data.copy) {
       form.model.id = undefined
       form.model.nextValue = 1
@@ -920,145 +915,47 @@
     }
 
     &__attribute-table {
-      overflow: hidden;
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--el-border-radius-base);
+      min-width: 0;
+      height: auto !important;
 
-      :deep(.el-scrollbar__bar.is-horizontal) {
-        height: 8px;
+      :deep(.el-table) {
+        height: auto;
+        margin-top: 0;
+      }
+
+      :deep(.el-table__body td.el-table__cell) {
+        padding: 12px 0;
+        vertical-align: top;
+      }
+
+      :deep(.el-table__body-wrapper .el-scrollbar__bar.is-horizontal) {
+        top: 0;
+        bottom: auto;
+      }
+
+      :deep(.art-table__cell-content) {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+      }
+
+      :deep(.art-table__cell-value) {
+        display: block;
+        flex: 1;
+        width: 100%;
+        min-width: 0;
+        overflow: visible;
+        white-space: normal;
       }
     }
 
-    &__attribute-grid {
-      min-width: 920px;
-    }
-
-    &__attribute-header,
-    &__attribute-row {
-      display: grid;
-      grid-template-columns: 96px minmax(140px, 0.7fr) minmax(360px, 1.8fr) 132px 48px;
-      gap: 12px;
-      align-items: center;
-      padding: 10px 12px;
-    }
-
-    &__attribute-header {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      min-height: 44px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--el-text-color-secondary);
-      background: var(--art-gray-100);
-      border-bottom: 1px solid var(--el-border-color-lighter);
-    }
-
-    &__attribute-row {
-      align-items: start;
-      background: var(--default-box-color);
-
-      + .material-reference-dialog__attribute-row {
-        border-top: 1px solid var(--el-border-color-lighter);
-      }
-    }
-
-    &__attribute-order,
-    &__attribute-flags,
     &__row-actions {
       display: flex;
       gap: 4px;
       align-items: center;
-    }
-
-    &__attribute-order > span {
-      display: grid;
-      flex: none;
-      place-items: center;
-      width: 26px;
-      height: 26px;
-      font-size: 11px;
-      font-variant-numeric: tabular-nums;
-      color: var(--theme-color);
-      background: color-mix(in srgb, var(--theme-color) 8%, var(--default-box-color));
-      border-radius: 50%;
-    }
-
-    &__attribute-flags {
-      justify-content: space-between;
-      min-height: 32px;
-    }
-
-    &__value-cell {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    &__value-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    &__value-empty {
-      min-height: 20px;
-      font-size: 11px;
-      font-weight: 400;
-      line-height: 20px;
-      color: var(--el-text-color-placeholder);
-    }
-
-    &__value-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 30px;
-      padding: 1px 2px 1px 9px;
-      color: var(--el-text-color-regular);
-      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
-      border: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--el-border-color));
-      border-radius: var(--el-border-radius-base);
-
-      > span:first-child {
-        max-width: 160px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-
-    &__value-add {
-      display: grid;
-      grid-template-columns: minmax(150px, 220px) auto;
-      gap: 6px;
-      justify-content: start;
-    }
-
-    &__attribute-empty {
-      display: grid;
-      place-items: center;
-      min-height: 150px;
-      padding: 24px;
-      color: var(--el-text-color-secondary);
-      text-align: center;
-      background: var(--art-gray-100);
-      border: 1px dashed var(--el-border-color);
-      border-radius: var(--el-border-radius-base);
-
-      svg {
-        margin-bottom: 8px;
-        font-size: 28px;
-        color: var(--theme-color);
-      }
-
-      strong {
-        color: var(--el-text-color-primary);
-      }
-
-      span {
-        margin-top: 4px;
-        font-size: 12px;
-      }
     }
 
     &__builder-row {
