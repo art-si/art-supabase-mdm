@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="warehouse-group-panel"
     title="仓库分组"
     subtitle="选择分组后查看本级及下级仓库"

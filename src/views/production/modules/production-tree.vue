@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="production-tree"
     title="部门 / 产线"
     subtitle="按组织范围查看生产配置"

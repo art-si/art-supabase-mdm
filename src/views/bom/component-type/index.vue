@@ -21,6 +21,7 @@
         >
           <template #primary>
             <ArtSectionCard
+              :show-scrollbar="false"
               class="component-type-page__navigation"
               body-class="component-type-page__navigation-body"
               title="行业分组"

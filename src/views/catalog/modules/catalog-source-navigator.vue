@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="catalog-navigator"
     title="主档分类"
     subtitle="按业务类型定位资料"

@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="bom-group-panel"
     title="BOM 分组"
     subtitle="选择分组后联动筛选右侧 BOM"

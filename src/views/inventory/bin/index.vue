@@ -22,6 +22,7 @@
       >
         <template #primary>
           <ArtSectionCard
+            :show-scrollbar="false"
             title="仓库"
             root-class="flex min-h-0 flex-col"
             body-class="min-h-0 flex-1"
@@ -74,6 +75,7 @@
         >
           <template #primary>
             <ArtSectionCard
+              :show-scrollbar="false"
               title="库区"
               root-class="flex min-h-0 flex-col"
               body-class="min-h-0 flex-1"
@@ -133,6 +135,7 @@
           </template>
 
           <ArtSectionCard
+            :show-scrollbar="false"
             title="库位"
             :subtitle="
               selectedWarehouse?.enableLocations

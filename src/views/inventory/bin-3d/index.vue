@@ -48,6 +48,7 @@
       >
         <template #primary>
           <ArtSectionCard
+            :show-scrollbar="false"
             title="货架库区"
             :subtitle="selectedWarehouse?.enableZones ? `${zones.length} 个库区` : '仓库直挂库位'"
             root-class="flex min-h-0 flex-col"
@@ -274,6 +275,7 @@
 
           <template #default>
             <ArtSectionCard
+              :show-scrollbar="false"
               title="货架详情"
               :subtitle="selectedRack ? `${selectedRack.code} 货架` : '选择货架或层位'"
               root-class="flex min-h-0 flex-col"

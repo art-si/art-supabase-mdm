@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="material-category-tree"
     title="分类层级"
     subtitle="选择节点联动筛选右侧分类"

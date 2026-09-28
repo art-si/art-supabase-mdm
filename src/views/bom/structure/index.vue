@@ -35,6 +35,7 @@
         >
           <template #primary>
             <ArtSectionCard
+              :show-scrollbar="false"
               class="bom-structure-page__navigator"
               body-class="bom-structure-page__navigator-body"
               title="树形 BOM"

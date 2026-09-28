@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="master-group-panel"
     :title="title"
     subtitle="选择分组后查看本级及下级数据"

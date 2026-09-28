@@ -31,6 +31,7 @@
       </div>
 
       <ArtSectionCard
+        :show-scrollbar="false"
         v-show="viewMode === 'calendar'"
         class="holiday-page__calendar-card"
         title="假期日历"

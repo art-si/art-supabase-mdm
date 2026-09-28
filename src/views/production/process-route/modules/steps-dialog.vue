@@ -32,6 +32,7 @@
 
       <div class="route-maintenance__workspace">
         <ArtSectionCard
+          :show-scrollbar="false"
           class="route-maintenance__sequences"
           title="工序序列"
           :subtitle="`${sequenceState.rows.length} 条路径 · 标准主线与并行分支`"

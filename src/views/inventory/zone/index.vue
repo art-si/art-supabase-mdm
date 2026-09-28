@@ -17,6 +17,7 @@
         class="grid min-h-0 gap-4 lg:flex-1 lg:grid-cols-[260px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]"
       >
         <ArtSectionCard
+          :show-scrollbar="false"
           title="仓库"
           subtitle="选择已启用库区的仓库"
           root-class="flex min-h-0 flex-col"
@@ -68,6 +69,7 @@
         </ArtSectionCard>
 
         <ArtSectionCard
+          :show-scrollbar="false"
           title="库区"
           :subtitle="
             selectedWarehouse?.enableZones
