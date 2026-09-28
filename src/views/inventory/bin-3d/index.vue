@@ -138,7 +138,6 @@
         >
           <template #primary>
             <ArtSectionCard
-              :show-scrollbar="false"
               title="库位空间"
               :subtitle="
                 selectedZone
