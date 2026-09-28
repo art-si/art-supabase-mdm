@@ -138,6 +138,7 @@
         >
           <template #primary>
             <ArtSectionCard
+              :show-scrollbar="false"
               title="库位空间"
               :subtitle="
                 selectedZone
@@ -188,6 +189,19 @@
                           aria-label="列间距"
                         />
                         <span class="w-9 text-right tabular-nums">{{ spacing.column }}px</span>
+                      </label>
+                      <label class="flex items-center gap-3 text-xs">
+                        <span class="w-8 shrink-0">排距</span>
+                        <ElSlider
+                          v-model="spacing.row"
+                          class="min-w-0 flex-1"
+                          :min="8"
+                          :max="80"
+                          :step="4"
+                          :show-tooltip="false"
+                          aria-label="货架排间距"
+                        />
+                        <span class="w-9 text-right tabular-nums">{{ spacing.row }}px</span>
                       </label>
                       <label class="flex items-center gap-3 text-xs">
                         <span class="w-8 shrink-0">层距</span>
@@ -252,6 +266,7 @@
                   :selected-rack-code="selectedRack?.code || ''"
                   :selected-bin-id="selectedBinId"
                   :column-gap="spacing.column"
+                  :row-gap="spacing.row"
                   :level-gap="spacing.level"
                   :view-mode="viewMode"
                   :tone-for="binTone"
@@ -425,7 +440,11 @@
   const binError = ref('')
   const detailDialogRef = ref<InstanceType<typeof InventoryDetailDialog>>()
   const sceneRef = ref<InstanceType<typeof RackScene>>()
-  const spacing = useLocalStorage('mdm-bin-3d-spacing', { column: 20, level: 8 })
+  const spacing = useLocalStorage(
+    'mdm-bin-3d-spacing',
+    { column: 20, row: 36, level: 8 },
+    { mergeDefaults: true }
+  )
   let loadSequence = 0
 
   const selectedWarehouse = computed(() =>

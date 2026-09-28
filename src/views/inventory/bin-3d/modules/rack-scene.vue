@@ -56,6 +56,7 @@
     selectedRackCode: string
     selectedBinId: string
     columnGap: number
+    rowGap: number
     levelGap: number
     viewMode: 'spatial' | 'top'
     toneFor: (bin: StorageBin) => BinTone
@@ -234,24 +235,15 @@
 
     const columnStep = BOX_WIDTH + 0.25 + props.columnGap / 42
     const levelStep = BOX_HEIGHT + 0.055 + props.levelGap / 52
-    const rackGap = 1.45
-    const rowGap = 2.7
-    const rowCount = Math.max(1, Math.ceil(Math.sqrt(props.racks.length * 0.75)))
-    const rows: RackGroup[][] = []
-    for (let index = 0; index < props.racks.length; index += rowCount)
-      rows.push(props.racks.slice(index, index + rowCount))
-    const positions: Array<{ rack: RackGroup; x: number; z: number; width: number }> = []
-    let maxX = 0
-    rows.forEach((row, rowIndex) => {
-      let cursorX = 0
-      row.forEach((rack) => {
-        const width = Math.max(BOX_WIDTH, (rack.columns.length - 1) * columnStep + BOX_WIDTH)
-        positions.push({ rack, x: cursorX, z: rowIndex * rowGap, width })
-        cursorX += width + rackGap
-      })
-      maxX = Math.max(maxX, cursorX - rackGap)
-    })
-    const maxZ = Math.max(BOX_DEPTH, (rows.length - 1) * rowGap + BOX_DEPTH)
+    const rowStep = BOX_DEPTH + 0.9 + props.rowGap / 40
+    const positions = props.racks.map((rack, rowIndex) => ({
+      rack,
+      x: 0,
+      z: rowIndex * rowStep,
+      width: Math.max(BOX_WIDTH, (rack.columns.length - 1) * columnStep + BOX_WIDTH)
+    }))
+    const maxX = Math.max(...positions.map(({ width }) => width))
+    const maxZ = (positions.length - 1) * rowStep + BOX_DEPTH
     const maxLevel = Math.max(
       1,
       ...props.racks.flatMap((rack) =>
@@ -414,7 +406,7 @@
   defineExpose({ resetView: fitCamera, focusBin })
 
   useResizeObserver(hostRef, resize)
-  watch(() => [props.racks, props.columnGap, props.levelGap], buildLayout)
+  watch(() => [props.racks, props.columnGap, props.rowGap, props.levelGap], buildLayout)
   watch(() => props.viewMode, fitCamera)
   watch(() => props.selectedBinId, updateSelection)
   onMounted(() => {
