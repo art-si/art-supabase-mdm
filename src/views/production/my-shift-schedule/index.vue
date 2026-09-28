@@ -43,7 +43,10 @@
         <template #actions>
           <div class="my-shift-schedule__month-control">
             <ArtIconButton label="上个月" icon="ri:arrow-left-s-line" @click="moveMonth(-1)" />
-            <ElButton size="small" @click="returnToCurrentMonth">本月</ElButton>
+            <ElButton size="small" @click="returnToCurrentMonth">
+              <template #icon><ArtSvgIcon icon="ri:calendar-line" /></template>
+              本月
+            </ElButton>
             <ArtIconButton label="下个月" icon="ri:arrow-right-s-line" @click="moveMonth(1)" />
           </div>
         </template>

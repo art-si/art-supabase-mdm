@@ -1808,6 +1808,7 @@
                   onClick={() => void openStep(row)}
                 />
                 <ArtButtonTable
+                  type="add"
                   icon="ri:file-copy-line"
                   label="复制工序"
                   permission="MdmProcessRoute:Edit"

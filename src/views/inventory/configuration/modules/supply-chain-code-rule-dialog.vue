@@ -378,12 +378,12 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 132,
+      width: 144,
       fixed: 'right',
       formatter: (row) => {
         const index = rowIndex(row)
         return (
-          <div class="code-rule-dialog__row-actions">
+          <>
             <ArtIconButton
               icon="ri:arrow-up-line"
               label={`上移第 ${index + 1} 个编码属性`}
@@ -397,12 +397,12 @@
               onClick={() => moveSegment(index, 1)}
             />
             <ArtIconButton
-              class="code-rule-dialog__delete"
+              tone="danger"
               icon="ri:close-line"
               label={`删除第 ${index + 1} 个编码属性`}
               onClick={() => removeSegment(index)}
             />
-          </div>
+          </>
         )
       }
     }
@@ -595,18 +595,6 @@
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
-    }
-
-    :deep(.code-rule-dialog__row-actions) {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-    }
-
-    :deep(.code-rule-dialog__delete) {
-      color: var(--el-color-danger);
     }
 
     :deep(.el-input-number),

@@ -34,6 +34,7 @@
             :disabled="form.model.items.length >= 200"
             @click="form.model.items.push(createTask())"
           >
+            <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
             添加任务项
           </ElButton>
         </template>

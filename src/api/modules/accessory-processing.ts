@@ -25,6 +25,15 @@ export interface AccessoryProcessingItem {
   sketch: AccessorySketchBounds | null
   sketchPath?: string | null
   materialId?: string | null
+  materialCode?: string | null
+  specificationModel?: string | null
+  baseUnitId?: string | null
+  materialTypeId?: string | null
+  materialSource?: 'purchase' | 'self_made' | 'outsourcing'
+  categoryId?: string | null
+  baseUnit?: { unitName: string } | null
+  materialType?: { typeName: string } | null
+  category?: { categoryName: string } | null
 }
 
 export interface AccessoryProcessingList {
@@ -37,7 +46,7 @@ export interface AccessoryProcessingList {
   projectId: string | null
   customerId: string | null
   categoryId: string | null
-  status: 'draft' | 'generated'
+  status: 'draft' | 'materials_ready' | 'bom_ready' | 'generated'
   confidence: number
   warnings: string[]
   createTime: string
@@ -119,8 +128,10 @@ function parseRecognitionItem(value: unknown): AccessoryProcessingItem | null {
 }
 
 export async function fetchAccessoryRecognitions(
-  tenantId: string | null
+  tenantId: string | null,
+  includeTenantRecords = false
 ): Promise<AccessoryRecognitionRecord[]> {
+  if (includeTenantRecords && !tenantId) return []
   const { data: authData, error: authError } = await supabase.auth.getUser()
   if (authError || !authData.user)
     throw new Error('登录状态已失效，请重新登录', { cause: authError })
@@ -130,9 +141,9 @@ export async function fetchAccessoryRecognitions(
       'id,tenantId:tenant_id,createTime:create_time,proposedPayload:proposed_payload,metadata,confidence,warnings'
     )
     .eq('feature', 'accessory_processing_ocr')
-    .eq('auth_user_id', authData.user.id)
     .order('create_time', { ascending: false })
     .limit(50)
+  if (!includeTenantRecords) query = query.eq('auth_user_id', authData.user.id)
   if (tenantId) query = query.eq('tenant_id', tenantId)
   const { data } = await responseHandle<RecognitionRow[]>(() => query, {
     breakReturn: true,
@@ -217,16 +228,12 @@ export interface AccessoryProjectOption {
   projectName: string
   projectCode: string
   tenantId: string
+  customerId: string | null
 }
 
 export interface AccessoryCustomerOption {
   id: string
   customerName: string
-}
-
-export interface AccessoryCategoryOption {
-  id: string
-  categoryName: string
 }
 
 export interface AccessoryWorkOrder {
@@ -237,6 +244,7 @@ export interface AccessoryWorkOrder {
   quantity: number
   lengthM: number
   status: string
+  sketchPath: string | null
 }
 
 export async function uploadAccessoryFile(
@@ -281,7 +289,7 @@ export async function fetchAccessoryLists(
   let query = supabase
     .from('mdm_accessory_processing_list')
     .select(
-      'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,projectName:project_name,drawingName:drawing_name,projectId:project_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,materialId:material_id)'
+      'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,projectName:project_name,drawingName:drawing_name,projectId:project_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,materialId:material_id,materialCode:material_code,specificationModel:specification_model,baseUnitId:base_unit_id,materialTypeId:material_type_id,materialSource:material_source,categoryId:category_id,baseUnit:mdm_unit_of_measure!accessory_item_unit_tenant_fk(unitName:unit_name),materialType:mdm_material_type!accessory_item_type_tenant_fk(typeName:type_name),category:mdm_material_category!accessory_item_category_tenant_fk(categoryName:category_name))'
     )
     .order('create_time', { ascending: false })
     .limit(100)
@@ -302,7 +310,9 @@ export async function fetchAccessoryProjects(tenantId: string): Promise<Accessor
     () =>
       supabase
         .from('mdm_project')
-        .select('id,tenantId:tenant_id,projectName:project_name,projectCode:project_code')
+        .select(
+          'id,tenantId:tenant_id,projectName:project_name,projectCode:project_code,customerId:customer_id'
+        )
         .eq('tenant_id', tenantId)
         .order('project_name')
         .limit(300),
@@ -324,23 +334,6 @@ export async function fetchAccessoryCustomers(
         .order('customer_name')
         .limit(300),
     { breakReturn: true, showErrorMessage: false, errorMessage: '客户列表加载失败，请重试' }
-  )
-  return data ?? []
-}
-
-export async function fetchAccessoryCategories(
-  tenantId: string
-): Promise<AccessoryCategoryOption[]> {
-  const { data } = await responseHandle<AccessoryCategoryOption[]>(
-    () =>
-      supabase
-        .from('mdm_material_category')
-        .select('id,categoryName:category_name')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'enabled')
-        .order('category_name')
-        .limit(300),
-    { breakReturn: true, showErrorMessage: false, errorMessage: '物料分类加载失败，请重试' }
   )
   return data ?? []
 }
@@ -371,12 +364,46 @@ export async function saveAccessoryDraft(payload: {
   return data
 }
 
-export async function finalizeAccessoryList(id: string): Promise<void> {
-  await responseHandle(() => supabase.rpc('mdm_generate_accessory_processing', { p_list_id: id }), {
-    breakReturn: true,
-    showErrorMessage: false,
-    errorMessage: '生成失败，请检查项目、草图和物料信息'
-  })
+export type AccessoryGenerationStage = 'materials' | 'bom' | 'orders' | 'all'
+
+export async function setAccessoryProjectAssignment(payload: {
+  listId: string
+  projectId: string | null
+  customerId: string | null
+  projectName: string
+}): Promise<void> {
+  await responseHandle(
+    () =>
+      supabase.rpc('mdm_set_accessory_processing_project', {
+        p_list_id: payload.listId,
+        p_project_id: payload.projectId || null,
+        p_customer_id: payload.customerId || null,
+        p_project_name: payload.projectName
+      }),
+    {
+      breakReturn: true,
+      showErrorMessage: false,
+      errorMessage: '项目归属保存失败，请检查项目与客户'
+    }
+  )
+}
+
+export async function generateAccessoryStage(
+  id: string,
+  stage: AccessoryGenerationStage
+): Promise<void> {
+  await responseHandle(
+    () =>
+      supabase.rpc('mdm_generate_accessory_processing_stage', {
+        p_list_id: id,
+        p_stage: stage
+      }),
+    {
+      breakReturn: true,
+      showErrorMessage: false,
+      errorMessage: '生成失败，请检查项目、草图和物料信息'
+    }
+  )
 }
 
 export async function fetchAccessoryWorkOrders(listId: string): Promise<AccessoryWorkOrder[]> {
@@ -385,7 +412,7 @@ export async function fetchAccessoryWorkOrders(listId: string): Promise<Accessor
       supabase
         .from('mdm_accessory_work_order')
         .select(
-          'id,orderNo:order_no,itemId:item_id,materialId:material_id,quantity,lengthM:length_m,status'
+          'id,orderNo:order_no,itemId:item_id,materialId:material_id,quantity,lengthM:length_m,status,sketchPath:sketch_path'
         )
         .eq('list_id', listId)
         .order('order_no'),

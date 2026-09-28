@@ -19,7 +19,10 @@
         :preserve-content-structure="true"
       >
         <template #actions>
-          <ElButton @click="downloadTemplate">下载统一模板</ElButton>
+          <ElButton @click="downloadTemplate">
+            <template #icon><ArtSvgIcon icon="ri:download-2-line" /></template>
+            下载统一模板
+          </ElButton>
         </template>
         <div class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
           <div class="min-w-0 space-y-3">
@@ -82,17 +85,19 @@
         empty-description="上传清单并点击识别，或在下方打开识别记录、已保存草稿。"
       >
         <template #actions>
-          <ElTag v-if="draft.status === 'generated'" type="success">已生成</ElTag>
-          <ElTag v-else-if="draft.id" type="warning">待生成</ElTag>
+          <ElTag v-if="draft.status === 'generated'" type="success">工单已生成</ElTag>
+          <ElTag v-else-if="draft.status === 'bom_ready'" type="primary">BOM 已生成</ElTag>
+          <ElTag v-else-if="draft.status === 'materials_ready'" type="primary">物料已生成</ElTag>
+          <ElTag v-else-if="draft.id" type="warning">已保存草稿</ElTag>
         </template>
         <template #error-action>
           <ElButton type="primary" :disabled="!workspace.pages.length" @click="recognize"
             >重新识别</ElButton
           >
         </template>
-        <div class="space-y-4 pt-4">
+        <div class="space-y-5 pt-4">
           <div
-            v-if="!isPlatformSuper || draft.status === 'generated'"
+            v-if="!canSaveDraft || !['draft', 'materials_ready'].includes(draft.status)"
             class="grid gap-4 rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 md:grid-cols-3 dark:bg-[var(--art-gray-200)]"
           >
             <div class="min-w-0">
@@ -112,77 +117,92 @@
               <p class="mt-1 text-sm font-medium">{{ draft.id ? '已保存清单' : '识别预览' }}</p>
             </div>
           </div>
-          <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label class="block min-w-0 space-y-2 text-sm font-medium"
-              >项目名称
-              <ElInput
-                v-model="draft.projectName"
-                maxlength="160"
-                placeholder="识别或手动填写项目名称"
-              />
-            </label>
-            <label class="block min-w-0 space-y-2 text-sm font-medium"
-              >关联已有项目
-              <ElSelect
-                v-model="draft.projectId"
-                clearable
-                filterable
-                placeholder="可选；留空将按名称自动查找或创建"
-                class="w-full"
-                :disabled="workspace.projectsLoading"
-                @change="onProjectSelected"
-              >
-                <ElOption
-                  v-for="project in workspace.projects"
-                  :key="project.id"
-                  :value="project.id"
-                  :label="`${project.projectName} · ${project.projectCode}`"
-                />
-              </ElSelect>
-            </label>
-            <label class="block min-w-0 space-y-2 text-sm font-medium"
-              >图纸名称
-              <ElInput
-                v-model="draft.drawingName"
-                maxlength="160"
-                placeholder="识别或手动填写图纸名称"
-              />
-            </label>
-            <label v-if="isPlatformSuper" class="block min-w-0 space-y-2 text-sm font-medium"
-              >项目客户
-              <ElSelect
-                v-model="draft.customerId"
-                clearable
-                filterable
-                placeholder="新建项目时必选"
-                class="w-full"
-                :disabled="Boolean(draft.projectId)"
-              >
-                <ElOption
-                  v-for="customer in workspace.customers"
-                  :key="customer.id"
-                  :value="customer.id"
-                  :label="customer.customerName"
-                />
-              </ElSelect>
-            </label>
-            <label v-if="isPlatformSuper" class="block min-w-0 space-y-2 text-sm font-medium"
-              >物料分类
-              <ElSelect
-                v-model="draft.categoryId"
-                clearable
-                filterable
-                placeholder="选择加工件所属分类"
-                class="w-full"
-              >
-                <ElOption
-                  v-for="category in workspace.categories"
-                  :key="category.id"
-                  :value="category.id"
-                  :label="category.categoryName"
-                />
-              </ElSelect>
-            </label>
+          <div
+            v-else
+            class="rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 dark:bg-[var(--art-gray-200)]"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h3 class="text-sm font-semibold">{{
+                draft.status === 'materials_ready' ? '项目归属' : '清单归属'
+              }}</h3>
+              <p class="text-xs text-gray-600 dark:text-gray-300">
+                {{
+                  draft.status === 'materials_ready'
+                    ? '关联已有项目，或选择项目客户后生成项目 BOM。'
+                    : '关联已有项目，或填写名称与客户后在生成时创建项目。'
+                }}
+              </p>
+            </div>
+            <ArtForm
+              :model-value="draft"
+              :items="projectFormItems"
+              :span="8"
+              :gutter="16"
+              label-position="top"
+              :show-reset="false"
+              :show-submit="false"
+              root-class="accessory-inline-form mt-4"
+            >
+              <template #projectId>
+                <ElSelect
+                  v-model="draft.projectId"
+                  clearable
+                  filterable
+                  placeholder="留空按名称查找或创建"
+                  class="w-full"
+                  :disabled="workspace.projectsLoading"
+                  @change="onProjectSelected"
+                >
+                  <ElOption
+                    v-for="project in workspace.projects"
+                    :key="project.id"
+                    :value="project.id"
+                    :label="`${project.projectName} · ${project.projectCode}`"
+                  />
+                </ElSelect>
+              </template>
+              <template #customerId>
+                <ElSelect
+                  v-model="draft.customerId"
+                  clearable
+                  filterable
+                  :placeholder="draft.projectId ? '已有项目未关联客户' : '新建项目时必选'"
+                  class="w-full"
+                  :disabled="Boolean(draft.projectId)"
+                >
+                  <ElOption
+                    v-for="customer in workspace.customers"
+                    :key="customer.id"
+                    :value="customer.id"
+                    :label="customer.customerName"
+                  />
+                </ElSelect>
+              </template>
+              <template #categoryId>
+                <ElSelect
+                  v-model="draft.categoryId"
+                  clearable
+                  filterable
+                  placeholder="选择加工件所属分类"
+                  class="w-full"
+                  @change="onDefaultCategoryChanged"
+                >
+                  <ElOption
+                    v-for="category in workspace.categories"
+                    :key="category.id"
+                    :value="category.id"
+                    :label="category.categoryName"
+                  />
+                </ElSelect>
+              </template>
+            </ArtForm>
+            <p
+              v-if="draft.status === 'materials_ready'"
+              class="text-xs leading-5 text-gray-600 dark:text-gray-300"
+            >
+              已关联项目时自动沿用其客户；如需选择其他客户，请先清除“关联已有项目”。未关联项目时，系统会按名称查找；找不到则使用所选客户创建。保存项目归属或直接生成
+              BOM 均会保存当前选择。
+            </p>
           </div>
           <ElAlert v-if="draft.warnings.length" type="warning" :closable="false" show-icon>
             <template #title>待核对提示 · {{ draft.warnings.length }} 项</template>
@@ -190,43 +210,81 @@
               <li v-for="(warning, index) in draft.warnings" :key="index">{{ warning }}</li>
             </ul>
           </ElAlert>
-          <div class="space-y-2">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="text-sm text-gray-600 dark:text-gray-300">
-                按原表行查看 · 已展开 {{ expandedRowKeys.length }}/{{ rowGroups.length }} 行
+          <div
+            v-if="canManageAccessory && draft.status !== 'generated'"
+            class="mt-5! flex flex-wrap items-center justify-between gap-4 rounded-[var(--custom-radius)] border border-gray-200 bg-[var(--art-gray-100)] p-4 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
+          >
+            <div class="min-w-0 flex-1 basis-64">
+              <p class="text-sm font-semibold">
+                {{
+                  draft.status === 'draft'
+                    ? missingSketchCount
+                      ? `${missingSketchCount} 件加工件待补草图`
+                      : '校对完成后保存清单'
+                    : '继续生成业务数据'
+                }}
               </p>
-              <div class="flex items-center gap-2">
-                <ElButton
-                  link
-                  type="primary"
-                  :disabled="expandedRowKeys.length === rowGroups.length"
-                  @click="expandedRowKeys = rowGroups.map((group) => group.key)"
-                  >展开全部</ElButton
-                >
-                <ElButton
-                  link
-                  :disabled="expandedRowKeys.length === 0"
-                  @click="expandedRowKeys = []"
-                  >收起全部</ElButton
-                >
-              </div>
+              <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                {{
+                  draft.status === 'draft'
+                    ? '保存后可在下方数据列表查看；生成前需为每件加工件关联独立草图。'
+                    : '按物料、项目 BOM、生产工单的顺序执行，或一键完成剩余步骤。'
+                }}
+              </p>
             </div>
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+              <ElButton
+                v-if="draft.status === 'draft' || draft.status === 'materials_ready'"
+                v-auth="'MdmAccessoryProcessing:SaveDraft'"
+                :disabled="workspace.saving || workspace.generating"
+                :loading="workspace.saving"
+                @click="draft.status === 'draft' ? saveDraft() : saveProjectAssignment()"
+                >{{ draft.status === 'draft' ? '保存配件加工清单' : '保存项目归属' }}</ElButton
+              >
+              <ElButton
+                v-auth="'MdmAccessoryProcessing:GenerateMaterial'"
+                :disabled="draft.status !== 'draft' || !draft.items.length || workspace.generating"
+                :loading="workspace.generatingStage === 'materials'"
+                @click="generateStage('materials')"
+                >生成物料编码</ElButton
+              >
+              <ElButton
+                v-auth="'MdmAccessoryProcessing:GenerateBom'"
+                :disabled="draft.status !== 'materials_ready' || workspace.generating"
+                :loading="workspace.generatingStage === 'bom'"
+                @click="generateStage('bom')"
+                >生成项目 BOM</ElButton
+              >
+              <ElButton
+                v-auth="'MdmAccessoryProcessing:GenerateWorkOrder'"
+                :disabled="draft.status !== 'bom_ready' || workspace.generating"
+                :loading="workspace.generatingStage === 'orders'"
+                @click="generateStage('orders')"
+                >生成生产工单</ElButton
+              >
+              <ElButton
+                v-auth="'MdmAccessoryProcessing:Generate'"
+                type="primary"
+                :disabled="!draft.items.length || workspace.generating"
+                :loading="workspace.generatingStage === 'all'"
+                @click="generateStage('all')"
+                >一键生成生产工单</ElButton
+              >
+            </div>
+          </div>
+          <div class="space-y-2">
             <ElCollapse v-model="expandedRowKeys" class="accessory-result-collapse">
               <ElCollapseItem v-for="group in rowGroups" :key="group.key" :name="group.key">
                 <template #title>
                   <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1">
-                    <span class="shrink-0 text-xs font-medium text-gray-600 dark:text-gray-300"
+                    <span class="shrink-0 text-xs text-gray-600 dark:text-gray-300"
                       >原表第 {{ group.rowNo }} 行</span
                     >
-                    <strong class="min-w-0 break-words text-sm">{{
+                    <strong class="min-w-0 break-words text-sm font-semibold">{{
                       group.entries[0]?.item.name || '未命名构件'
                     }}</strong>
                     <span class="text-xs text-gray-600 dark:text-gray-300"
-                      >{{ group.entries.length }} 个加工件</span
-                    >
-                    <span
-                      class="min-w-0 break-words text-xs tabular-nums text-gray-600 dark:text-gray-300"
-                      >长度 {{ group.lengthSummary }}</span
+                      >{{ group.entries.length }} 个加工件 · {{ group.lengthSummary }}</span
                     >
                     <ElTag v-if="group.hasWarning" type="warning" size="small">需核对</ElTag>
                   </div>
@@ -236,56 +294,59 @@
                     v-for="{ item, index } in group.entries"
                     :key="item.id || `${item.rowNo}-${index}`"
                   >
-                    <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+                    <div class="flex min-w-0 flex-wrap items-center gap-4 px-4 py-3">
                       <span
-                        class="w-11 shrink-0 text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300"
+                        class="w-9 shrink-0 text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300"
                         >#{{ String(index + 1).padStart(2, '0') }}</span
                       >
-                      <div class="min-w-20">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">长度</p>
-                        <p class="mt-0.5 text-base font-semibold tabular-nums"
+                      <div class="min-w-28">
+                        <p class="text-xs text-gray-600 dark:text-gray-300">加工长度</p>
+                        <p class="mt-0.5 text-lg font-semibold tabular-nums leading-6"
                           >{{ item.lengthM.toFixed(3) }}
-                          <span class="text-xs font-normal">m</span></p
+                          <span class="text-xs font-normal text-gray-600 dark:text-gray-300"
+                            >m</span
+                          ></p
                         >
                       </div>
-                      <div class="min-w-16">
+                      <div class="min-w-14">
                         <p class="text-xs text-gray-600 dark:text-gray-300">数量</p>
-                        <p class="mt-0.5 text-sm font-medium tabular-nums"
+                        <p class="mt-0.5 text-sm font-semibold tabular-nums"
                           >{{ item.quantity }} 件</p
                         >
                       </div>
-                      <div class="min-w-20">
+                      <div class="min-w-18">
                         <p class="text-xs text-gray-600 dark:text-gray-300">展宽</p>
                         <p class="mt-0.5 text-sm font-medium tabular-nums"
                           >{{ item.widthMm ?? '—' }} mm</p
                         >
                       </div>
-                      <div class="min-w-28 flex-1">
+                      <div class="min-w-36 flex-1">
                         <p class="text-xs text-gray-600 dark:text-gray-300">材质与颜色</p>
                         <p class="mt-0.5 break-words text-sm font-medium">{{
                           item.materialColor || '待确认'
                         }}</p>
                       </div>
-                      <div class="min-w-32 flex-1">
+                      <div v-if="item.remark" class="min-w-36 flex-1">
                         <p class="text-xs text-gray-600 dark:text-gray-300">备注</p>
-                        <p class="mt-0.5 break-words text-sm">{{ item.remark || '—' }}</p>
+                        <p class="mt-0.5 break-words text-sm">{{ item.remark }}</p>
                       </div>
-                      <div class="w-20 shrink-0">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">独立草图</p>
+                      <div class="flex w-28 shrink-0 items-center gap-2">
                         <ElImage
                           v-if="workspace.sketchUrls[index]"
                           :src="workspace.sketchUrls[index]"
                           :preview-src-list="[workspace.sketchUrls[index]]"
+                          :preview-teleported="true"
+                          :z-index="10000"
                           :alt="`${item.name} ${item.lengthM} 米加工草图`"
                           fit="contain"
-                          class="mt-1 h-14 w-20 rounded border border-gray-200 bg-white dark:border-gray-700"
+                          class="h-14 w-16 rounded border border-gray-200 bg-white dark:border-gray-700"
                         />
-                        <p v-else class="mt-1 text-xs text-amber-700 dark:text-amber-400"
-                          >待补草图</p
+                        <span v-else class="text-xs font-medium text-amber-700 dark:text-amber-400"
+                          >待补草图</span
                         >
                       </div>
                       <ElButton
-                        v-if="isPlatformSuper && draft.status !== 'generated'"
+                        v-if="canSaveDraft && draft.status === 'draft'"
                         link
                         type="primary"
                         :aria-label="`${editingIndex === index ? '收起' : '校对'}加工件 ${index + 1}`"
@@ -297,90 +358,65 @@
                       >
                     </div>
                     <div
-                      v-if="
-                        editingIndex === index && isPlatformSuper && draft.status !== 'generated'
-                      "
-                      class="grid gap-3 border-t border-gray-100 bg-[var(--art-gray-100)] px-4 py-4 md:grid-cols-2 xl:grid-cols-6 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
+                      v-if="editingIndex === index && canSaveDraft && draft.status === 'draft'"
+                      class="border-t border-gray-100 bg-[var(--art-gray-100)] px-4 py-5 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
                     >
-                      <label class="min-w-0 space-y-1 text-xs"
-                        >构件名称<ElInput v-model="item.name"
-                      /></label>
-                      <label class="min-w-0 space-y-1 text-xs"
-                        >展宽 mm<ElInputNumber
-                          v-model="item.widthMm"
-                          :min="0"
-                          :precision="1"
-                          controls-position="right"
-                          class="w-full!"
-                      /></label>
-                      <label class="min-w-0 space-y-1 text-xs"
-                        >长度 m<ElInputNumber
-                          v-model="item.lengthM"
-                          :min="0.001"
-                          :precision="3"
-                          controls-position="right"
-                          class="w-full!"
-                      /></label>
-                      <label class="min-w-0 space-y-1 text-xs"
-                        >数量 件<ElInputNumber
-                          v-model="item.quantity"
-                          :min="1"
-                          :precision="0"
-                          controls-position="right"
-                          class="w-full!"
-                      /></label>
-                      <label class="min-w-0 space-y-1 text-xs md:col-span-2"
-                        >材质与颜色<ElInput v-model="item.materialColor"
-                      /></label>
-                      <label class="min-w-0 space-y-1 text-xs md:col-span-2 xl:col-span-5"
-                        >备注<ElInput v-model="item.remark"
-                      /></label>
-                      <div class="space-y-1 text-xs"
-                        ><span>独立加工草图</span>
-                        <ArtUploadImage
-                          :model-value="workspace.sketchUrls[index] || ''"
-                          :upload-request="(file) => uploadSketch(file, index)"
-                          :show-resource-picker="false"
-                          title="补传草图"
-                          :size="96"
-                          @resource-change="(resources) => onSketchUploaded(resources, index)"
-                        />
+                      <div class="mb-4">
+                        <h4 class="text-sm font-semibold"
+                          >校对加工件 #{{ String(index + 1).padStart(2, '0') }}</h4
+                        >
+                        <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                          核对尺寸、数量及物料属性；每种长度对应独立加工件和草图。
+                        </p>
                       </div>
+                      <ArtForm
+                        :model-value="item"
+                        :items="correctionFormItems"
+                        :span="8"
+                        :gutter="16"
+                        label-position="top"
+                        :show-reset="false"
+                        :show-submit="false"
+                        root-class="accessory-inline-form"
+                      >
+                        <template #specificationModel>
+                          <ElInput
+                            v-model="item.specificationModel"
+                            maxlength="120"
+                            :placeholder="defaultSpecification(item)"
+                          />
+                        </template>
+                        <template #sketchPath>
+                          <div
+                            class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--art-main-bg-color)]"
+                          >
+                            <ArtUploadImage
+                              :model-value="workspace.sketchUrls[index] || ''"
+                              :upload-request="(file) => uploadSketch(file, index)"
+                              :show-resource-picker="false"
+                              title="上传加工草图"
+                              preview-fit="contain"
+                              :size="112"
+                              @update:model-value="(url) => onSketchModelChanged(url, index)"
+                              @resource-change="(resources) => onSketchUploaded(resources, index)"
+                            />
+                            <div class="min-w-40 flex-1">
+                              <p class="text-sm font-medium">{{
+                                item.sketchPath ? '已关联独立草图' : '请上传本件加工草图'
+                              }}</p>
+                              <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                                图片会单独保存，并随对应物料及生产加工单保留。点击图片可预览或删除。
+                              </p>
+                            </div>
+                          </div>
+                        </template>
+                      </ArtForm>
                     </div>
                   </div>
                 </div>
               </ElCollapseItem>
             </ElCollapse>
           </div>
-          <div
-            class="flex flex-wrap justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-700"
-          >
-            <ElButton
-              v-if="isPlatformSuper"
-              v-auth="'MdmAccessoryProcessing:SaveDraft'"
-              :disabled="draft.status === 'generated' || workspace.saving"
-              :loading="workspace.saving"
-              @click="saveDraft"
-              >保存校对草稿</ElButton
-            >
-            <ElButton
-              v-if="isPlatformSuper"
-              v-auth="'MdmAccessoryProcessing:Generate'"
-              type="primary"
-              :disabled="
-                draft.status === 'generated' || !draft.items.length || workspace.generating
-              "
-              :loading="workspace.generating"
-              @click="generate"
-              >生成项目物料、BOM 与加工单</ElButton
-            >
-          </div>
-          <ElAlert
-            v-if="!isPlatformSuper && draft.status !== 'generated'"
-            type="info"
-            :closable="false"
-            title="识别结果仅供预览；保存草稿及生成业务单据由平台超级管理员操作。"
-          />
         </div>
       </ArtSectionCard>
 
@@ -403,13 +439,9 @@
             <p class="mt-2 text-sm font-medium">{{ card.item?.name || '加工件' }}</p>
             <p class="mt-1 break-all text-xs text-gray-500">物料 {{ card.materialCode }}</p>
             <div class="mt-3 flex gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
-              <img
-                v-if="card.sketchUrl"
-                :src="card.sketchUrl"
+              <AccessorySketchThumbnail
+                :path="card.order.sketchPath"
                 :alt="`${card.item?.name || '加工件'}的加工草图`"
-                width="80"
-                height="80"
-                class="h-20 w-20 shrink-0 rounded border border-gray-200 object-contain dark:border-gray-700"
               />
               <div class="min-w-0 space-y-1 text-sm">
                 <p>{{ card.order.lengthM }} m × {{ card.order.quantity }} 件</p>
@@ -429,8 +461,8 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        title="我的识别记录"
-        subtitle="识别完成后自动留存，可重新查看结果和独立草图；此处记录尚未成为业务清单。"
+        :title="isPlatformSuper ? '当前租户识别记录' : '我的识别记录'"
+        subtitle="识别结果可继续校对；点击保存后才会成为下方业务清单。"
         :loading="workspace.recognitionsLoading"
         :error="workspace.recognitionsError"
         :empty="!workspace.recognitions.length"
@@ -438,7 +470,12 @@
         empty-description="上传清单并完成一次识别后，这里会保留预览记录。"
         @retry="loadRecognitions"
       >
-        <template #actions><ElButton @click="loadRecognitions">刷新记录</ElButton></template>
+        <template #actions>
+          <ElButton @click="loadRecognitions">
+            <template #icon><ArtSvgIcon icon="ri:refresh-line" /></template>
+            刷新记录
+          </ElButton>
+        </template>
         <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
           <button
             v-for="record in workspace.recognitions"
@@ -452,7 +489,12 @@
               <strong class="min-w-0 break-words text-sm">{{
                 record.projectName || '未识别项目名称'
               }}</strong>
-              <ElTag size="small" type="info">识别预览</ElTag>
+              <div class="flex shrink-0 flex-wrap gap-1">
+                <ElTag size="small" type="info">识别预览</ElTag>
+                <ElTag v-if="record.items.some((item) => !item.sketch)" size="small" type="warning"
+                  >需检查草图</ElTag
+                >
+              </div>
             </div>
             <p class="mt-2 break-words text-sm text-gray-600 dark:text-gray-300">{{
               record.drawingName || '未识别图纸名称'
@@ -460,6 +502,9 @@
             <p class="mt-2 text-xs text-gray-600 dark:text-gray-300"
               >{{ record.items.length }} 件 · {{ formatDateTime(record.createTime) }}</p
             >
+            <p class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+              点击继续校对；校对保存后才会进入加工清单数据列表
+            </p>
             <p v-if="workspace.openingRecognitionId === record.id" class="mt-2 text-xs"
               >正在打开…</p
             >
@@ -468,36 +513,68 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        title="已保存清单"
-        subtitle="平台超级管理员保存的草稿与已生成清单；识别预览见上方。"
+        title="配件加工清单数据列表"
+        :subtitle="`逐件展示已保存的加工件，共 ${savedRows.length} 件；同名不同长度分别占一行。`"
         :loading="workspace.loading"
         :error="workspace.error"
-        :empty="!workspace.lists.length"
+        :empty="!savedRows.length && !listKeyword"
         empty-title="暂无配件加工清单"
-        empty-description="当前没有已保存的业务清单。识别预览会留在上方的“我的识别记录”中。"
+        empty-description="完成识别校对后，点击“保存配件加工清单”。"
         @retry="loadLists"
       >
-        <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
-          <button
-            v-for="list in workspace.lists"
-            :key="list.id"
-            type="button"
-            class="art-card-xs min-w-0 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            @click="openList(list)"
+        <template #actions>
+          <div class="flex items-center gap-1">
+            <ElInput
+              v-model="listKeyword"
+              clearable
+              placeholder="搜索项目、图纸、物料"
+              aria-label="搜索配件加工清单"
+              class="w-52 sm:w-64"
+            />
+            <ArtIconButton
+              icon="ri:refresh-line"
+              label="刷新配件加工清单"
+              class="shrink-0"
+              :loading="workspace.loading"
+              @click="loadLists"
+            />
+          </div>
+        </template>
+        <div class="min-w-0 pt-4">
+          <ArtTable
+            :data="visibleSavedRows"
+            :columns="savedColumns"
+            :pagination="{ current: listPage, size: listPageSize, total: filteredSavedRows.length }"
+            :loading="workspace.loading"
+            empty-text="没有匹配的加工件"
+            @pagination:current-change="listPage = $event"
+            @pagination:size-change="onListPageSizeChange"
           >
-            <div class="flex items-start justify-between gap-2"
-              ><strong class="min-w-0 truncate">{{ list.projectName || list.sourceName }}</strong
-              ><ElTag :type="list.status === 'generated' ? 'success' : 'warning'" size="small">{{
-                list.status === 'generated' ? '已生成' : '草稿'
-              }}</ElTag></div
-            >
-            <p class="mt-2 truncate text-sm text-gray-500">{{
-              list.drawingName || list.sourceName
-            }}</p>
-            <p class="mt-2 text-xs text-gray-400"
-              >{{ list.items?.length || 0 }} 件 · {{ formatDateTime(list.createTime) }}</p
-            >
-          </button>
+            <template #image="{ row }">
+              <AccessorySketchThumbnail
+                :path="row.sketchPath"
+                :alt="`${row.name} ${row.lengthM} 米加工草图`"
+              />
+            </template>
+            <template #materialName="{ row }">
+              <div class="min-w-0">
+                <p class="truncate font-medium">{{ row.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{
+                  listStatusLabel(row.list.status)
+                }}</p>
+              </div>
+            </template>
+            <template #operation="{ row }">
+              <ElButton
+                v-auth="'MdmAccessoryProcessing:View'"
+                link
+                type="primary"
+                :aria-label="`打开${row.name}所在清单`"
+                @click="openList(row.list)"
+                >打开</ElButton
+              >
+            </template>
+          </ArtTable>
         </div>
       </ArtSectionCard>
     </div>
@@ -513,22 +590,29 @@
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import type { ColumnOption } from '@/types/component'
   import { useUserStore } from '@/store/modules/user'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import {
-    fetchAccessoryCategories,
     fetchAccessoryCustomers,
     fetchAccessoryLists,
     fetchAccessoryRecognitions,
     fetchAccessoryProjects,
     fetchAccessoryWorkOrders,
-    finalizeAccessoryList,
+    generateAccessoryStage,
+    fetchMaterialCategories,
+    fetchMaterialReferenceOptions,
     recognizeAccessoryPages,
     restoreAccessoryRecognitionFiles,
     saveAccessoryDraft,
+    setAccessoryProjectAssignment,
     signAccessoryPath,
     uploadAccessoryFile,
     type AccessoryProcessingItem,
@@ -536,15 +620,21 @@
     type AccessoryRecognitionRecord,
     type AccessoryProjectOption,
     type AccessoryCustomerOption,
-    type AccessoryCategoryOption,
-    type AccessoryWorkOrder
+    type AccessoryWorkOrder,
+    type AccessoryGenerationStage,
+    type MaterialCategory,
+    type MaterialType,
+    type UnitOfMeasure
   } from '@mdm/api'
+  import AccessorySketchThumbnail from './modules/accessory-sketch-thumbnail.vue'
   import { cropSketch, rasterizeProcessingList, type DocumentPage } from './modules/document-pages'
 
   defineOptions({ name: 'MdmAccessoryProcessing' })
   const templateUrl = new URL('./assets/accessory-processing-template.docx', import.meta.url).href
   const { confirmAction } = useArtFeedback()
-  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const { hasAuth, hasAnyAuth } = useAuth()
+  const userStore = useUserStore()
+  const { isPlatformSuper, getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const formatDateTime = createDateTimeFormatter()
   interface WorkspaceState {
@@ -559,7 +649,9 @@
     recognitions: AccessoryRecognitionRecord[]
     projects: AccessoryProjectOption[]
     customers: AccessoryCustomerOption[]
-    categories: AccessoryCategoryOption[]
+    categories: MaterialCategory[]
+    types: MaterialType[]
+    units: UnitOfMeasure[]
     orders: AccessoryWorkOrder[]
     loading: boolean
     recognitionsLoading: boolean
@@ -571,6 +663,7 @@
     recognitionError: string
     saving: boolean
     generating: boolean
+    generatingStage: AccessoryGenerationStage | ''
     error: string
     ordersError: string
   }
@@ -581,7 +674,7 @@
     projectId: string | null
     customerId: string | null
     categoryId: string | null
-    status: 'draft' | 'generated'
+    status: AccessoryProcessingList['status']
     confidence: number
     warnings: string[]
     items: AccessoryProcessingItem[]
@@ -599,6 +692,8 @@
     projects: [],
     customers: [],
     categories: [],
+    types: [],
+    units: [],
     orders: [],
     loading: false,
     recognitionsLoading: false,
@@ -610,6 +705,7 @@
     recognitionError: '',
     saving: false,
     generating: false,
+    generatingStage: '',
     error: '',
     ordersError: ''
   })
@@ -627,6 +723,240 @@
   })
   const editingIndex = ref<number | null>(null)
   const expandedRowKeys = ref<string[]>([])
+  const listKeyword = ref('')
+  const listPage = ref(1)
+  const listPageSize = ref(20)
+  const missingSketchCount = computed(() => draft.items.filter((item) => !item.sketchPath).length)
+  const canSaveDraft = computed(() => hasAuth('MdmAccessoryProcessing:SaveDraft'))
+  const canManageAccessory = computed(() =>
+    hasAnyAuth([
+      'MdmAccessoryProcessing:SaveDraft',
+      'MdmAccessoryProcessing:GenerateMaterial',
+      'MdmAccessoryProcessing:GenerateBom',
+      'MdmAccessoryProcessing:GenerateWorkOrder',
+      'MdmAccessoryProcessing:Generate'
+    ])
+  )
+  const materialSourceOptions = computed(() => getDictMap.value.mdmMaterialSource ?? [])
+  const allProjectFormItems: FormItem[] = [
+    {
+      key: 'projectName',
+      label: '项目名称',
+      type: 'input',
+      span: 8,
+      props: { maxlength: 160, placeholder: '识别或手动填写项目名称' }
+    },
+    { key: 'projectId', label: '关联已有项目', type: 'select', span: 8 },
+    {
+      key: 'drawingName',
+      label: '图纸名称',
+      type: 'input',
+      span: 8,
+      props: { maxlength: 160, placeholder: '识别或手动填写图纸名称' }
+    },
+    { key: 'customerId', label: '项目客户', type: 'select', span: 8 },
+    { key: 'categoryId', label: '默认物料分类', type: 'select', span: 8 }
+  ]
+  const projectFormItems = computed(() =>
+    draft.status === 'materials_ready'
+      ? allProjectFormItems.filter((item) =>
+          ['projectName', 'projectId', 'customerId'].includes(item.key)
+        )
+      : allProjectFormItems
+  )
+  const correctionFormItems = computed<FormItem[]>(() => [
+    {
+      key: 'name',
+      label: '构件名称',
+      type: 'input',
+      span: 8,
+      props: { maxlength: 120 }
+    },
+    { key: 'specificationModel', label: '规格型号', type: 'input', span: 8 },
+    {
+      key: 'materialColor',
+      label: '材质与颜色',
+      type: 'input',
+      span: 8,
+      props: { maxlength: 160 }
+    },
+    {
+      key: 'widthMm',
+      label: '展宽 (mm)',
+      type: 'number',
+      span: 6,
+      props: { min: 0, precision: 1, controlsPosition: 'right', class: '!w-full' }
+    },
+    {
+      key: 'lengthM',
+      label: '长度 (m)',
+      type: 'number',
+      span: 6,
+      props: { min: 0.001, precision: 3, controlsPosition: 'right', class: '!w-full' }
+    },
+    {
+      key: 'quantity',
+      label: '数量 (件)',
+      type: 'number',
+      span: 6,
+      props: { min: 1, precision: 0, controlsPosition: 'right', class: '!w-full' }
+    },
+    {
+      key: 'baseUnitId',
+      label: '基本单位',
+      type: 'select',
+      span: 6,
+      options: workspace.units.map((unit) => ({ label: unit.unitName, value: unit.id })),
+      props: { filterable: true }
+    },
+    {
+      key: 'materialTypeId',
+      label: '物料类型',
+      type: 'select',
+      span: 8,
+      options: workspace.types.map((type) => ({ label: type.typeName, value: type.id })),
+      props: { filterable: true }
+    },
+    {
+      key: 'materialSource',
+      label: '物料来源',
+      type: 'select',
+      span: 8,
+      options: materialSourceOptions.value.map((source) => ({
+        label: source.label,
+        value: source.value
+      }))
+    },
+    {
+      key: 'categoryId',
+      label: '物料分类',
+      type: 'select',
+      span: 8,
+      options: workspace.categories.map((category) => ({
+        label: category.categoryName,
+        value: category.id
+      })),
+      props: { filterable: true }
+    },
+    { key: 'remark', label: '备注', type: 'input', span: 24 },
+    { key: 'sketchPath', label: '独立加工草图', type: 'uploadImage', span: 24 }
+  ])
+  const defaultCategoryId = computed(
+    () =>
+      workspace.categories.find(
+        (category) => category.categoryName === '配件' && category.categoryCode === 'B59'
+      )?.id ??
+      workspace.categories.find((category) => category.categoryName === '配件')?.id ??
+      null
+  )
+  const defaultTypeId = computed(
+    () => workspace.types.find((type) => type.typeName === '半成品')?.id ?? null
+  )
+  const defaultUnitId = computed(
+    () =>
+      workspace.units.find((unit) => unit.unitName.toUpperCase() === 'PC')?.id ??
+      workspace.units.find((unit) => unit.symbol?.toUpperCase() === 'PC')?.id ??
+      workspace.units.find((unit) => unit.unitCode.toUpperCase() === 'PC')?.id ??
+      workspace.units.find((unit) => unit.unitName === '件')?.id ??
+      null
+  )
+
+  interface AccessorySavedRow extends AccessoryProcessingItem {
+    list: AccessoryProcessingList
+    projectName: string
+    drawingName: string
+    materialName: string
+    baseUnitName: string
+    materialTypeName: string
+    categoryName: string
+  }
+  const savedRows = computed<AccessorySavedRow[]>(() =>
+    workspace.lists.flatMap((list) =>
+      list.items.map((item) => ({
+        ...item,
+        list,
+        projectName: list.projectName,
+        drawingName: list.drawingName,
+        materialName: item.name,
+        baseUnitName: item.baseUnit?.unitName ?? '—',
+        materialTypeName: item.materialType?.typeName ?? '—',
+        categoryName: item.category?.categoryName ?? '—'
+      }))
+    )
+  )
+  const filteredSavedRows = computed(() => {
+    const keyword = listKeyword.value.trim().toLowerCase()
+    if (!keyword) return savedRows.value
+    return savedRows.value.filter((row) =>
+      [row.projectName, row.drawingName, row.name, row.materialCode].some((value) =>
+        value?.toLowerCase().includes(keyword)
+      )
+    )
+  })
+  const visibleSavedRows = computed(() =>
+    filteredSavedRows.value.slice(
+      (listPage.value - 1) * listPageSize.value,
+      listPage.value * listPageSize.value
+    )
+  )
+  const savedColumns: ColumnOption<AccessorySavedRow>[] = [
+    { prop: 'image', label: '图片', width: 92, useSlot: true, fixed: 'left' },
+    { prop: 'projectName', label: '项目名称', minWidth: 170, showOverflowTooltip: true },
+    { prop: 'drawingName', label: '图纸名称', minWidth: 150, showOverflowTooltip: true },
+    { prop: 'rowNo', label: '原表序号', width: 100 },
+    { prop: 'materialCode', label: '物料编码', minWidth: 270, showOverflowTooltip: true },
+    { prop: 'materialName', label: '物料名称', minWidth: 160, useSlot: true },
+    { prop: 'specificationModel', label: '规格型号', minWidth: 190, showOverflowTooltip: true },
+    { prop: 'widthMm', label: '展宽(mm)', width: 105 },
+    { prop: 'lengthM', label: '长度(M)', width: 105 },
+    { prop: 'quantity', label: '数量', width: 78 },
+    { prop: 'baseUnitName', label: '基本单位', width: 100 },
+    { prop: 'materialColor', label: '材质与颜色', minWidth: 150, showOverflowTooltip: true },
+    { prop: 'remark', label: '备注', minWidth: 180, showOverflowTooltip: true },
+    { prop: 'materialTypeName', label: '物料类型', width: 110 },
+    { prop: 'materialSource', label: '物料来源', width: 110, dict: { code: 'mdmMaterialSource' } },
+    { prop: 'categoryName', label: '物料分类', width: 110 },
+    { prop: 'operation', label: '操作', width: 85, useSlot: true, fixed: 'right' }
+  ]
+  watch(listKeyword, () => {
+    listPage.value = 1
+  })
+
+  function onListPageSizeChange(size: number): void {
+    listPageSize.value = size
+    listPage.value = 1
+  }
+
+  function listStatusLabel(status: AccessoryProcessingList['status']): string {
+    return {
+      draft: '已保存草稿',
+      materials_ready: '物料已生成',
+      bom_ready: '项目 BOM 已生成',
+      generated: '工单已生成'
+    }[status]
+  }
+
+  function defaultSpecification(item: AccessoryProcessingItem): string {
+    return `展宽 ${item.widthMm ?? '—'} mm × 长度 ${item.lengthM} m`
+  }
+
+  function withMaterialDefaults(item: AccessoryProcessingItem): AccessoryProcessingItem {
+    return {
+      ...item,
+      specificationModel: item.specificationModel ?? '',
+      baseUnitId: item.baseUnitId ?? defaultUnitId.value,
+      materialTypeId: item.materialTypeId ?? defaultTypeId.value,
+      materialSource: item.materialSource ?? 'self_made',
+      categoryId: item.categoryId ?? defaultCategoryId.value
+    }
+  }
+
+  function onDefaultCategoryChanged(categoryId: string | null): void {
+    if (draft.status !== 'draft') return
+    draft.items.forEach((item) => {
+      item.categoryId = categoryId
+    })
+  }
   const rowGroups = computed(() => {
     const groups = new Map<
       string,
@@ -666,8 +996,7 @@
       return {
         order,
         item: index >= 0 ? draft.items[index] : null,
-        sketchUrl: index >= 0 ? workspace.sketchUrls[index] : '',
-        materialCode: `ACC-${order.itemId.replaceAll('-', '').toUpperCase()}`
+        materialCode: index >= 0 ? (draft.items[index]?.materialCode ?? '') : ''
       }
     })
   )
@@ -763,6 +1092,7 @@
         urls.push(resource.url)
       }
       const result = await recognizeAccessoryPages(urls)
+      if (!workspace.types.length) await loadProjects()
       const items: AccessoryProcessingItem[] = []
       const sketchUrls: string[] = []
       for (const [index, item] of result.items.entries()) {
@@ -785,7 +1115,7 @@
             result.warnings.push(`第 ${item.rowNo} 行草图裁剪失败，请补传`)
           }
         }
-        items.push({ ...item, sketchPath })
+        items.push(withMaterialDefaults({ ...item, sketchPath }))
         sketchUrls.push(sketchUrl)
       }
       Object.assign(draft, {
@@ -794,7 +1124,7 @@
         drawingName: result.drawingName,
         projectId: null,
         customerId: null,
-        categoryId: null,
+        categoryId: defaultCategoryId.value,
         status: 'draft',
         confidence: result.confidence,
         warnings: result.warnings,
@@ -849,12 +1179,28 @@
     }
   }
 
-  function onProjectSelected(id: string | null): void {
-    const project = workspace.projects.find((item) => item.id === id)
-    if (project) draft.projectName = project.projectName
+  function onSketchModelChanged(url: string | string[] | null, index: number): void {
+    if (url) return
+    const item = draft.items[index]
+    if (item) item.sketchPath = null
+    workspace.sketchUrls[index] = ''
   }
 
-  async function saveDraft(): Promise<boolean> {
+  function onProjectSelected(id: string | null): void {
+    if (!id) {
+      draft.projectId = null
+      draft.customerId = null
+      return
+    }
+    const project = workspace.projects.find((item) => item.id === id)
+    if (project) {
+      draft.projectName = project.projectName
+      draft.customerId = project.customerId
+    }
+  }
+
+  async function saveDraft(notify = true): Promise<boolean> {
+    if (draft.status !== 'draft' || workspace.saving) return false
     if (
       !workspace.tenantId ||
       !workspace.sourcePath ||
@@ -866,6 +1212,10 @@
     }
     if (draft.items.some((item) => !item.name.trim() || item.lengthM <= 0 || item.quantity < 1)) {
       ElMessage.warning('请检查每个加工件的名称、长度和数量')
+      return false
+    }
+    if (draft.items.some((item) => !item.baseUnitId || !item.materialTypeId || !item.categoryId)) {
+      ElMessage.warning('请检查每个加工件的基本单位、物料类型和物料分类')
       return false
     }
     workspace.saving = true
@@ -884,8 +1234,10 @@
         warnings: draft.warnings,
         items: draft.items
       })
-      ElMessage.success('加工清单草稿已保存')
       await loadLists()
+      const saved = workspace.lists.find((list) => list.id === draft.id)
+      if (saved) draft.items = saved.items
+      if (notify) ElMessage.success('配件加工清单已保存，可在下方逐件查看')
       return true
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '加工清单保存失败，请重试'))
@@ -895,41 +1247,93 @@
     }
   }
 
-  async function generate(): Promise<void> {
-    if (!isPlatformSuper.value) return
-    if (draft.items.some((item) => !item.sketchPath)) {
-      ElMessage.warning('请先为每个加工件补齐独立草图并保存草稿')
-      return
+  async function generateStage(stage: AccessoryGenerationStage): Promise<void> {
+    const permission = {
+      materials: 'MdmAccessoryProcessing:GenerateMaterial',
+      bom: 'MdmAccessoryProcessing:GenerateBom',
+      orders: 'MdmAccessoryProcessing:GenerateWorkOrder',
+      all: 'MdmAccessoryProcessing:Generate'
+    }[stage]
+    if (!hasAuth(permission) || workspace.generating || !draft.items.length) return
+    if (stage === 'materials' || stage === 'all') {
+      if (draft.items.some((item) => !item.sketchPath)) {
+        ElMessage.warning('请先为每个加工件补齐独立草图并保存草稿')
+        return
+      }
     }
-    if (!draft.categoryId) {
-      ElMessage.warning('请先选择加工件物料分类')
-      return
-    }
+    const label = {
+      materials: '物料编码',
+      bom: '项目 BOM',
+      orders: '生产工单',
+      all: '物料编码、项目 BOM 和带草图的生产工单'
+    }[stage]
     try {
       await confirmAction(
-        `将生成 ${draft.items.length} 个物料和生产加工单，并建立项目 BOM。请确认已完成校对。`,
-        '生成业务单据',
+        `将根据 ${draft.items.length} 个独立加工件生成${label}。请确认已完成校对。`,
+        `生成${label}`,
         { confirmButtonText: '确认生成', cancelButtonText: '继续校对' }
       )
     } catch {
       return
     }
     workspace.generating = true
+    workspace.generatingStage = stage
     try {
-      if (!(await saveDraft()) || !draft.id) return
-      await finalizeAccessoryList(draft.id)
-      draft.status = 'generated'
-      ElMessage.success('项目物料、BOM 和生产加工单已生成')
-      await Promise.all([loadLists(), loadOrders(), loadProjects()])
+      if (draft.status === 'draft' && !(await saveDraft(false))) return
+      if (!draft.id) return
+      if (
+        draft.status === 'materials_ready' &&
+        (stage === 'bom' || stage === 'all') &&
+        !(await saveProjectAssignment(false))
+      )
+        return
+      await generateAccessoryStage(draft.id, stage)
+      await Promise.all([loadLists(), loadProjects()])
       const generated = workspace.lists.find((list) => list.id === draft.id)
       if (generated) {
         draft.projectId = generated.projectId
+        draft.categoryId = generated.categoryId
+        draft.status = generated.status
         draft.items = generated.items
+        if (generated.status === 'generated') await loadOrders()
       }
+      ElMessage.success(`${label}已生成`)
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '生成失败，请检查清单后重试'))
     } finally {
       workspace.generating = false
+      workspace.generatingStage = ''
+    }
+  }
+
+  async function saveProjectAssignment(notify = true): Promise<boolean> {
+    if (draft.status !== 'materials_ready' || !draft.id || workspace.saving) return false
+    if (!draft.projectName.trim()) {
+      ElMessage.warning('请填写项目名称')
+      return false
+    }
+    workspace.saving = true
+    try {
+      await setAccessoryProjectAssignment({
+        listId: draft.id,
+        projectId: draft.projectId,
+        customerId: draft.customerId,
+        projectName: draft.projectName.trim()
+      })
+      await loadLists()
+      const saved = workspace.lists.find((list) => list.id === draft.id)
+      if (saved) {
+        draft.projectName = saved.projectName
+        draft.projectId = saved.projectId
+        draft.customerId = saved.customerId
+      }
+      if (notify) ElMessage.success('项目归属已保存')
+      return true
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '项目归属保存失败，请重试'))
+      return false
+    } finally {
+      workspace.saving = false
     }
   }
 
@@ -949,9 +1353,11 @@
     workspace.recognitionsLoading = true
     workspace.recognitionsError = ''
     const tenantId = effectiveTenantId.value
+    const includeTenantRecords = isPlatformSuper.value
     try {
-      const records = await fetchAccessoryRecognitions(tenantId)
-      if (tenantId === effectiveTenantId.value) workspace.recognitions = records
+      const records = await fetchAccessoryRecognitions(tenantId, includeTenantRecords)
+      if (tenantId === effectiveTenantId.value && includeTenantRecords === isPlatformSuper.value)
+        workspace.recognitions = records
     } catch (error) {
       workspace.recognitionsError = getFriendlySupabaseErrorMessage(
         error,
@@ -987,28 +1393,31 @@
         sourceName: files.sourcePath
           ? `识别原件.${files.sourcePath.split('.').pop() || 'pdf'}`
           : '识别原件',
-        groupId: crypto.randomUUID(),
+        groupId: files.sourcePath.split('/')[1] || crypto.randomUUID(),
         pages: [],
         sketchUrls: files.sketchUrls,
         orders: []
       })
+      await loadProjects()
       Object.assign(draft, {
         id: undefined,
         projectName: record.projectName,
         drawingName: record.drawingName,
         projectId: null,
         customerId: null,
-        categoryId: null,
+        categoryId: defaultCategoryId.value,
         status: 'draft',
         confidence: record.confidence,
         warnings: record.warnings,
-        items: record.items.map((item, index) => ({
-          ...item,
-          sketchPath: files.sketchPaths[index]
-        }))
+        items: record.items.map((item, index) =>
+          withMaterialDefaults({
+            ...item,
+            sketchPath: files.sketchPaths[index]
+          })
+        )
       })
       editingIndex.value = null
-      await Promise.all([loadProjects(), nextTick()])
+      await nextTick()
       document
         .getElementById('accessory-recognition-result')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1021,18 +1430,30 @@
 
   async function loadProjects(): Promise<void> {
     workspace.projects = []
+    workspace.customers = []
+    workspace.categories = []
+    workspace.types = []
+    workspace.units = []
     if (!workspace.tenantId) return
+    const tenantId = workspace.tenantId
     workspace.projectsLoading = true
     try {
-      workspace.projects = await fetchAccessoryProjects(workspace.tenantId)
-      if (isPlatformSuper.value) {
-        const [customers, categories] = await Promise.all([
-          fetchAccessoryCustomers(workspace.tenantId),
-          fetchAccessoryCategories(workspace.tenantId)
-        ])
-        workspace.customers = customers
-        workspace.categories = categories
-      }
+      const projects = await fetchAccessoryProjects(tenantId)
+      if (workspace.tenantId !== tenantId) return
+      workspace.projects = projects
+      const selectedProject = projects.find((project) => project.id === draft.projectId)
+      if (selectedProject && !draft.customerId) draft.customerId = selectedProject.customerId
+      const [customers, categories, types, units] = await Promise.all([
+        fetchAccessoryCustomers(tenantId),
+        fetchMaterialCategories(tenantId),
+        fetchMaterialReferenceOptions<MaterialType>('material-type', tenantId),
+        fetchMaterialReferenceOptions<UnitOfMeasure>('unit-of-measure', tenantId)
+      ])
+      if (workspace.tenantId !== tenantId) return
+      workspace.customers = customers
+      workspace.categories = categories.filter((category) => category.status === 'enabled')
+      workspace.types = types
+      workspace.units = units
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '项目列表加载失败，请重试'))
     } finally {
@@ -1060,7 +1481,7 @@
       recognitionError: '',
       sourcePath: list.sourcePath,
       sourceName: list.sourceName,
-      groupId: crypto.randomUUID(),
+      groupId: list.sourcePath.split('/')[1] || crypto.randomUUID(),
       pages: [],
       orders: []
     })
@@ -1100,6 +1521,9 @@
     resetUpload()
     void Promise.all([loadLists(), loadRecognitions()])
   })
+  watch(isPlatformSuper, () => {
+    void Promise.all([loadProjects(), loadRecognitions()])
+  })
   watch(
     () => draft.items,
     () => {
@@ -1109,11 +1533,20 @@
     }
   )
   onMounted(() => {
+    void userStore.ensureDictLoaded('mdmMaterialSource')
     void Promise.all([loadLists(), loadProjects(), loadRecognitions()])
   })
 </script>
 
 <style scoped lang="scss">
+  :deep(.accessory-inline-form) {
+    padding: 0;
+  }
+
+  :deep(.accessory-inline-form .el-form-item) {
+    margin-bottom: var(--art-space-4);
+  }
+
   .accessory-result-collapse {
     border: 0;
 

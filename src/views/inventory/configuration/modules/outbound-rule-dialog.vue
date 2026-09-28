@@ -263,12 +263,12 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 132,
+      width: 144,
       fixed: 'right',
       formatter: (row) => {
         const index = rowIndex(row)
         return (
-          <div class="outbound-rule-dialog__row-actions">
+          <>
             <ArtIconButton
               icon="ri:arrow-up-line"
               label={`上移第 ${index + 1} 个排序字段`}
@@ -282,12 +282,12 @@
               onClick={() => moveSort(index, 1)}
             />
             <ArtIconButton
-              class="outbound-rule-dialog__delete"
+              tone="danger"
               icon="ri:delete-bin-6-line"
               label={`删除第 ${index + 1} 个排序字段`}
               onClick={() => form.model.sorts.splice(index, 1)}
             />
-          </div>
+          </>
         )
       }
     }
@@ -381,18 +381,6 @@
     :deep(.outbound-rule-dialog__field-key) {
       font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
       color: var(--theme-color);
-    }
-
-    :deep(.outbound-rule-dialog__row-actions) {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-    }
-
-    :deep(.outbound-rule-dialog__delete) {
-      color: var(--el-color-danger);
     }
 
     :deep(.el-select),

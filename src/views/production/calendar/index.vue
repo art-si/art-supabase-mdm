@@ -13,14 +13,14 @@
           v-auth="'MdmFactoryCalendar:Reminder'"
           :disabled="!scope.selected"
           @click="openAction('reminder')"
-          >日历提醒</ElButton
+          ><template #icon><ArtSvgIcon icon="ri:notification-3-line" /></template>日历提醒</ElButton
         >
         <ElButton
           v-auth="'MdmFactoryCalendar:Configure'"
           type="primary"
           :disabled="!scope.selected || !calendar.patterns.length"
           @click="openAction('batch')"
-          >批量设置</ElButton
+          ><template #icon><ArtSvgIcon icon="ri:settings-3-line" /></template>批量设置</ElButton
         >
       </template>
     </ProductionWorkspaceHeader>

@@ -102,7 +102,10 @@
             preserve-content-structure
           >
             <template v-if="section === '自动化' && !form.readonly" #actions>
-              <ElButton type="primary" @click="configureAutomation">配置自动化</ElButton>
+              <ElButton type="primary" @click="configureAutomation">
+                <template #icon><ArtSvgIcon icon="ri:settings-3-line" /></template>
+                配置自动化
+              </ElButton>
             </template>
             <div class="center-dialog__policy-intro">
               <span aria-hidden="true"><ArtSvgIcon :icon="sectionMeta[section].icon" /></span>

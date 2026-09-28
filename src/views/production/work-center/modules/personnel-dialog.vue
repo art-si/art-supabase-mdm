@@ -29,7 +29,7 @@
         />
         <template #actions
           ><ElButton v-auth="'MdmWorkCenter:Personnel'" :loading="state.saving" @click="savePeople"
-            >保存指定人员</ElButton
+            ><template #icon><ArtSvgIcon icon="ri:save-3-line" /></template>保存指定人员</ElButton
           ></template
         >
       </ArtSectionCard>
@@ -43,7 +43,7 @@
       >
         <template #actions
           ><ElButton v-auth="'MdmWorkCenter:Personnel'" type="primary" @click="openAdjustment"
-            >添加临时调整</ElButton
+            ><template #icon><ArtSvgIcon icon="ri:add-line" /></template>添加临时调整</ElButton
           ></template
         >
         <ArtTable

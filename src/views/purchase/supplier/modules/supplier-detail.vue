@@ -55,6 +55,7 @@
                 type="primary"
                 @click="openBank()"
               >
+                <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
                 新增银行信息
               </ElButton>
             </template>
@@ -90,6 +91,7 @@
                 type="primary"
                 @click="openContact()"
               >
+                <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
                 新增联系人
               </ElButton>
             </template>
@@ -205,7 +207,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 95,
+      width: 96,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>
@@ -250,7 +252,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 95,
+      width: 96,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>

@@ -9,7 +9,7 @@
       @retry="load"
       ><template #actions
         ><ElButton v-auth="'MdmWorkCenter:Devices'" type="primary" @click="openDevice()"
-          >添加设备</ElButton
+          ><template #icon><ArtSvgIcon icon="ri:add-line" /></template>添加设备</ElButton
         ></template
       ><ArtTable
         :data="state.rows"
