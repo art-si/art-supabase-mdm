@@ -110,7 +110,7 @@
   import { activityFormulaPurposeLabel } from './modules/activity-formula-builder'
   import ActivityFormulaDialog from './modules/activity-formula-dialog.vue'
   import MasterDialog, { type MasterDialogOpenData } from './modules/master-dialog.vue'
-  import MasterGroupPanel from './modules/master-group-panel.vue'
+  import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
   import { resolveMasterConfig } from './modules/master-config'
   import DocumentTypePage from '../document-type/index.vue'
   import BusinessTypePage from '../business-type/index.vue'

@@ -113,7 +113,7 @@
     type ProcessRouteInput,
     type WorkspaceQuery
   } from '@mdm/api'
-  import MasterGroupPanel from '../../operational-master/modules/master-group-panel.vue'
+  import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
   import type { GroupDialogOpenData } from '../../operational-master/modules/group-dialog.vue'
   import GroupDialog from '../../operational-master/modules/group-dialog.vue'
   import RouteDialog from './modules/route-dialog.vue'

@@ -88,7 +88,7 @@
     type PurchaseSupplier,
     type SupplierQuery
   } from '@mdm/api'
-  import MasterGroupPanel from '../../operational-master/modules/master-group-panel.vue'
+  import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
   import GroupDialog, {
     type GroupDialogOpenData
   } from '../../operational-master/modules/group-dialog.vue'

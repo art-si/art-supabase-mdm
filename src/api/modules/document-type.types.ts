@@ -21,6 +21,8 @@ export interface DocumentTypeRecord {
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
   extensionFields: WorkOrderExtensionField[]
+  packingEnabled: boolean
+  packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
   createBy?: string | null
   createTime?: string
@@ -41,6 +43,8 @@ export interface DocumentTypeWriteInput {
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
   extensionFields: WorkOrderExtensionField[]
+  packingEnabled: boolean
+  packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
 }
 

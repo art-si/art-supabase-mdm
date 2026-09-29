@@ -1,3 +1,7 @@
+import type { MasterGroupDomain } from '@/api/master-groups'
+
+export type { MasterGroup, MasterGroupDomain } from '@/api/master-groups'
+
 export type OperationalMasterKind =
   | 'customer'
   | 'project'
@@ -5,8 +9,6 @@ export type OperationalMasterKind =
   | 'operation-control-code'
   | 'operation'
   | 'workstation'
-
-export type MasterGroupDomain = 'customer' | 'project' | 'operation' | 'process-route' | 'supplier'
 
 export type ActivityFormulaPurpose =
   | 'report_preparation'
@@ -41,18 +43,6 @@ export interface ActivityFormulaParameter {
 }
 
 export type ActivityFormulaParameterInput = Omit<ActivityFormulaParameter, 'id'>
-
-export interface MasterGroup {
-  id: string
-  tenantId: string
-  domain: MasterGroupDomain
-  parentId: string | null
-  code: string
-  name: string
-  sort: number
-  enabled: boolean
-  remark: string
-}
 
 export interface MasterGroupInput {
   tenantId?: string

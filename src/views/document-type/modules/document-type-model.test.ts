@@ -20,6 +20,8 @@ const source: DocumentTypeRecord = {
   tagStyle: 'primary',
   enabled: true,
   extensionFields: [],
+  packingEnabled: false,
+  packingThicknessFieldKey: null,
   allowedIssueWarehouseTypes: ['raw_material', 'outsourced']
 }
 

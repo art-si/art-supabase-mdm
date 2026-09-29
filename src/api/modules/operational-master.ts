@@ -1,11 +1,10 @@
 import { useSupabase } from '@/hooks'
+export { fetchMasterGroups } from '@/api/master-groups'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import type {
   ActivityFormulaParameter,
   ActivityFormulaParameterInput,
   ActivityFormulaPurpose,
-  MasterGroup,
-  MasterGroupDomain,
   MasterGroupInput,
   MasterReferenceOption,
   OperationalMasterInput,
@@ -207,21 +206,6 @@ export async function deleteActivityFormulaParameter(id: string) {
         .select('id'),
     { ...writeOptions, message: '参数已删除', errorMessage: '参数含有下级节点，无法删除' }
   )
-}
-
-export async function fetchMasterGroups(
-  domain: MasterGroupDomain,
-  tenantId?: string | null
-): Promise<MasterGroup[]> {
-  let query = supabase
-    .from('mdm_master_group')
-    .select('*')
-    .eq('domain', domain)
-    .order('sort')
-    .order('code')
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<MasterGroup[]>(() => query, readOptions)
-  return data ?? []
 }
 
 export async function saveMasterGroup(input: MasterGroupInput, id?: string) {

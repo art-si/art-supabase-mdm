@@ -23,6 +23,8 @@ export const createDocumentTypeFormModel = (
   tagStyle: 'primary',
   enabled: true,
   extensionFields: [],
+  packingEnabled: false,
+  packingThicknessFieldKey: null,
   allowedIssueWarehouseTypes: ['raw_material'],
   ...patch
 })
@@ -41,6 +43,8 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     tagStyle: source.tagStyle,
     enabled: source.enabled,
     extensionFields: source.extensionFields.map((field) => ({ ...field })),
+    packingEnabled: false,
+    packingThicknessFieldKey: null,
     allowedIssueWarehouseTypes: [...source.allowedIssueWarehouseTypes]
   })
 
@@ -60,6 +64,8 @@ export const buildDocumentTypeInput = (
     'tagStyle',
     'enabled',
     'extensionFields',
+    'packingEnabled',
+    'packingThicknessFieldKey',
     'allowedIssueWarehouseTypes'
   ]) as DocumentTypeWriteInput
 
@@ -77,6 +83,9 @@ export const buildDocumentTypeInput = (
     sourceComponentTypeId:
       field.valueType === 'material' ? field.sourceComponentTypeId || null : null
   }))
+  payload.packingThicknessFieldKey = payload.packingEnabled
+    ? normalizeNonNullableText(payload.packingThicknessFieldKey ?? '')
+    : null
   if (!includeTenant) delete payload.tenantId
   return payload
 }

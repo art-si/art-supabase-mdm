@@ -348,7 +348,33 @@
                 type: 'divider',
                 span: 24
               } as FormItem,
-              { label: '扩展字段配置', key: 'extensionFields', type: 'slot', span: 24 } as FormItem
+              { label: '扩展字段配置', key: 'extensionFields', type: 'slot', span: 24 } as FormItem,
+              {
+                label: '需要排包',
+                key: 'packingEnabled',
+                type: 'switch',
+                span: 12,
+                props: { disabled: form.mode === 'copy' },
+                description:
+                  form.mode === 'copy'
+                    ? '副本默认关闭排包，创建后可单独编辑启用。'
+                    : '启用后，该类型的生产工单进入排包单工作台。'
+              } as FormItem,
+              {
+                label: '板厚参数字段',
+                key: 'packingThicknessFieldKey',
+                type: 'select',
+                span: 12,
+                options: form.data.extensionFields
+                  .filter((field) => field.valueType === 'number')
+                  .map((field) => ({ label: `${field.label} · ${field.key}`, value: field.key })),
+                props: {
+                  clearable: true,
+                  disabled: form.mode === 'copy' || !form.data.packingEnabled,
+                  placeholder: '请选择数字型板厚参数'
+                },
+                description: '排包参数将从生产工单此字段自动读取。'
+              } as FormItem
             ]
           : []),
         { label: '补充说明', key: 'remarkSection', type: 'divider', span: 24 },
@@ -496,8 +522,20 @@
         ElMessage.warning('只有物料字段可以从 BOM 组件类型自动带入')
         return false
       }
+      if (
+        form.data.packingEnabled &&
+        !fields.some(
+          (field) =>
+            field.key === form.data.packingThicknessFieldKey && field.valueType === 'number'
+        )
+      ) {
+        ElMessage.warning('需要排包的工单类型必须选择数字型板厚参数字段')
+        return false
+      }
     } else {
       form.data.extensionFields = []
+      form.data.packingEnabled = false
+      form.data.packingThicknessFieldKey = null
     }
 
     try {

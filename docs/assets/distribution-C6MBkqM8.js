@@ -1,1 +1,0 @@
-import{Br as e,Ii as t,Zr as n}from"./supabase-EmMNj2BB.js";import{t as r}from"./center-CNtfuNr7.js";var i=n({name:`MdmDataDistribution`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{"initial-view":`outbox`}))}});export{i as default};

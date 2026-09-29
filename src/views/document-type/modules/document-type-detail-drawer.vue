@@ -126,6 +126,8 @@
       tagStyle: 'primary',
       enabled: true,
       extensionFields: [],
+      packingEnabled: false,
+      packingThicknessFieldKey: null,
       allowedIssueWarehouseTypes: ['raw_material']
     },
     menuPath: '',
@@ -146,6 +148,12 @@
     { key: 'documentTypeName', label: '单据类型名称', field: 'record.documentTypeName' },
     { key: 'isDefault', label: '默认单据类型', field: 'record.isDefault' },
     { key: 'enabled', label: '状态', field: 'record.enabled' },
+    { key: 'packingEnabled', label: '需要排包', field: 'record.packingEnabled' },
+    {
+      key: 'packingThicknessFieldKey',
+      label: '板厚参数字段',
+      value: (data: DocumentTypeDetailData) => data.record.packingThicknessFieldKey || '—'
+    },
     { key: 'sortOrder', label: '排序', field: 'record.sortOrder' },
     {
       key: 'tenantName',
