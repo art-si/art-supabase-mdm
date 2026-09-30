@@ -33,6 +33,16 @@
         :validate-on-rule-change="false"
         scroll-to-error
       >
+        <template #extensionSectionActions>
+          <ElButton v-if="canAddThicknessField" size="small" plain @click="addThicknessField">
+            <template #icon><ArtSvgIcon icon="ri:ruler-line" /></template>
+            添加板厚字段
+          </ElButton>
+          <ElButton type="primary" size="small" plain @click="addExtensionField">
+            <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
+            新增字段
+          </ElButton>
+        </template>
         <template #textColor>
           <div class="document-type-dialog__color-field">
             <ElColorPicker
@@ -45,64 +55,94 @@
         </template>
         <template #extensionFields>
           <div class="document-type-dialog__extension-editor">
-            <div class="document-type-dialog__extension-help">
-              <span>工单类型切换时，专用字段组随之切换；物料字段可按 BOM 组件类型自动带入。</span>
-              <ElButton type="primary" plain @click="addExtensionField">新增字段</ElButton>
-            </div>
+            <p class="document-type-dialog__extension-help">
+              仅启用排包的工单显示这些字段；物料字段可按 BOM 组件类型自动带入。
+            </p>
             <ArtEmptyState
               v-if="!form.data.extensionFields.length"
               class="document-type-dialog__extension-empty"
               title="暂无专用字段"
-              description="生产工单沿用通用表单。"
+              description="可先添加板厚数字字段，再按业务需要配置宽度、板型等参数。"
               size="compact"
               :visual-size="64"
             />
+            <div
+              v-if="form.data.extensionFields.length"
+              class="document-type-dialog__extension-columns"
+              aria-hidden="true"
+            >
+              <span>字段编码</span>
+              <span>显示名称</span>
+              <span>字段类型</span>
+              <span>BOM 组件类型</span>
+              <span>操作</span>
+            </div>
             <div
               v-for="(field, index) in form.data.extensionFields"
               :key="index"
               class="document-type-dialog__extension-row"
             >
-              <ElInput
-                v-model="field.key"
-                :aria-label="`第 ${index + 1} 个字段编码`"
-                placeholder="字段编码，如 outerPanel"
-              />
-              <ElInput
-                v-model="field.label"
-                :aria-label="`第 ${index + 1} 个字段名称`"
-                placeholder="显示名称，如 外板"
-              />
-              <ElSelect v-model="field.valueType" :aria-label="`第 ${index + 1} 个字段类型`">
-                <ElOption
-                  v-for="option in getDictMap.mdmDocumentExtensionValueType ?? []"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                />
-              </ElSelect>
-              <ElSelect
-                v-model="field.sourceComponentTypeId"
-                :aria-label="`第 ${index + 1} 个 BOM 来源`"
-                :disabled="field.valueType !== 'material'"
-                clearable
-                filterable
-                placeholder="手动填写 / BOM 类型"
+              <div
+                class="document-type-dialog__extension-cell document-type-dialog__extension-cell--key"
               >
-                <ElOption
-                  v-for="componentType in componentTypeOptions"
-                  :key="componentType.id"
-                  :label="componentType.componentTypeName"
-                  :value="componentType.id"
-                  :disabled="!componentType.enabled"
+                <span class="document-type-dialog__extension-cell-label">字段编码</span>
+                <ElInput
+                  v-model="field.key"
+                  :aria-label="`第 ${index + 1} 个字段编码`"
+                  placeholder="如 outerPanel"
                 />
-              </ElSelect>
-              <ElButton
-                text
-                type="danger"
-                :aria-label="`删除第 ${index + 1} 个专用字段`"
+              </div>
+              <div
+                class="document-type-dialog__extension-cell document-type-dialog__extension-cell--label"
+              >
+                <span class="document-type-dialog__extension-cell-label">显示名称</span>
+                <ElInput
+                  v-model="field.label"
+                  :aria-label="`第 ${index + 1} 个字段名称`"
+                  placeholder="如 外板"
+                />
+              </div>
+              <div
+                class="document-type-dialog__extension-cell document-type-dialog__extension-cell--type"
+              >
+                <span class="document-type-dialog__extension-cell-label">字段类型</span>
+                <ElSelect v-model="field.valueType" :aria-label="`第 ${index + 1} 个字段类型`">
+                  <ElOption
+                    v-for="option in getDictMap.mdmDocumentExtensionValueType ?? []"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                </ElSelect>
+              </div>
+              <div
+                class="document-type-dialog__extension-cell document-type-dialog__extension-cell--source"
+              >
+                <span class="document-type-dialog__extension-cell-label">BOM 组件类型</span>
+                <ElSelect
+                  v-model="field.sourceComponentTypeId"
+                  :aria-label="`第 ${index + 1} 个 BOM 来源`"
+                  :disabled="field.valueType !== 'material'"
+                  clearable
+                  filterable
+                  placeholder="手动填写 / BOM 类型"
+                >
+                  <ElOption
+                    v-for="componentType in componentTypeOptions"
+                    :key="componentType.id"
+                    :label="componentType.componentTypeName"
+                    :value="componentType.id"
+                    :disabled="!componentType.enabled"
+                  />
+                </ElSelect>
+              </div>
+              <ArtIconButton
+                class="document-type-dialog__extension-remove"
+                tone="danger"
+                icon="ri:delete-bin-6-line"
+                :label="`删除第 ${index + 1} 个专用字段`"
                 @click="form.data.extensionFields.splice(index, 1)"
-                >删除</ElButton
-              >
+              />
             </div>
           </div>
         </template>
@@ -120,6 +160,8 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
   import TreeUtils from '@/utils/tree'
@@ -191,6 +233,18 @@
       valueType: 'text',
       sourceComponentTypeId: null
     })
+  }
+  const canAddThicknessField = computed(
+    () => !form.data.extensionFields.some((field) => field.key === 'thickness')
+  )
+  const addThicknessField = () => {
+    form.data.extensionFields.push({
+      key: 'thickness',
+      label: '板厚 mm',
+      valueType: 'number',
+      sourceComponentTypeId: null
+    })
+    form.data.packingThicknessFieldKey = 'thickness'
   }
 
   const booleanOptions = computed(() =>
@@ -343,38 +397,57 @@
                     : '工单下达自动预留与关联工单领料均受此范围约束。'
               } as FormItem,
               {
-                label: '生产工单专用字段',
-                key: 'extensionSection',
+                label: '板材及排包工单配置',
+                key: 'packingSection',
                 type: 'divider',
                 span: 24
               } as FormItem,
-              { label: '扩展字段配置', key: 'extensionFields', type: 'slot', span: 24 } as FormItem,
               {
                 label: '需要排包',
                 key: 'packingEnabled',
                 type: 'switch',
-                span: 12,
+                span: 24,
                 props: { disabled: form.mode === 'copy' },
                 description:
                   form.mode === 'copy'
                     ? '副本默认关闭排包，创建后可单独编辑启用。'
-                    : '启用后，该类型的生产工单进入排包单工作台。'
+                    : !form.data.packingEnabled && form.data.extensionFields.length
+                      ? '当前未启用排包；已有字段会保留，但工单不显示，重新开启后可继续使用。'
+                      : '仅板材加工或其他需要装包的业务开启；开启后工单显示下方专用参数并进入排包单。'
               } as FormItem,
-              {
-                label: '板厚参数字段',
-                key: 'packingThicknessFieldKey',
-                type: 'select',
-                span: 12,
-                options: form.data.extensionFields
-                  .filter((field) => field.valueType === 'number')
-                  .map((field) => ({ label: `${field.label} · ${field.key}`, value: field.key })),
-                props: {
-                  clearable: true,
-                  disabled: form.mode === 'copy' || !form.data.packingEnabled,
-                  placeholder: '请选择数字型板厚参数'
-                },
-                description: '排包参数将从生产工单此字段自动读取。'
-              } as FormItem
+              ...(form.data.packingEnabled
+                ? [
+                    {
+                      label: '排包工单专用参数',
+                      key: 'extensionSection',
+                      type: 'divider',
+                      span: 24
+                    } as FormItem,
+                    {
+                      label: '',
+                      key: 'extensionFields',
+                      type: 'slot',
+                      span: 24
+                    } as FormItem,
+                    {
+                      label: '板厚参数字段',
+                      key: 'packingThicknessFieldKey',
+                      type: 'select',
+                      span: 24,
+                      options: form.data.extensionFields
+                        .filter((field) => field.valueType === 'number')
+                        .map((field) => ({
+                          label: `${field.label} · ${field.key}`,
+                          value: field.key
+                        })),
+                      props: {
+                        clearable: true,
+                        placeholder: '请选择数字型板厚参数'
+                      },
+                      description: '排包单将从工单的该数字字段自动读取板厚。'
+                    } as FormItem
+                  ]
+                : [])
             ]
           : []),
         { label: '补充说明', key: 'remarkSection', type: 'divider', span: 24 },
@@ -636,27 +709,115 @@
       display: grid;
       gap: var(--art-space-3);
     }
+
     &__extension-help {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--art-space-3);
-      color: var(--el-text-color-secondary);
+      margin: 0;
       font-size: 12px;
+      color: var(--el-text-color-secondary);
     }
+
     &__extension-empty {
       background: var(--art-gray-100);
       border-radius: var(--el-border-radius-base);
     }
+
+    &__extension-columns,
     &__extension-row {
       display: grid;
-      grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 100px minmax(160px, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 108px minmax(160px, 1fr) 36px;
       gap: var(--art-space-2);
       align-items: center;
     }
-    @media (max-width: 760px) {
+
+    &__extension-columns {
+      padding: 0 0 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--el-text-color-secondary);
+
+      span:last-child {
+        text-align: center;
+      }
+    }
+
+    &__extension-row {
+      padding-bottom: var(--art-space-2);
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    &__extension-cell {
+      min-width: 0;
+
+      :deep(.el-input),
+      :deep(.el-select) {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
+    &__extension-cell-label {
+      display: none;
+    }
+
+    &__extension-remove {
+      justify-self: center;
+    }
+
+    @media (width <= 760px) {
+      &__extension-columns {
+        display: none;
+      }
+
       &__extension-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+          'key label remove'
+          'type source remove';
+        grid-template-columns: repeat(2, minmax(0, 1fr)) 36px;
+        align-items: start;
+        padding-top: var(--art-space-2);
+      }
+
+      &__extension-cell--key {
+        grid-area: key;
+      }
+
+      &__extension-cell--label {
+        grid-area: label;
+      }
+
+      &__extension-cell--type {
+        grid-area: type;
+      }
+
+      &__extension-cell--source {
+        grid-area: source;
+      }
+
+      &__extension-cell-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+      }
+
+      &__extension-remove {
+        grid-area: remove;
+        align-self: center;
+      }
+    }
+
+    @media (width <= 480px) {
+      &__extension-row {
+        grid-template-areas:
+          'key remove'
+          'label remove'
+          'type remove'
+          'source remove';
+        grid-template-columns: minmax(0, 1fr) 36px;
+      }
+
+      &__extension-remove {
+        align-self: start;
       }
     }
   }

@@ -55,9 +55,13 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        v-if="detail.record.extensionFields?.length"
-        title="生产工单专用字段"
-        subtitle="按当前单据类型显示，并可从 BOM 组件类型取值。"
+        v-if="
+          detail.isProductionType &&
+          detail.record.packingEnabled &&
+          detail.record.extensionFields?.length
+        "
+        title="排包工单专用字段"
+        subtitle="选择此类型的生产工单时显示，并可从 BOM 组件类型取值。"
       >
         <div class="document-type-detail__fields">
           <div v-for="field in detail.record.extensionFields" :key="field.key">

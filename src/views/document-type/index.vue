@@ -405,6 +405,11 @@
             <span class="document-type-identity__heading">
               <strong title={row.documentTypeName}>{row.documentTypeName}</strong>
               {row.isDefault ? <em>默认</em> : null}
+              {row.packingEnabled ? (
+                <ElTag size="small" type="success" effect="plain">
+                  需排包
+                </ElTag>
+              ) : null}
             </span>
             <code title={row.documentTypeCode} translate="no">
               {row.documentTypeCode}

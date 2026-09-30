@@ -121,7 +121,7 @@ export async function saveOperationalMaster(
 ) {
   const definition = resources[kind]
   const payload = keysToSnakeDeep(input)
-  await responseHandle(
+  const { data } = await responseHandle<Array<{ id: string }>>(
     () =>
       id
         ? supabase
@@ -132,6 +132,7 @@ export async function saveOperationalMaster(
         : supabase.from(definition.table).insert(payload, { count: 'exact' }).select('id'),
     writeOptions
   )
+  return data?.[0]?.id ?? ''
 }
 
 export async function importOperationalMasters(
