@@ -636,9 +636,10 @@
             <template #attachments>
               <ArtUploadFile
                 v-model="sopForm.attachments"
+                :resource-tenant-id="route?.tenantId || ''"
                 multiple
                 :limit="10"
-                :disabled="editorReadonly"
+                :disabled="editorReadonly || !route?.tenantId"
                 title="上传作业指导书"
                 tip="支持上传附件，也可选择工程主数据中的 ESOP 文档。"
               />
