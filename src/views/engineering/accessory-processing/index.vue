@@ -450,7 +450,9 @@
                       !options.projects.some((project) => project.id === materialConfig.projectId)
                     "
                     :value="materialConfig.projectId"
-                    :label="materialRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'"
+                    :label="
+                      materialRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'
+                    "
                   />
                   <ElOption
                     v-for="project in options.projects"
@@ -525,7 +527,9 @@
                       !options.projects.some((project) => project.id === workOrderConfig.projectId)
                     "
                     :value="workOrderConfig.projectId"
-                    :label="orderRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'"
+                    :label="
+                      orderRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'
+                    "
                   />
                   <ElOption
                     v-for="project in options.projects"
