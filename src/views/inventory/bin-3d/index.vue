@@ -311,34 +311,36 @@
                     <div class="detail-section__heading"
                       ><strong>层位导航</strong><span>点击定位</span></div
                     >
-                    <div class="detail-bin-list">
-                      <div
-                        v-for="column in selectedRack.columns"
-                        :key="column.number"
-                        class="space-y-1.5"
-                      >
-                        <span
-                          class="block text-center text-[11px] text-[var(--el-text-color-secondary)]"
-                          >{{ column.number }} 列</span
+                    <ElScrollbar class="detail-bin-scroll" max-height="190px">
+                      <div class="detail-bin-list">
+                        <div
+                          v-for="column in selectedRack.columns"
+                          :key="column.number"
+                          class="space-y-1.5"
                         >
-                        <button
-                          v-for="bin in column.bins"
-                          :key="bin.id"
-                          type="button"
-                          class="detail-bin"
-                          :class="[
-                            `tone-${binTone(bin)}`,
-                            { 'is-selected': selectedBinId === bin.id }
-                          ]"
-                          :title="`${bin.binCode} · ${toneLabel(binTone(bin))}`"
-                          :aria-label="`${bin.binCode}，${toneLabel(binTone(bin))}`"
-                          :aria-pressed="selectedBinId === bin.id"
-                          @click="focusBinFromNavigation(bin, selectedRack.code)"
-                        >
-                          {{ bin.levelNo || 1 }}F
-                        </button>
+                          <span
+                            class="block text-center text-[11px] text-[var(--el-text-color-secondary)]"
+                            >{{ column.number }} 列</span
+                          >
+                          <button
+                            v-for="bin in column.bins"
+                            :key="bin.id"
+                            type="button"
+                            class="detail-bin"
+                            :class="[
+                              `tone-${binTone(bin)}`,
+                              { 'is-selected': selectedBinId === bin.id }
+                            ]"
+                            :title="`${bin.binCode} · ${toneLabel(binTone(bin))}`"
+                            :aria-label="`${bin.binCode}，${toneLabel(binTone(bin))}`"
+                            :aria-pressed="selectedBinId === bin.id"
+                            @click="focusBinFromNavigation(bin, selectedRack.code)"
+                          >
+                            {{ bin.levelNo || 1 }}F
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    </ElScrollbar>
                   </div>
                   <div v-if="selectedBin" class="detail-section">
                     <div class="detail-section__heading"
@@ -791,13 +793,15 @@
     color: var(--el-text-color-secondary);
   }
 
+  .detail-bin-scroll {
+    min-width: 0;
+  }
+
   .detail-bin-list {
     display: flex;
     gap: 8px;
     min-width: 0;
-    max-height: 190px;
     padding: 2px;
-    overflow: auto;
   }
 
   .detail-bin-list > div {

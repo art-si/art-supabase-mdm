@@ -212,75 +212,76 @@
                 <ArtSvgIcon icon="ri:arrow-right-line" />
               </ElButton>
             </ArtEmptyState>
-            <ElTree
-              v-else
-              class="parameter-panel__tree"
-              :data="parameterTree"
-              node-key="id"
-              default-expand-all
-              :expand-on-click-node="false"
-              :filter-node-method="filterParameterNode"
-              ref="parameterTreeRef"
-              @node-click="insertParameter"
-            >
-              <template #default="{ data }">
-                <div
-                  class="parameter-node"
-                  :class="{ 'is-parameter': data.nodeType === 'parameter' }"
-                >
-                  <span class="parameter-node__icon"
-                    ><ArtSvgIcon
-                      :icon="data.nodeType === 'group' ? 'ri:folder-3-line' : 'ri:braces-line'"
-                  /></span>
-                  <span class="parameter-node__main">
-                    <strong>{{ data.name }}</strong>
-                    <small
-                      >{{ data.code
-                      }}<template v-if="data.activityUnit">
-                        · {{ unitLabel(data.activityUnit) }}</template
-                      ></small
-                    >
-                  </span>
-                  <span
-                    v-if="!readonly"
-                    class="parameter-node__actions"
-                    v-auth="'MdmActivityFormula:ManageParameter'"
-                    @click.stop
+            <ElScrollbar v-else class="parameter-panel__scroll">
+              <ElTree
+                class="parameter-panel__tree"
+                :data="parameterTree"
+                node-key="id"
+                default-expand-all
+                :expand-on-click-node="false"
+                :filter-node-method="filterParameterNode"
+                ref="parameterTreeRef"
+                @node-click="insertParameter"
+              >
+                <template #default="{ data }">
+                  <div
+                    class="parameter-node"
+                    :class="{ 'is-parameter': data.nodeType === 'parameter' }"
                   >
-                    <ArtIconButton
-                      v-if="data.nodeType === 'group'"
-                      icon="ri:add-line"
-                      label="新增下级参数"
-                      @click="openParameterEditor('parameter', undefined, data)"
+                    <span class="parameter-node__icon"
+                      ><ArtSvgIcon
+                        :icon="data.nodeType === 'group' ? 'ri:folder-3-line' : 'ri:braces-line'"
+                    /></span>
+                    <span class="parameter-node__main">
+                      <strong>{{ data.name }}</strong>
+                      <small
+                        >{{ data.code
+                        }}<template v-if="data.activityUnit">
+                          · {{ unitLabel(data.activityUnit) }}</template
+                        ></small
+                      >
+                    </span>
+                    <span
+                      v-if="!readonly"
+                      class="parameter-node__actions"
+                      v-auth="'MdmActivityFormula:ManageParameter'"
+                      @click.stop
+                    >
+                      <ArtIconButton
+                        v-if="data.nodeType === 'group'"
+                        icon="ri:add-line"
+                        label="新增下级参数"
+                        @click="openParameterEditor('parameter', undefined, data)"
+                      />
+                      <ArtIconButton
+                        icon="ri:edit-line"
+                        label="编辑参数节点"
+                        @click="openParameterEditor(data.nodeType, data)"
+                      />
+                      <ArtIconButton
+                        icon="ri:delete-bin-6-line"
+                        label="删除参数节点"
+                        tone="danger"
+                        @click="removeParameter(data)"
+                      />
+                    </span>
+                    <ArtSvgIcon
+                      v-if="data.nodeType === 'parameter' && !readonly"
+                      class="parameter-node__insert"
+                      icon="ri:add-circle-line"
                     />
-                    <ArtIconButton
-                      icon="ri:edit-line"
-                      label="编辑参数节点"
-                      @click="openParameterEditor(data.nodeType, data)"
-                    />
-                    <ArtIconButton
-                      icon="ri:delete-bin-6-line"
-                      label="删除参数节点"
-                      tone="danger"
-                      @click="removeParameter(data)"
-                    />
-                  </span>
-                  <ArtSvgIcon
-                    v-if="data.nodeType === 'parameter' && !readonly"
-                    class="parameter-node__insert"
-                    icon="ri:add-circle-line"
+                  </div>
+                </template>
+                <template #empty>
+                  <ArtEmptyState
+                    title="未找到匹配项"
+                    description="请调整关键词或清空筛选条件。"
+                    size="compact"
+                    :visual-size="64"
                   />
-                </div>
-              </template>
-              <template #empty>
-                <ArtEmptyState
-                  title="未找到匹配项"
-                  description="请调整关键词或清空筛选条件。"
-                  size="compact"
-                  :visual-size="64"
-                />
-              </template>
-            </ElTree>
+                </template>
+              </ElTree>
+            </ElScrollbar>
           </aside>
 
           <main class="formula-editor art-card-xs">
@@ -1028,11 +1029,12 @@
     color: var(--el-text-color-secondary);
   }
 
-  .parameter-panel__tree {
+  .parameter-panel__scroll {
     flex: 1;
     min-height: 330px;
-    overflow: auto;
+  }
 
+  .parameter-panel__tree {
     --el-tree-node-hover-bg-color: transparent;
 
     :deep(.el-tree-node__content) {

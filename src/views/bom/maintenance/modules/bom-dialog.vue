@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="xl" show-fullscreen-button>
+  <ArtDialog ref="dialogRef" width="1440px" show-fullscreen-button>
     <div class="bom-dialog">
       <ArtEntitySummary
         icon="ri:git-merge-line"
@@ -30,6 +30,7 @@
             :selected-data="selectedParent"
             :api-fn="fetchMaterials"
             :categories="materialCategories"
+            dialog-width="1600px"
             subtitle="按物料分类筛选；父项物料决定 BOM 的基本计量口径"
             placeholder="请选择父项物料"
             empty-description="请先维护物料编码后再建立 BOM。"
@@ -98,6 +99,7 @@
               :categories="materialCategories"
               title="批量添加组件物料"
               subtitle="父项物料不可作为自身组件；已存在组件不会重复加入"
+              dialog-width="1600px"
               :disabled-key="isComponentMaterialDisabled"
               @confirm="handleComponentsConfirm"
             >

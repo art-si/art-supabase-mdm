@@ -90,7 +90,11 @@
           </ElButton>
           <ElButton
             v-auth="'MdmAccessoryProcessing:GenerateBom'"
-            :disabled="!selectedRows.length"
+            :disabled="
+              conversionBusy ||
+              !selectedRows.length ||
+              selectedRows.every((row) => Boolean(row.list.bomId))
+            "
             @click="convertBom"
           >
             <ArtSvgIcon icon="ri:git-branch-line" />转项目 BOM
@@ -298,7 +302,12 @@
                   </template>
                   <template #codeStatus="{ row }">
                     <ElTag size="small" :type="row.materialId ? 'success' : 'info'" effect="plain">
-                      {{ row.materialId ? '已转编码' : '未转编码' }}
+                      {{ row.materialId ? '已编码' : '待编码' }}
+                    </ElTag>
+                  </template>
+                  <template #bomStatus="{ row }">
+                    <ElTag size="small" :type="row.list.bomId ? 'success' : 'info'" effect="plain">
+                      {{ row.list.bomId ? '已转 BOM' : '未转 BOM' }}
                     </ElTag>
                   </template>
                   <template #orderStatus="{ row }">
@@ -413,8 +422,8 @@
       <ArtDialog ref="materialDialogRef" size="lg">
         <div class="min-w-0 space-y-4">
           <p class="text-sm text-gray-600 dark:text-gray-300">
-            为 {{ materialRows.length }} 件加工件生成 MDM
-            物料。编码按所选策略生成，编码和描述会返填到清单。
+            为 {{ materialRows.length }} 件加工件创建 MDM
+            物料。确认系统项目和物料属性后，编码、描述、图片及分类会回写到清单。
           </p>
           <ArtForm
             ref="materialFormRef"
@@ -426,7 +435,36 @@
             label-position="top"
             :show-reset="false"
             :show-submit="false"
-          />
+          >
+            <template #projectId>
+              <div class="flex min-w-0 gap-2">
+                <ElSelect
+                  v-model="materialConfig.projectId"
+                  filterable
+                  class="min-w-0 flex-1"
+                  placeholder="选择系统项目"
+                >
+                  <ElOption
+                    v-if="
+                      materialConfig.projectId &&
+                      !options.projects.some((project) => project.id === materialConfig.projectId)
+                    "
+                    :value="materialConfig.projectId"
+                    :label="materialRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'"
+                  />
+                  <ElOption
+                    v-for="project in options.projects"
+                    :key="project.id"
+                    :value="project.id"
+                    :label="`${project.projectName} · ${project.projectCode}`"
+                  />
+                </ElSelect>
+                <ElButton v-auth="'MdmSalesProject:Add'" @click="openProjectDialog('material')"
+                  >新建</ElButton
+                >
+              </div>
+            </template>
+          </ArtForm>
           <div>
             <h3 class="text-sm font-semibold">物料图片（选填）</h3>
             <p class="mt-1 text-xs text-gray-600 dark:text-gray-300"
@@ -481,6 +519,14 @@
                   class="min-w-0 flex-1"
                   placeholder="选择系统项目"
                 >
+                  <ElOption
+                    v-if="
+                      workOrderConfig.projectId &&
+                      !options.projects.some((project) => project.id === workOrderConfig.projectId)
+                    "
+                    :value="workOrderConfig.projectId"
+                    :label="orderRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'"
+                  />
                   <ElOption
                     v-for="project in options.projects"
                     :key="project.id"
@@ -541,7 +587,7 @@
             },
             { key: 'drawing', label: '图纸名称', value: detailRow.list.drawingName },
             { key: 'rowNo', label: '原表序号', value: detailRow.rowNo },
-            { key: 'code', label: '物料编码', value: detailRow.material?.materialCode },
+            { key: 'code', label: '物料编码（系统）', value: detailRow.materialCode },
             { key: 'name', label: '物料名称', value: detailRow.name },
             {
               key: 'description',
@@ -600,6 +646,10 @@
     type MasterDataDeleteDependencyMeta,
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
+  import {
+    formatReferenceStatus,
+    getRecordReferenceMeta
+  } from '@/components/business/master-data-delete-guard/record-meta'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -614,6 +664,7 @@
   import {
     convertAccessoryWorkOrders,
     deleteAccessoryItems,
+    deleteLegacyAccessoryOrderDrafts,
     fetchAccessoryDeleteDependencies,
     fetchAccessoryCustomers,
     fetchAccessoryLists,
@@ -646,6 +697,7 @@
     list: AccessoryProcessingList
     drawingProjectName: string
     systemProjectName: string
+    systemMaterialCode: string
     materialDescription: string
     unitName: string
     typeName: string
@@ -718,6 +770,7 @@
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }>()
   const deleteBusy = ref(false)
+  const conversionBusy = ref(false)
   const manualFormRef = ref<InstanceType<typeof ArtForm>>()
   const materialFormRef = ref<InstanceType<typeof ArtForm>>()
   const workOrderFormRef = ref<InstanceType<typeof ArtForm>>()
@@ -727,7 +780,7 @@
   const editingRow = ref<AccessoryRow | null>(null)
   const materialRows = ref<AccessoryRow[]>([])
   const orderRows = ref<AccessoryRow[]>([])
-  const projectTarget = ref<'manual' | 'order'>('manual')
+  const projectTarget = ref<'manual' | 'material' | 'order'>('manual')
   const options = reactive<{
     tenantId: string
     projects: AccessoryProjectOption[]
@@ -769,6 +822,7 @@
     codeRuleId: null
   })
   const materialConfig = reactive({
+    projectId: '',
     materialTypeId: '',
     materialSource: 'self_made' as const,
     categoryId: '',
@@ -794,6 +848,7 @@
                 list,
                 drawingProjectName: list.projectName,
                 systemProjectName: list.project?.projectName || '',
+                systemMaterialCode: item.materialCode || item.material?.materialCode || '',
                 materialDescription: item.material?.description || '',
                 unitName: item.baseUnit?.unitName || '',
                 typeName: item.materialType?.typeName || '',
@@ -860,7 +915,7 @@
         row.systemProjectName,
         row.list.drawingName,
         row.name,
-        row.material?.materialCode,
+        row.systemMaterialCode,
         row.materialDescription
       ].some((value) => value?.toLowerCase().includes(needle))
     })
@@ -890,7 +945,12 @@
     },
     { prop: 'list.drawingName', label: '图纸名称', minWidth: 150, showOverflowTooltip: true },
     { prop: 'rowNo', label: '原表序号', width: 96 },
-    { prop: 'material.materialCode', label: '物料编码', minWidth: 190, showOverflowTooltip: true },
+    {
+      prop: 'systemMaterialCode',
+      label: '物料编码（系统）',
+      minWidth: 190,
+      showOverflowTooltip: true
+    },
     { prop: 'materialName', label: '物料名称', minWidth: 160, useSlot: true },
     { prop: 'materialDescription', label: '物料描述', minWidth: 220, showOverflowTooltip: true },
     { prop: 'specificationModel', label: '规格型号', minWidth: 180, showOverflowTooltip: true },
@@ -905,6 +965,7 @@
     { prop: 'categoryName', label: '物料分类', width: 120 },
     { prop: 'codeRuleName', label: '编码策略', minWidth: 180, showOverflowTooltip: true },
     { prop: 'codeStatus', label: '编码状态', width: 110, useSlot: true },
+    { prop: 'bomStatus', label: '项目 BOM', width: 110, useSlot: true },
     { prop: 'orderStatus', label: '是否转工单', width: 115, useSlot: true },
     { prop: 'operation', label: '操作', width: 82, fixed: 'right', useSlot: true }
   ]
@@ -1004,6 +1065,7 @@
     categoryId: [{ required: true, message: '请选择物料分类', trigger: 'change' }]
   }
   const materialItems = computed<FormItem[]>(() => [
+    { key: 'projectId', label: '项目名称（系统）', type: 'slot', span: 24 },
     {
       key: 'materialTypeId',
       label: '物料类型',
@@ -1040,6 +1102,7 @@
     }
   ])
   const materialRules: FormRules = {
+    projectId: [{ required: true, message: '请选择系统项目', trigger: 'change' }],
     materialTypeId: [{ required: true, message: '请选择物料类型', trigger: 'change' }],
     materialSource: [{ required: true, message: '请选择物料来源', trigger: 'change' }],
     categoryId: [{ required: true, message: '请选择物料分类', trigger: 'change' }],
@@ -1184,7 +1247,7 @@
     detailRow.value = row
     await detailDialogRef.value?.handleOpen(undefined, {
       title: row.name,
-      subtitle: row.material?.materialCode || '尚未生成物料编码',
+      subtitle: row.systemMaterialCode || '尚未生成物料编码',
       showFooter: false
     })
   }
@@ -1328,54 +1391,88 @@
     }
   }
   const deleteDependencyMeta: Record<string, MasterDataDeleteDependencyMeta> = {
-    accessory_work_order: {
+    mes_work_order: {
       label: '关联生产工单',
       unit: '张',
-      description: '工单属于生产业务记录，请先在生产工单页面核对并处理。',
+      description: hasAuth('MesWorkOrder:View')
+        ? '工单属于生产业务记录，请先在生产工单页面核对并处理。'
+        : '工单属于生产业务记录，请联系有工单权限的人员核对。',
       actionLabel: '去看工单',
-      routeName: 'MesWorkOrder',
+      routeName: hasAuth('MesWorkOrder:View') ? 'MesWorkOrder' : undefined,
       order: 10
     },
-    accessory_parent_bom: {
+    mdm_accessory_work_order: {
+      label: '旧版加工工单草稿',
+      unit: '张',
+      description:
+        '这是旧流程生成的草稿，不是 MES 生产工单。确认不再需要后，可勾选并明确删除这张草稿。',
+      actionLabel: '处理草稿',
+      order: 15
+    },
+    mdm_bom: {
       label: '作为成品的项目 BOM',
       unit: '份',
       description: '物料是 BOM 的成品，需先处理 BOM 后才能删除编码。',
       actionLabel: '去看 BOM',
-      routeName: 'MdmBomMaintenance',
+      routeName: hasAuth('MdmBomMaintenance:View') ? 'MdmBomMaintenance' : undefined,
       order: 20
     },
-    accessory_component_bom: {
+    mdm_bom_item: {
       label: '作为组件的项目 BOM',
       unit: '份',
       description: '物料已列入 BOM 组件，需先处理对应 BOM。',
       actionLabel: '去看 BOM',
-      routeName: 'MdmBomMaintenance',
+      routeName: hasAuth('MdmBomMaintenance:View') ? 'MdmBomMaintenance' : undefined,
       order: 30
     },
-    accessory_shared_material: {
+    mdm_accessory_processing_item: {
       label: '共用物料编码的加工件',
       unit: '件',
       description: '其他加工件仍使用同一物料编码，请先分别核对。',
       actionLabel: '去处理',
+      routeName: 'MdmAccessoryProcessing',
       order: 40
-    },
-    accessory_other_reference: {
-      label: '其他业务引用',
-      unit: '项',
-      description: '服务端发现其他业务引用；请根据提示到相关业务页面处理。',
-      actionLabel: '去处理',
-      order: 50
     }
+  }
+
+  async function loadDeleteDependencies(rows: AccessoryRow[], mode: 'items' | 'codes') {
+    const dependencies = await fetchAccessoryDeleteDependencies(rows, mode)
+    for (const dependency of dependencies) {
+      if (deleteDependencyMeta[dependency.dependencyCode]) continue
+      const meta = getRecordReferenceMeta(dependency.dependencyCode)
+      deleteDependencyMeta[dependency.dependencyCode] = {
+        ...meta,
+        unit: '条',
+        description: meta.routeName
+          ? '该业务记录仍在使用物料编码，请到对应页面核对后再删除。'
+          : '该业务记录仍在使用物料编码，暂无处理入口，请联系有权限的管理员核对。',
+        actionLabel: '查看关联',
+        order: 100
+      }
+    }
+    return dependencies.map((dependency) => ({
+      ...dependency,
+      recordStatus: formatReferenceStatus(dependency.recordStatus)
+    }))
   }
 
   function deleteGuardOptions(
     rows: AccessoryRow[],
     mode: 'items' | 'codes'
-  ): Pick<MasterDataDeleteGuardOpenOptions, 'resourceLabel' | 'resources' | 'dependencyMeta'> {
+  ): Pick<
+    MasterDataDeleteGuardOpenOptions,
+    'resourceLabel' | 'resources' | 'dependencyMeta' | 'cleanup'
+  > {
     return {
       resourceLabel: mode === 'items' ? '加工件' : '物料编码',
       resources: rows.map((row) => ({ id: row.id, label: row.name })),
-      dependencyMeta: deleteDependencyMeta
+      dependencyMeta: deleteDependencyMeta,
+      cleanup: {
+        actionLabel: '删除旧版草稿工单',
+        confirmMessage: (count) =>
+          `将永久删除选中的 ${count} 张旧版加工工单草稿。请先核对单号；加工件和物料编码仍需再次点击删除，是否继续？`,
+        run: (records) => deleteLegacyAccessoryOrderDrafts(records.map((record) => record.targetId))
+      }
     }
   }
 
@@ -1386,7 +1483,7 @@
     return (
       (await deleteGuardRef.value?.inspect({
         ...deleteGuardOptions(rows, mode),
-        fetchDependencies: () => fetchAccessoryDeleteDependencies(rows)
+        fetchDependencies: () => loadDeleteDependencies(rows, mode)
       })) ?? true
     )
   }
@@ -1401,21 +1498,18 @@
     const code =
       rawCause && typeof rawCause === 'object' && 'code' in rawCause ? rawCause.code : undefined
     if (code !== '22023' && code !== '23503') return false
-    const message = getFriendlySupabaseErrorMessage(cause, '仍有业务记录引用所选资料，请先处理关联')
     await deleteGuardRef.value?.inspect({
       ...deleteGuardOptions(rows, mode),
-      fetchDependencies: async () => [
-        {
-          resourceId: rows[0].id,
-          dependencyCode: 'accessory_other_reference',
-          recordId: rows[0].id,
-          targetId: rows[0].id,
-          recordNo: message,
-          recordSummary: '本批次未删除任何记录',
-          createdAt: new Date().toISOString(),
-          cleanupAllowed: false
-        }
-      ]
+      fetchDependencies: async () => {
+        const dependencies = await loadDeleteDependencies(rows, mode)
+        if (dependencies.length) return dependencies
+        throw new Error(
+          '服务端仍检测到业务引用，但当前账号无法读取关联明细。请刷新后重新检查，仍失败请联系管理员按单号核对。',
+          {
+            cause
+          }
+        )
+      }
     })
     return true
   }
@@ -1488,8 +1582,25 @@
   }
   async function openMaterialDialog(): Promise<void> {
     const rows = selectedRows.value.filter((row) => !row.materialId)
+    if (rows.length !== selectedRows.value.length) {
+      ElMessage.warning('请只选择待编码的加工件，已编码记录无需重复生成')
+      return
+    }
     if (!rows.length || !sameTenant(rows)) return
+    const missingWidth = rows.find((row) => !row.widthMm || row.widthMm <= 0)
+    if (missingWidth) {
+      ElMessage.warning(`“${missingWidth.name}”缺少展宽，请先编辑展宽（mm）再生成编码`)
+      return
+    }
+    const linkedProjects = uniq(
+      rows.map((row) => row.list.projectId).filter((id): id is string => Boolean(id))
+    )
+    if (linkedProjects.length > 1) {
+      ElMessage.warning('所选加工件分属不同系统项目，请按项目分别生成编码')
+      return
+    }
     materialRows.value = rows
+    materialConfig.projectId = linkedProjects[0] || ''
     materialConfig.imageUrlsByItem = Object.fromEntries(
       rows.map((row) => [row.id, [...(row.imageUrls || [])]])
     )
@@ -1518,11 +1629,12 @@
         try {
           await materialFormRef.value?.validate()
           if (
+            !materialConfig.projectId ||
             !materialConfig.materialTypeId ||
             !materialConfig.categoryId ||
             !materialConfig.codeRuleId
           ) {
-            ElMessage.warning('请确认物料属性与编码策略')
+            ElMessage.warning('请确认系统项目、物料属性与编码策略')
             return false
           }
           await generateAccessoryMaterials(
@@ -1544,13 +1656,21 @@
   }
   async function convertBom(): Promise<void> {
     const rows = selectedRows.value
-    if (!rows.length || !sameTenant(rows)) return
+    if (!rows.length || conversionBusy.value || !sameTenant(rows)) return
     const selectedLists = uniqBy(
       rows.map((row) => row.list),
       (list) => list.id
     )
+    if (selectedLists.some((list) => list.bomId)) {
+      ElMessage.warning('请只选择尚未转项目 BOM 的清单')
+      return
+    }
     if (selectedLists.some((list) => list.items.some((item) => !item.materialId))) {
       ElMessage.warning('请先为所选清单的全部加工件生成物料编码')
+      return
+    }
+    if (selectedLists.some((list) => !list.projectId)) {
+      ElMessage.warning('请先为所选清单关联系统项目')
       return
     }
     try {
@@ -1561,18 +1681,39 @@
     } catch {
       return
     }
+    conversionBusy.value = true
+    let completed = 0
     try {
-      for (const list of selectedLists) await generateAccessoryStage(list.id, 'bom')
+      for (const list of selectedLists) {
+        await generateAccessoryStage(list.id, 'bom')
+        completed++
+      }
       ElMessage.success(`已处理 ${selectedLists.length} 份项目 BOM`)
       await loadLists()
     } catch (cause) {
-      ElMessage.error(getFriendlySupabaseErrorMessage(cause, '项目 BOM 生成失败，请检查项目归属'))
+      const reason = getFriendlySupabaseErrorMessage(cause, '项目 BOM 生成失败，请检查项目归属')
+      ElMessage.error(
+        completed
+          ? `已完成 ${completed}/${selectedLists.length} 份项目 BOM；其余未处理。${reason}`
+          : reason
+      )
       await loadLists()
+    } finally {
+      conversionBusy.value = false
     }
   }
   async function openWorkOrderDialog(): Promise<void> {
     const rows = selectedRows.value.filter((row) => row.materialId && !row.workOrders?.length)
+    if (rows.length !== selectedRows.value.length) {
+      ElMessage.warning('请只选择已编码且尚未转工单的加工件')
+      return
+    }
     if (!rows.length || !sameTenant(rows)) return
+    const missingWidth = rows.find((row) => !row.widthMm || row.widthMm <= 0)
+    if (missingWidth) {
+      ElMessage.warning(`“${missingWidth.name}”缺少展宽，需删除编码、补齐展宽后重新编码`)
+      return
+    }
     const linkedProjects = uniq(
       rows.map((row) => row.list.projectId).filter((id): id is string => Boolean(id))
     )
@@ -1627,18 +1768,21 @@
       }
     })
   }
-  async function openProjectDialog(target: 'manual' | 'order'): Promise<void> {
+  async function openProjectDialog(target: 'manual' | 'material' | 'order'): Promise<void> {
     if (!hasAuth('MdmSalesProject:Add')) return
     projectTarget.value = target
+    const targetList =
+      target === 'material' ? materialRows.value[0]?.list : orderRows.value[0]?.list
     projectDraft.projectName =
-      target === 'manual' ? manual.projectName : orderRows.value[0]?.list.projectName || ''
-    projectDraft.customerId = target === 'manual' ? manual.customerId || '' : ''
+      target === 'manual' ? manual.projectName : targetList?.projectName || ''
+    projectDraft.customerId =
+      target === 'manual' ? manual.customerId || '' : targetList?.customerId || ''
     await projectDialogRef.value?.handleOpen(undefined, {
       title: '新建系统项目',
       subtitle: '项目会写入 MDM 销售主数据，并自动回填到当前表单。',
       confirmText: '创建并回填',
       onConfirm: async () => {
-        const tenantId = target === 'manual' ? manual.tenantId : orderRows.value[0]?.list.tenantId
+        const tenantId = target === 'manual' ? manual.tenantId : targetList?.tenantId
         try {
           await projectFormRef.value?.validate()
           if (!tenantId || !projectDraft.projectName.trim() || !projectDraft.customerId) {
@@ -1655,6 +1799,7 @@
           if (!id) throw new Error('项目已保存，但暂时无法取得项目编号，请刷新后选择')
           await loadOptions(tenantId)
           if (projectTarget.value === 'manual') manual.projectId = id
+          else if (projectTarget.value === 'material') materialConfig.projectId = id
           else workOrderConfig.projectId = id
           ElMessage.success('项目已创建并回填')
           return true
@@ -1934,9 +2079,7 @@
   @media (width <= 1400px) {
     .accessory-processing-page__actions {
       flex-basis: 100%;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      scrollbar-width: thin;
+      flex-wrap: wrap;
     }
   }
 </style>

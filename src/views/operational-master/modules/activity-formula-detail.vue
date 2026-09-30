@@ -341,10 +341,10 @@
   .formula-detail__expression code {
     min-height: 72px;
     padding: var(--art-space-4);
-    overflow: auto;
     font: 600 14px/1.7 var(--art-font-family-mono, monospace);
     color: var(--el-text-color-primary);
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
     background: var(--el-fill-color-extra-light);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: var(--art-control-radius);

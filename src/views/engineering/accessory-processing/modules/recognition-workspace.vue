@@ -4,7 +4,7 @@
       <BusinessWorkspaceHeader
         eyebrow="ACCESSORY PROCESSING"
         title="配件加工清单"
-        description="上传图片、PDF 或 DOCX，校对每件规格与草图，再生成项目物料、BOM 和生产加工单。"
+        description="上传图片、PDF 或 DOCX，逐件校对并确认保存，再到清单中分别生成编码、项目 BOM 和生产工单。"
         icon="ri:shape-2-line"
         :tags="[
           { label: '一长度一加工件', type: 'primary' },
@@ -228,7 +228,7 @@
                 {{
                   draft.status === 'draft'
                     ? '保存后可在下方数据列表查看；生成前需为每件加工件关联独立草图。'
-                    : '按物料、项目 BOM、生产工单的顺序执行，或一键完成剩余步骤。'
+                    : '保存项目归属后，请回到清单分别点击“转项目 BOM”和“转生产工单”。'
                 }}
               </p>
             </div>
@@ -239,7 +239,7 @@
                 :disabled="workspace.saving"
                 :loading="workspace.saving"
                 @click="draft.status === 'draft' ? saveDraft() : saveProjectAssignment()"
-                >{{ draft.status === 'draft' ? '保存配件加工清单' : '保存项目归属' }}</ElButton
+                >{{ draft.status === 'draft' ? '确认并保存清单' : '保存项目归属' }}</ElButton
               >
             </div>
           </div>
@@ -324,6 +324,14 @@
                         @click="editingIndex = editingIndex === index ? null : index"
                         >{{ editingIndex === index ? '收起' : '校对' }}</ElButton
                       >
+                      <ElButton
+                        v-if="canSaveDraft && !draft.id && draft.status === 'draft'"
+                        link
+                        type="danger"
+                        :aria-label="`从识别预览移除加工件 ${index + 1}`"
+                        @click="removePreviewItem(index)"
+                        >移除</ElButton
+                      >
                       <ElTag v-else-if="item.materialId" type="success" size="small"
                         >已生成物料</ElTag
                       >
@@ -392,30 +400,25 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        v-if="draft.status === 'generated'"
-        title="生产加工单"
-        subtitle="每个长度与数量组合对应一张独立加工单，并保留对应草图。"
-        :loading="workspace.ordersLoading"
-        :error="workspace.ordersError"
-        :empty="!workspace.orders.length"
-        empty-title="暂无加工单"
-        @retry="loadOrders"
+        v-if="orderCards.length"
+        title="已转生产工单"
+        subtitle="这些 MES 工单由清单中的“转生产工单”操作分别创建。"
       >
         <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
           <div v-for="card in orderCards" :key="card.order.id" class="art-card-xs min-w-0 p-4">
             <div class="flex items-start justify-between gap-2">
-              <strong class="break-all">{{ card.order.orderNo }}</strong>
-              <ElTag size="small" type="info">待生产</ElTag>
+              <strong class="break-all">{{ card.order.workOrderNo }}</strong>
+              <ElTag size="small" type="info">MES 工单</ElTag>
             </div>
             <p class="mt-2 text-sm font-medium">{{ card.item?.name || '加工件' }}</p>
             <p class="mt-1 break-all text-xs text-gray-500">物料 {{ card.materialCode }}</p>
             <div class="mt-3 flex gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
               <AccessorySketchThumbnail
-                :path="card.order.sketchPath"
+                :path="card.item.sketchPath"
                 :alt="`${card.item?.name || '加工件'}的加工草图`"
               />
               <div class="min-w-0 space-y-1 text-sm">
-                <p>{{ card.order.lengthM }} m × {{ card.order.quantity }} 件</p>
+                <p>{{ card.item.lengthM }} m × {{ card.item.quantity }} 件</p>
                 <p v-if="card.item?.widthMm" class="text-gray-500"
                   >展宽 {{ card.item.widthMm }} mm</p
                 >
@@ -490,7 +493,7 @@
         :error="workspace.error"
         :empty="!savedRows.length && !listKeyword"
         empty-title="暂无配件加工清单"
-        empty-description="完成识别校对后，点击“保存配件加工清单”。"
+        empty-description="完成识别校对后，点击“确认并保存清单”。"
         @retry="loadLists"
       >
         <template #actions>
@@ -575,7 +578,6 @@
     fetchAccessoryLists,
     fetchAccessoryRecognitions,
     fetchAccessoryProjects,
-    fetchAccessoryWorkOrders,
     fetchMaterialCategories,
     fetchMaterialReferenceOptions,
     recognizeAccessoryPages,
@@ -589,7 +591,6 @@
     type AccessoryRecognitionRecord,
     type AccessoryProjectOption,
     type AccessoryCustomerOption,
-    type AccessoryWorkOrder,
     type MaterialCategory,
     type MaterialType,
     type UnitOfMeasure
@@ -620,18 +621,15 @@
     categories: MaterialCategory[]
     types: MaterialType[]
     units: UnitOfMeasure[]
-    orders: AccessoryWorkOrder[]
     loading: boolean
     recognitionsLoading: boolean
     recognitionsError: string
     openingRecognitionId: string
     projectsLoading: boolean
-    ordersLoading: boolean
     recognizing: boolean
     recognitionError: string
     saving: boolean
     error: string
-    ordersError: string
   }
   interface DraftState {
     id?: string
@@ -660,18 +658,15 @@
     categories: [],
     types: [],
     units: [],
-    orders: [],
     loading: false,
     recognitionsLoading: false,
     recognitionsError: '',
     openingRecognitionId: '',
     projectsLoading: false,
-    ordersLoading: false,
     recognizing: false,
     recognitionError: '',
     saving: false,
-    error: '',
-    ordersError: ''
+    error: ''
   })
   const draft = reactive<DraftState>({
     id: undefined,
@@ -947,15 +942,21 @@
       '当前租户'
   )
   const orderCards = computed(() =>
-    workspace.orders.map((order) => {
-      const index = draft.items.findIndex((item) => item.id === order.itemId)
-      return {
+    draft.items.flatMap((item) =>
+      (item.workOrders ?? []).map((order) => ({
         order,
-        item: index >= 0 ? draft.items[index] : null,
-        materialCode: index >= 0 ? (draft.items[index]?.materialCode ?? '') : ''
-      }
-    })
+        item,
+        materialCode: item.materialCode ?? ''
+      }))
+    )
   )
+
+  function removePreviewItem(index: number): void {
+    if (draft.id || draft.status !== 'draft' || workspace.saving) return
+    draft.items.splice(index, 1)
+    workspace.sketchUrls.splice(index, 1)
+    editingIndex.value = null
+  }
 
   function downloadTemplate(): void {
     const link = document.createElement('a')
@@ -1169,6 +1170,10 @@
       ElMessage.warning('请检查每个加工件的名称、长度和数量')
       return false
     }
+    if (draft.items.some((item) => !item.widthMm || item.widthMm <= 0)) {
+      ElMessage.warning('请补齐每个加工件的展宽（mm），确认后才能生成物料编码和生产工单')
+      return false
+    }
     if (draft.items.some((item) => !item.baseUnitId || !item.materialTypeId || !item.categoryId)) {
       ElMessage.warning('请检查每个加工件的基本单位、物料类型和物料分类')
       return false
@@ -1361,19 +1366,6 @@
     }
   }
 
-  async function loadOrders(): Promise<void> {
-    if (!draft.id) return
-    workspace.ordersLoading = true
-    workspace.ordersError = ''
-    try {
-      workspace.orders = await fetchAccessoryWorkOrders(draft.id)
-    } catch (error) {
-      workspace.ordersError = getFriendlySupabaseErrorMessage(error, '加工单加载失败，请重试')
-    } finally {
-      workspace.ordersLoading = false
-    }
-  }
-
   async function openList(list: AccessoryProcessingList): Promise<void> {
     if (!list.sourcePath) return
     editingIndex.value = null
@@ -1383,8 +1375,7 @@
       sourcePath: list.sourcePath,
       sourceName: list.sourceName,
       groupId: list.sourcePath.split('/')[1] || crypto.randomUUID(),
-      pages: [],
-      orders: []
+      pages: []
     })
     Object.assign(draft, {
       id: list.id,
@@ -1410,10 +1401,7 @@
         getFriendlySupabaseErrorMessage(error, '部分文件暂时无法预览，请刷新后重试')
       )
     }
-    await Promise.all([
-      loadProjects(),
-      list.status === 'generated' ? loadOrders() : Promise.resolve()
-    ])
+    await loadProjects()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
