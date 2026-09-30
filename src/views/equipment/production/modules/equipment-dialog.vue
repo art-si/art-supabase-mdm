@@ -49,6 +49,7 @@
           <template #photoUrl>
             <ArtUploadImage
               v-model="form.photoUrl"
+              :resource-tenant-id="form.tenantId"
               title="上传设备图片"
               :limit="1"
               :size="104"

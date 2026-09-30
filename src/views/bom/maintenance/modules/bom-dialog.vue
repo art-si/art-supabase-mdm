@@ -120,7 +120,7 @@
           scrollbar-always-on
           :max-height="360"
           empty-text="暂无 BOM 组件"
-          empty-description="点击“参选物料”建立父项与子项的装配关系。"
+          empty-description="组件为选填，可直接保存；后续可通过“参选物料”补充装配关系。"
           @selection-change="handleComponentSelectionChange"
         />
         <footer
@@ -913,10 +913,6 @@
     row.quantity = converted
   }
   const validateComponents = async (): Promise<boolean> => {
-    if (!form.items.length) {
-      ElMessage.warning('请至少添加一项 BOM 组件')
-      return false
-    }
     const result = await componentTableRef.value?.validate()
     if (result?.valid !== false) return true
     ElMessage.warning(

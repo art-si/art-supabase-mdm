@@ -54,12 +54,17 @@
       <BomDialog ref="dialogRef" @success="refresh" />
       <BomGroupDialog ref="groupDialogRef" @success="handleGroupSaved" />
       <BomDetailDialog ref="detailDialogRef" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="tsx">
   import dayjs from 'dayjs'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -85,7 +90,6 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext,
     ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import {
@@ -93,6 +97,7 @@
     deleteBoms,
     deleteBomGroup,
     fetchBomGroups,
+    fetchBomDeleteDependencies,
     fetchBoms,
     fetchMaterialReferenceOptions,
     transitionBom,
@@ -125,6 +130,8 @@
   const dialogRef = ref<InstanceType<typeof BomDialog>>()
   const groupDialogRef = ref<InstanceType<typeof BomGroupDialog>>()
   const detailDialogRef = ref<InstanceType<typeof BomDetailDialog>>()
+  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
+  const deleteBusy = ref(false)
   const units = ref<UnitOfMeasure[]>([])
   const groups = ref<BomGroup[]>([])
   const groupLoading = ref(false)
@@ -295,14 +302,74 @@
     {
       type: 'delete',
       permission: 'MdmBomMaintenance:Delete',
-      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 个设计状态 BOM 及其全部组件吗？删除后无法恢复。`,
-      onClick: async ({ selectedRows, api }) => {
-        await deleteBoms(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
+      confirm: false,
+      disabled: () => deleteBusy.value,
+      onClick: async ({ selectedRows }) => {
+        await removeBoms(
+          selectedRows.map((row) => ({ id: String(row.id), bomCode: String(row.bomCode) }))
+        )
       }
     }
   ]
+  const inspectBomReferences = (rows: Array<Pick<BomRecord, 'id' | 'bomCode'>>) => {
+    const options: MasterDataDeleteGuardOpenOptions = {
+      resourceLabel: 'BOM',
+      resources: rows.map((row) => ({ id: row.id, label: row.bomCode })),
+      navigationResource: { type: 'bom', queryKey: 'bomId' },
+      dependencyMeta: {
+        bom_accessory_processing_list: {
+          label: '配件加工清单',
+          unit: '份',
+          order: 1,
+          description: '以下清单引用了该 BOM，请先核对并处理清单关联，再返回重试删除。',
+          actionLabel: '查看清单',
+          routeName: 'MdmAccessoryProcessing'
+        }
+      },
+      fetchDependencies: (ids) => {
+        // RLS hides records without View permission; never interpret those hidden rows as no references.
+        if (!hasAuth('MdmAccessoryProcessing:View')) {
+          throw new Error('无法检查配件加工清单引用，请联系管理员开通配件加工清单查看权限后重试')
+        }
+        return fetchBomDeleteDependencies(ids)
+      }
+    }
+    return deleteGuardRef.value?.inspect(options) ?? Promise.resolve(true)
+  }
+  const removeBoms = async (rows: Array<Pick<BomRecord, 'id' | 'bomCode'>>): Promise<void> => {
+    if (deleteBusy.value || !rows.length) return
+    deleteBusy.value = true
+    try {
+      if (await inspectBomReferences(rows)) return
+      await confirmAction(
+        rows.length === 1
+          ? `确定删除 BOM“${rows[0].bomCode}”及其全部组件吗？删除后无法恢复。`
+          : `确定删除选中的 ${rows.length} 个设计状态 BOM 及其全部组件吗？删除后无法恢复。`,
+        rows.length === 1 ? '删除 BOM' : '批量删除 BOM'
+      )
+      try {
+        if (rows.length === 1) await deleteBom(rows[0].id, { showErrorMessage: false })
+        else
+          await deleteBoms(
+            rows.map((row) => row.id),
+            { showErrorMessage: false }
+          )
+      } catch (cause) {
+        // References can be added after preflight; re-read before reporting the server failure.
+        if (!(await inspectBomReferences(rows))) {
+          ElMessage.error(getFriendlySupabaseErrorMessage(cause, 'BOM 删除失败，请刷新列表后重试'))
+        }
+        return
+      }
+      await tableRef.value?.refreshRemove()
+    } catch (cause) {
+      if (cause !== 'cancel' && cause !== 'close') {
+        ElMessage.error(getFriendlySupabaseErrorMessage(cause, 'BOM 删除失败，请重试'))
+      }
+    } finally {
+      deleteBusy.value = false
+    }
+  }
   const identity = (row: BomRecord) => (
     <div class="bom-maintenance-page__identity">
       <span aria-hidden="true">
@@ -369,17 +436,13 @@
       icon: 'ri:delete-bin-6-line',
       color: 'var(--el-color-danger)',
       auth: 'MdmBomMaintenance:Delete',
-      disabled: row.status !== 'design'
+      disabled: deleteBusy.value || row.status !== 'design'
     }
   ]
   const handleMore = async (item: ButtonMoreItem, row: BomRecord) => {
     if (item.key === 'copy') return void openDialog(row, { copy: true })
     if (item.key === 'delete') {
-      await confirmAction(`确定删除 BOM“${row.bomCode}”及其全部组件吗？`, '删除 BOM', {
-        type: 'warning'
-      })
-      await deleteBom(row.id)
-      await tableRef.value?.refreshRemove()
+      await removeBoms([row])
       return
     }
     const targets: Record<string, BomStatus> = {

@@ -68,6 +68,7 @@
           <template #imageUrls>
             <ArtUploadImage
               v-model="formModel.imageUrls"
+              :resource-tenant-id="formModel.tenantId"
               multiple
               :limit="5"
               :size="92"

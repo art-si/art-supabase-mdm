@@ -225,11 +225,15 @@
           </ElTabs>
         </div>
       </ArtDrawer>
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="tsx">
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
@@ -287,6 +291,8 @@
   }
   type QueryParams = Omit<MaterialArchiveQuery, 'tenantId'> & Api.Common.PaginationParams
   const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard('mdm_material', '物料')
+  const deleteBusy = ref(false)
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
@@ -449,11 +455,16 @@
     {
       permission: 'MdmMaterialArchive:Delete',
       type: 'delete',
-      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 条物料档案吗？`,
-      onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteMaterialArchives(selectedRows.map((item) => String(item.id)))
-        await api.refreshRemove()
+      confirm: false,
+      disabled: () => deleteBusy.value,
+      onClick: async ({ selectedRows }: ArtTableQueryHeaderActionContext) => {
+        await removeMaterials(
+          selectedRows.map((item) => ({
+            id: String(item.id),
+            materialName: String(item.materialName),
+            materialCode: String(item.materialCode)
+          }))
+        )
       }
     }
   ]
@@ -789,11 +800,33 @@
       )
     }
   ]
-  const removeMaterial = async (row: MaterialArchive): Promise<void> => {
-    await confirmDelete(`确定删除物料“${row.materialName}”吗？`)
-    await deleteMaterialArchives([row.id])
-    await tableRef.value?.getData()
+  const removeMaterials = async (
+    rows: Array<Pick<MaterialArchive, 'id' | 'materialName' | 'materialCode'>>
+  ): Promise<void> => {
+    if (deleteBusy.value || !rows.length) return
+    deleteBusy.value = true
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${row.materialName} · ${row.materialCode}`
+    }))
+    try {
+      if (await inspectDeleteReferences(resources)) return
+      await confirmDelete(
+        rows.length === 1
+          ? `确定删除物料“${rows[0].materialName}”吗？`
+          : `确定删除选中的 ${rows.length} 条物料档案吗？`
+      )
+      await deleteMaterialArchives(rows.map((row) => row.id))
+      await tableRef.value?.refreshRemove()
+    } catch (cause) {
+      if (cause !== 'cancel' && cause !== 'close') {
+        ElMessage.error(getFriendlySupabaseErrorMessage(cause, '物料删除失败，请重试'))
+      }
+    } finally {
+      deleteBusy.value = false
+    }
   }
+  const removeMaterial = (row: MaterialArchive): Promise<void> => removeMaterials([row])
   const descendantCategoryIds = (id: string): string[] => {
     const ids = new Set<string>([id])
     let changed = true

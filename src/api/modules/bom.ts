@@ -1,5 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import type { MasterDataDeleteDependencyDetail } from '@/api/master-data-delete'
 import { keyBy, uniq } from 'lodash-es'
 import { buildBomWritePayload } from './bom-write-payload'
 import type {
@@ -178,18 +180,73 @@ export async function transitionBom(id: string, status: BomStatus): Promise<void
   )
 }
 
-export async function deleteBom(id: string): Promise<void> {
+interface BomAccessoryDependency {
+  id: string
+  bomId: string
+  sourceName: string
+  projectName: string
+  drawingName: string
+  status: string
+  createTime: string
+}
+
+/** Follow the same inbound reference checked by mdm_delete_bom; reads retain table RLS. */
+export async function fetchBomDeleteDependencies(
+  ids: string[]
+): Promise<MasterDataDeleteDependencyDetail[]> {
+  if (!ids.length) return []
+  const { data, error } = await fetchAllRangePages<BomAccessoryDependency>(({ from, to }) =>
+    responseHandle<BomAccessoryDependency[]>(
+      () =>
+        supabase
+          .from('mdm_accessory_processing_list')
+          .select('id,bom_id,source_name,project_name,drawing_name,status,create_time')
+          .in('bom_id', uniq(ids))
+          .order('id')
+          .range(from, to),
+      { ...readOptions, errorMessage: 'BOM 引用检查失败，请重试' }
+    )
+  )
+  if (error || !data) throw new Error('BOM 引用检查失败，请重试', { cause: error })
+  const statuses: Record<string, string> = {
+    draft: '草稿',
+    materials_ready: '物料已生成',
+    bom_ready: 'BOM 已生成',
+    generated: '工单已生成'
+  }
+  return data.map((row) => ({
+    resourceId: row.bomId,
+    dependencyCode: 'bom_accessory_processing_list',
+    recordId: row.id,
+    targetId: row.id,
+    recordNo: row.drawingName || row.sourceName || '配件加工清单',
+    recordSummary: [row.projectName, row.sourceName].filter(Boolean).join(' · '),
+    recordStatus: statuses[row.status] || '待核对',
+    createdAt: row.createTime,
+    cleanupAllowed: false
+  }))
+}
+
+export async function deleteBom(
+  id: string,
+  options?: { showErrorMessage?: boolean }
+): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_bom', { p_bom_id: id }), {
     ...writeOptions,
     message: 'BOM 已删除',
+    showErrorMessage: options?.showErrorMessage ?? true,
     errorMessage: 'BOM 删除失败，请确认处于设计状态且未被业务引用'
   })
 }
 
-export async function deleteBoms(ids: string[]): Promise<void> {
+export async function deleteBoms(
+  ids: string[],
+  options?: { showErrorMessage?: boolean }
+): Promise<void> {
   await responseHandle<number>(() => supabase.rpc('mdm_delete_boms', { p_bom_ids: ids }), {
     ...writeOptions,
     message: '已删除选中的 BOM',
+    showErrorMessage: options?.showErrorMessage ?? true,
     errorMessage: 'BOM 批量删除失败，请确认所选记录仍处于设计状态且未被业务引用'
   })
 }

@@ -297,7 +297,8 @@ export async function recognizeAccessoryPages(imageUrls: string[]): Promise<Acce
 }
 
 export async function fetchAccessoryLists(
-  tenantId: string | null
+  tenantId: string | null,
+  listId?: string
 ): Promise<AccessoryProcessingList[]> {
   let query = supabase
     .from('mdm_accessory_processing_list')
@@ -306,6 +307,7 @@ export async function fetchAccessoryLists(
     )
     .order('create_time', { ascending: false })
     .limit(100)
+  if (listId) query = query.eq('id', listId)
   if (tenantId) query = query.eq('tenant_id', tenantId)
   const { data } = await responseHandle<AccessoryProcessingList[]>(() => query, {
     breakReturn: true,

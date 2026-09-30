@@ -4,6 +4,10 @@
       class="accessory-processing-page business-workspace-page art-full-height"
       :class="{ 'is-focus-mode': focusMode }"
     >
+      <MasterDeleteProcessingNotice
+        v-if="targetListId"
+        action-hint="当前已定位到关联的加工清单，请核对关联，处理完成后返回原页面重试删除。"
+      />
       <BusinessWorkspaceHeader
         v-show="!focusMode"
         density="compact"
@@ -633,6 +637,8 @@
   import AccessorySketchThumbnail from './modules/accessory-sketch-thumbnail.vue'
   import RecognitionWorkspace from './modules/recognition-workspace.vue'
 
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+
   defineOptions({ name: 'MdmAccessoryProcessing' })
 
   interface AccessoryRow extends AccessoryProcessingItem {
@@ -670,6 +676,17 @@
   const userStore = useUserStore()
   const { isPlatformSuper, getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
+  const route = useRoute()
+  const targetListId = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    (route.query.resourceType === 'bom' ||
+      ['mdm_accessory_processing_list', 'mdm_accessory_processing_item'].includes(
+        String(route.query.dependencyCode)
+      )) &&
+    typeof route.query.recordId === 'string'
+      ? route.query.recordId
+      : ''
+  )
   const lists = ref<AccessoryProcessingList[]>([])
   const loading = ref(false)
   const error = ref('')
@@ -1062,7 +1079,10 @@
     loading.value = true
     error.value = ''
     try {
-      lists.value = await fetchAccessoryLists(effectiveTenantId.value)
+      lists.value = await fetchAccessoryLists(
+        effectiveTenantId.value,
+        targetListId.value || undefined
+      )
       clearSelectedRows()
     } catch (cause) {
       error.value = getFriendlySupabaseErrorMessage(cause, '配件加工清单加载失败，请重试')
@@ -1658,6 +1678,14 @@
   })
   watch([projectKeyword, projectTree], () => {
     treeRef.value?.filter(projectKeyword.value)
+  })
+  watch(targetListId, () => {
+    keyword.value = ''
+    projectKeyword.value = ''
+    selectedNodeId.value = ''
+    codeFilter.value = 'all'
+    page.value = 1
+    void loadLists()
   })
   watch(effectiveTenantId, () => {
     selectedNodeId.value = ''
