@@ -1,5 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
+import { uniq, uniqBy } from 'lodash-es'
+import type { MasterDataDeleteDependencyDetail } from '@/api/master-data-delete'
 
 const { supabase, responseHandle } = useSupabase()
 const bucket = 'mdm-accessory-processing'
@@ -24,6 +26,7 @@ export interface AccessoryProcessingItem {
   remark: string
   sketch: AccessorySketchBounds | null
   sketchPath?: string | null
+  imageUrls?: string[]
   materialId?: string | null
   materialCode?: string | null
   specificationModel?: string | null
@@ -299,7 +302,7 @@ export async function fetchAccessoryLists(
   let query = supabase
     .from('mdm_accessory_processing_list')
     .select(
-      'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,projectName:project_name,drawingName:drawing_name,projectId:project_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,project:mdm_project(projectName:project_name),items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,materialId:material_id,materialCode:material_code,specificationModel:specification_model,baseUnitId:base_unit_id,materialTypeId:material_type_id,materialSource:material_source,categoryId:category_id,codeRuleId:code_rule_id,baseUnit:mdm_unit_of_measure!accessory_item_unit_tenant_fk(unitName:unit_name),materialType:mdm_material_type!accessory_item_type_tenant_fk(typeName:type_name),category:mdm_material_category!accessory_item_category_tenant_fk(categoryName:category_name),codeRule:mdm_material_code_rule!accessory_item_code_rule_tenant_fk(ruleName:rule_name),material:mdm_material!mdm_accessory_processing_item_material_id_tenant_id_fkey(materialCode:material_code,description,imageUrls:image_urls,codeRuleId:code_rule_id),workOrders:mes_work_order!mes_work_order_accessory_item_tenant_fk(id,workOrderNo:work_order_no)))'
+      'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,projectName:project_name,drawingName:drawing_name,projectId:project_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,project:mdm_project(projectName:project_name),items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,imageUrls:image_urls,materialId:material_id,materialCode:material_code,specificationModel:specification_model,baseUnitId:base_unit_id,materialTypeId:material_type_id,materialSource:material_source,categoryId:category_id,codeRuleId:code_rule_id,baseUnit:mdm_unit_of_measure!accessory_item_unit_tenant_fk(unitName:unit_name),materialType:mdm_material_type!accessory_item_type_tenant_fk(typeName:type_name),category:mdm_material_category!accessory_item_category_tenant_fk(categoryName:category_name),codeRule:mdm_material_code_rule!accessory_item_code_rule_tenant_fk(ruleName:rule_name),material:mdm_material!mdm_accessory_processing_item_material_id_tenant_id_fkey(materialCode:material_code,description,imageUrls:image_urls,codeRuleId:code_rule_id),workOrders:mes_work_order!mes_work_order_accessory_item_tenant_fk(id,workOrderNo:work_order_no)))'
     )
     .order('create_time', { ascending: false })
     .limit(100)
@@ -402,15 +405,231 @@ export async function generateAccessoryMaterials(
   )
 }
 
-export async function deleteAccessoryItem(itemId: string): Promise<void> {
-  await responseHandle(
-    () => supabase.rpc('mdm_delete_accessory_processing_item', { p_item_id: itemId }),
+export async function deleteAccessoryItems(
+  itemIds: string[],
+  mode: 'items' | 'codes'
+): Promise<{ processed: number }> {
+  const { data } = await responseHandle<{ processed: number }>(
+    () =>
+      supabase.rpc('mdm_delete_accessory_processing_items', {
+        p_item_ids: itemIds,
+        p_mode: mode
+      }),
     {
       breakReturn: true,
       showErrorMessage: false,
-      errorMessage: '加工件删除失败，请刷新清单后重试'
+      errorMessage: '批量处理失败，请刷新清单后重试'
     }
   )
+  if (!data) throw new Error('批量处理未返回结果，请刷新后重试')
+  return data
+}
+
+export interface AccessoryDeleteCandidate {
+  id: string
+  name: string
+  materialId?: string | null
+}
+
+/** The delete RPC remains authoritative; this read gives users the known references before confirming. */
+export async function fetchAccessoryDeleteDependencies(
+  candidates: AccessoryDeleteCandidate[]
+): Promise<MasterDataDeleteDependencyDetail[]> {
+  if (!candidates.length) return []
+  const itemIds = candidates.map((item) => item.id)
+  const materialIds = uniq(candidates.flatMap((item) => (item.materialId ? [item.materialId] : [])))
+  const readOptions = { breakReturn: true, showErrorMessage: false }
+
+  interface WorkOrderReference {
+    id: string
+    accessoryItemId: string | null
+    materialId: string | null
+    workOrderNo: string
+    status: string
+    createTime: string
+  }
+  interface BomItemReference {
+    id: string
+    bomId: string
+    componentMaterialId: string
+    createTime: string
+  }
+  interface BomReference {
+    id: string
+    materialId: string | null
+    bomCode: string
+    status: string
+    createTime: string
+  }
+  interface AccessoryReference {
+    id: string
+    materialId: string | null
+    name: string
+    createTime: string
+  }
+
+  const [directOrders, materialOrders, bomItems, otherItems] = await Promise.all([
+    responseHandle<WorkOrderReference[]>(
+      () =>
+        supabase
+          .from('mes_work_order')
+          .select(
+            'id,accessoryItemId:accessory_item_id,materialId:material_id,workOrderNo:work_order_no,status,createTime:create_time'
+          )
+          .in('accessory_item_id', itemIds),
+      readOptions
+    ),
+    materialIds.length
+      ? responseHandle<WorkOrderReference[]>(
+          () =>
+            supabase
+              .from('mes_work_order')
+              .select(
+                'id,accessoryItemId:accessory_item_id,materialId:material_id,workOrderNo:work_order_no,status,createTime:create_time'
+              )
+              .in('material_id', materialIds),
+          readOptions
+        )
+      : Promise.resolve({ data: [] as WorkOrderReference[] }),
+    materialIds.length
+      ? responseHandle<BomItemReference[]>(
+          () =>
+            supabase
+              .from('mdm_bom_item')
+              .select(
+                'id,bomId:bom_id,componentMaterialId:component_material_id,createTime:create_time'
+              )
+              .in('component_material_id', materialIds),
+          readOptions
+        )
+      : Promise.resolve({ data: [] as BomItemReference[] }),
+    materialIds.length
+      ? responseHandle<AccessoryReference[]>(
+          () =>
+            supabase
+              .from('mdm_accessory_processing_item')
+              .select('id,materialId:material_id,name,createTime:create_time')
+              .in('material_id', materialIds),
+          readOptions
+        )
+      : Promise.resolve({ data: [] as AccessoryReference[] })
+  ])
+
+  const componentBomIds = uniq((bomItems.data ?? []).map((item) => item.bomId))
+  const [parentBoms, componentBoms] = await Promise.all([
+    materialIds.length
+      ? responseHandle<BomReference[]>(
+          () =>
+            supabase
+              .from('mdm_bom')
+              .select('id,materialId:material_id,bomCode:bom_code,status,createTime:create_time')
+              .in('material_id', materialIds),
+          readOptions
+        )
+      : Promise.resolve({ data: [] as BomReference[] }),
+    componentBomIds.length
+      ? responseHandle<BomReference[]>(
+          () =>
+            supabase
+              .from('mdm_bom')
+              .select('id,materialId:material_id,bomCode:bom_code,status,createTime:create_time')
+              .in('id', componentBomIds),
+          readOptions
+        )
+      : Promise.resolve({ data: [] as BomReference[] })
+  ])
+
+  const bomById = new Map(
+    [...(parentBoms.data ?? []), ...(componentBoms.data ?? [])].map((bom) => [bom.id, bom])
+  )
+  const result: MasterDataDeleteDependencyDetail[] = []
+  const addReference = (
+    resourceId: string,
+    dependencyCode: string,
+    recordId: string,
+    recordNo: string,
+    recordSummary: string,
+    recordStatus: string | null,
+    createdAt: string,
+    targetId = recordId
+  ): void => {
+    result.push({
+      resourceId,
+      dependencyCode,
+      recordId,
+      targetId,
+      recordNo,
+      recordSummary,
+      recordStatus,
+      createdAt,
+      cleanupAllowed: false
+    })
+  }
+
+  for (const candidate of candidates) {
+    const materialId = candidate.materialId
+    for (const order of uniqBy(
+      [...(directOrders.data ?? []), ...(materialOrders.data ?? [])],
+      'id'
+    )) {
+      if (
+        order.accessoryItemId === candidate.id ||
+        (materialId && order.materialId === materialId)
+      ) {
+        addReference(
+          candidate.id,
+          'accessory_work_order',
+          order.id,
+          order.workOrderNo,
+          candidate.name,
+          order.status,
+          order.createTime
+        )
+      }
+    }
+    if (!materialId) continue
+    for (const bom of parentBoms.data ?? []) {
+      if (bom.materialId === materialId) {
+        addReference(
+          candidate.id,
+          'accessory_parent_bom',
+          bom.id,
+          bom.bomCode,
+          candidate.name,
+          bom.status,
+          bom.createTime
+        )
+      }
+    }
+    for (const component of bomItems.data ?? []) {
+      if (component.componentMaterialId !== materialId) continue
+      const bom = bomById.get(component.bomId)
+      addReference(
+        candidate.id,
+        'accessory_component_bom',
+        component.id,
+        bom?.bomCode ?? component.bomId,
+        candidate.name,
+        bom?.status ?? null,
+        component.createTime,
+        component.bomId
+      )
+    }
+    for (const other of otherItems.data ?? []) {
+      if (other.materialId === materialId && other.id !== candidate.id) {
+        addReference(
+          candidate.id,
+          'accessory_shared_material',
+          other.id,
+          other.name,
+          '共用同一物料编码',
+          null,
+          other.createTime
+        )
+      }
+    }
+  }
+  return uniqBy(result, (item) => `${item.resourceId}:${item.dependencyCode}:${item.recordId}`)
 }
 
 export async function updateAccessoryItem(

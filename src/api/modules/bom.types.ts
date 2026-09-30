@@ -120,6 +120,7 @@ export interface BomQuery {
   current: number
   size: number
   tenantId?: string | null
+  id?: string
   keyword?: string
   materialId?: string
   groupIds?: string[]

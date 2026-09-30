@@ -57,6 +57,7 @@ export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSign
     .order('sort')
     .order('update_time', { ascending: false })
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
+  if (params.id) query = query.eq('id', params.id)
   if (params.keyword) {
     const baseFilter = buildOrIlikeFilter(['bom_code', 'version', 'description'], params.keyword)
     query = query.or(
@@ -180,7 +181,16 @@ export async function transitionBom(id: string, status: BomStatus): Promise<void
 export async function deleteBom(id: string): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_bom', { p_bom_id: id }), {
     ...writeOptions,
-    message: 'BOM 已删除'
+    message: 'BOM 已删除',
+    errorMessage: 'BOM 删除失败，请确认处于设计状态且未被业务引用'
+  })
+}
+
+export async function deleteBoms(ids: string[]): Promise<void> {
+  await responseHandle<number>(() => supabase.rpc('mdm_delete_boms', { p_bom_ids: ids }), {
+    ...writeOptions,
+    message: '已删除选中的 BOM',
+    errorMessage: 'BOM 批量删除失败，请确认所选记录仍处于设计状态且未被业务引用'
   })
 }
 

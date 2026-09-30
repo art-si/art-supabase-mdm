@@ -121,6 +121,14 @@
                         <i v-if="data.status === 'disabled'">停用</i>
                       </span>
                     </template>
+                    <template #empty>
+                      <ArtEmptyState
+                        title="未找到匹配分类"
+                        description="请更换关键词或清空搜索条件。"
+                        size="compact"
+                        :visual-size="64"
+                      />
+                    </template>
                   </ElTree>
                 </ElScrollbar>
               </ArtAsyncState>

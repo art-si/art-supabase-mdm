@@ -25,7 +25,9 @@
           <template #label>
             <span class="esop-document-dialog__tab-label">
               <ArtSvgIcon icon="ri:git-branch-line" />适用范围
-              <i v-if="scopeCount">{{ scopeCount }}</i>
+              <span v-if="scopeCount" class="esop-document-dialog__tab-count">{{
+                scopeCount
+              }}</span>
             </span>
           </template>
         </ElTabPane>
@@ -442,19 +444,23 @@
       display: inline-flex;
       gap: var(--art-space-2);
       align-items: center;
+      white-space: nowrap;
+    }
 
-      i {
-        display: inline-grid;
-        place-items: center;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 6px;
-        font-size: 10px;
-        font-style: normal;
-        color: var(--theme-color);
-        background: color-mix(in srgb, var(--theme-color) 10%, transparent);
-        border-radius: 999px;
-      }
+    &__tab-count {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+      border-radius: 999px;
     }
 
     &__panel {

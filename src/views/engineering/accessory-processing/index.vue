@@ -63,10 +63,19 @@
           </ElButton>
           <ElButton
             v-auth="'MdmAccessoryProcessing:Delete'"
-            :disabled="selectedRows.length !== 1 || !canChangeRow(selectedRows[0])"
+            :disabled="deleteBusy || !selectedRows.length"
             @click="deleteSelected"
           >
             <ArtSvgIcon icon="ri:delete-bin-6-line" />删除
+          </ElButton>
+          <ElButton
+            v-auth="'MdmAccessoryProcessing:Delete'"
+            :disabled="
+              deleteBusy || !selectedRows.length || selectedRows.some((row) => !row.materialId)
+            "
+            @click="resetSelectedCodes"
+          >
+            <ArtSvgIcon icon="ri:delete-back-2-line" />删除物料编码
           </ElButton>
           <ElButton
             v-auth="'MdmAccessoryProcessing:GenerateMaterial'"
@@ -203,6 +212,14 @@
                       <span class="accessory-processing-page__tree-count">{{ data.count }}</span>
                     </span>
                   </template>
+                  <template #empty>
+                    <ArtEmptyState
+                      title="未找到匹配项"
+                      description="请调整关键词或清空筛选条件。"
+                      size="compact"
+                      :visual-size="64"
+                    />
+                  </template>
                 </ElTree>
               </ElScrollbar>
             </ArtSectionCard>
@@ -233,68 +250,74 @@
                 <span>已选择 {{ selectedRows.length }} 件。</span>
                 <template v-if="selectedRows.some((row) => row.materialId)">
                   <span
-                    >已编码件不能重复编码或直接编辑、删除；转 BOM
-                    需整张清单完成编码，转工单需尚未转单。</span
+                    >删除支持批量；已编码件可删除编码后保留加工件并重新生成。已被 BOM
+                    或工单引用时需先处理下游。</span
                   >
                   <ElButton link type="primary" @click="showPendingRows">查看待编码件</ElButton>
                 </template>
-                <span v-else>待编码件可编辑、删除或生成物料编码；转 BOM 和工单需先完成编码。</span>
+                <span v-else>待编码件可批量删除；单选可编辑，转 BOM 和工单需先完成编码。</span>
               </div>
-              <ArtTable
-                ref="tableRef"
-                :data="visibleRows"
-                :columns="columns"
-                row-key="id"
-                :pagination="{ current: page, size: pageSize, total: filteredRows.length }"
-                :loading="loading"
-                empty-text="当前筛选下没有加工件"
-                @selection-change="onSelectionChange"
-                @pagination:current-change="page = $event"
-                @pagination:size-change="onPageSizeChange"
-              >
-                <template #image="{ row }">
-                  <ElImage
-                    v-if="row.material?.imageUrls?.[0]"
-                    :src="row.material.imageUrls[0]"
-                    :preview-src-list="row.material.imageUrls"
-                    :alt="`${row.name}图片`"
-                    fit="contain"
-                    class="h-12 w-12 rounded border border-gray-200 bg-white dark:border-gray-700"
-                  />
-                  <AccessorySketchThumbnail
-                    v-else
-                    :path="row.sketchPath"
-                    :alt="`${row.name}加工草图`"
-                  />
-                </template>
-                <template #materialName="{ row }">
-                  <span class="font-medium" :title="row.name">{{ row.name }}</span>
-                </template>
-                <template #codeStatus="{ row }">
-                  <ElTag size="small" :type="row.materialId ? 'success' : 'info'" effect="plain">
-                    {{ row.materialId ? '已转编码' : '未转编码' }}
-                  </ElTag>
-                </template>
-                <template #orderStatus="{ row }">
-                  <ElTag
-                    size="small"
-                    :type="row.workOrders?.length ? 'success' : 'info'"
-                    effect="plain"
-                  >
-                    {{ row.workOrders?.length ? '已转工单' : '未转工单' }}
-                  </ElTag>
-                </template>
-                <template #operation="{ row }">
-                  <ElButton
-                    v-auth="'MdmAccessoryProcessing:View'"
-                    link
-                    type="primary"
-                    :aria-label="`查看${row.name}加工明细`"
-                    @click="openDetail(row)"
-                    >查看</ElButton
-                  >
-                </template>
-              </ArtTable>
+              <div ref="tableViewportRef" class="accessory-processing-page__table-viewport">
+                <ArtTable
+                  ref="tableRef"
+                  :data="visibleRows"
+                  :columns="columns"
+                  row-key="id"
+                  :pagination="{ current: page, size: pageSize, total: filteredRows.length }"
+                  :pagination-options="paginationOptions"
+                  :show-table-header="false"
+                  :loading="loading"
+                  empty-text="当前筛选下没有加工件"
+                  @selection-change="onSelectionChange"
+                  @pagination:current-change="onPageChange"
+                  @pagination:size-change="onPageSizeChange"
+                >
+                  <template #image="{ row }">
+                    <ElImage
+                      v-if="row.material?.imageUrls?.[0] || row.imageUrls?.[0]"
+                      :src="row.material?.imageUrls?.[0] || row.imageUrls?.[0]"
+                      :preview-src-list="
+                        row.material?.imageUrls?.length ? row.material.imageUrls : row.imageUrls
+                      "
+                      :alt="`${row.name}图片`"
+                      fit="contain"
+                      class="h-14 w-16 rounded border border-[var(--el-border-color-lighter)] bg-[var(--default-box-color)]"
+                    />
+                    <AccessorySketchThumbnail
+                      v-else
+                      :path="row.sketchPath"
+                      :alt="`${row.name}加工草图`"
+                    />
+                  </template>
+                  <template #materialName="{ row }">
+                    <span class="font-medium" :title="row.name">{{ row.name }}</span>
+                  </template>
+                  <template #codeStatus="{ row }">
+                    <ElTag size="small" :type="row.materialId ? 'success' : 'info'" effect="plain">
+                      {{ row.materialId ? '已转编码' : '未转编码' }}
+                    </ElTag>
+                  </template>
+                  <template #orderStatus="{ row }">
+                    <ElTag
+                      size="small"
+                      :type="row.workOrders?.length ? 'success' : 'info'"
+                      effect="plain"
+                    >
+                      {{ row.workOrders?.length ? '已转工单' : '未转工单' }}
+                    </ElTag>
+                  </template>
+                  <template #operation="{ row }">
+                    <ElButton
+                      v-auth="'MdmAccessoryProcessing:View'"
+                      link
+                      type="primary"
+                      :aria-label="`查看${row.name}加工明细`"
+                      @click="openDetail(row)"
+                      >查看</ElButton
+                    >
+                  </template>
+                </ArtTable>
+              </div>
             </div>
           </ArtSectionCard>
         </ArtWorkspaceSplitter>
@@ -369,16 +392,14 @@
                 >
               </div>
             </template>
-            <template #sketchPath>
+            <template #imageUrls>
               <ArtUploadImage
-                :model-value="manualImageUrl"
-                :upload-request="uploadManualSketch"
-                :show-resource-picker="false"
-                title="上传加工草图"
+                v-model="manual.imageUrls"
+                multiple
+                :limit="5"
                 preview-fit="contain"
-                :size="104"
-                @update:model-value="onManualImageChanged"
-                @resource-change="onManualSketchUploaded"
+                :size="92"
+                tip="支持上传或从资源库选择，最多 5 张；与物料编码共用图片资源库"
               />
             </template>
           </ArtForm>
@@ -546,12 +567,16 @@
           ]"
         />
       </ArtDialog>
+
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { computed, onMounted, reactive, ref, watch } from 'vue'
+  import { useElementSize } from '@vueuse/core'
   import dayjs from 'dayjs'
   import { ElMessage, type FormRules, type ElTree } from 'element-plus'
   import { uniq, uniqBy } from 'lodash-es'
@@ -567,6 +592,10 @@
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteDependencyMeta,
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -580,7 +609,8 @@
   import type { ColumnOption } from '@/types/component'
   import {
     convertAccessoryWorkOrders,
-    deleteAccessoryItem,
+    deleteAccessoryItems,
+    fetchAccessoryDeleteDependencies,
     fetchAccessoryCustomers,
     fetchAccessoryLists,
     fetchAccessoryProjects,
@@ -590,9 +620,7 @@
     generateAccessoryStage,
     saveAccessoryDraft,
     saveOperationalMaster,
-    signAccessoryPath,
     updateAccessoryItem,
-    uploadAccessoryFile,
     type AccessoryCustomerOption,
     type AccessoryProcessingItem,
     type AccessoryProcessingList,
@@ -633,6 +661,7 @@
     drawingName: string
     projectId: string | null
     customerId: string | null
+    imageUrls: string[]
   }
 
   const { confirmAction } = useArtFeedback()
@@ -651,6 +680,15 @@
   const pageSize = ref(20)
   const selectedRows = ref<AccessoryRow[]>([])
   const tableRef = ref<ArtTableExpose>()
+  const tableViewportRef = ref<HTMLElement | null>(null)
+  const { width: tableViewportWidth } = useElementSize(tableViewportRef)
+  const paginationOptions = computed(() => ({
+    layout:
+      tableViewportWidth.value >= 680
+        ? 'total, prev, pager, next, sizes, jumper'
+        : 'prev, pager, next, sizes',
+    pagerCount: tableViewportWidth.value >= 900 ? 7 : 5
+  }))
   const selectedNodeId = ref('')
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const recognitionDialogRef = ref<ArtDialogExpose>()
@@ -659,6 +697,10 @@
   const workOrderDialogRef = ref<ArtDialogExpose>()
   const projectDialogRef = ref<ArtDialogExpose>()
   const detailDialogRef = ref<ArtDialogExpose>()
+  const deleteGuardRef = ref<{
+    inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
+  }>()
+  const deleteBusy = ref(false)
   const manualFormRef = ref<InstanceType<typeof ArtForm>>()
   const materialFormRef = ref<InstanceType<typeof ArtForm>>()
   const workOrderFormRef = ref<InstanceType<typeof ArtForm>>()
@@ -666,8 +708,6 @@
   const detailRow = ref<AccessoryRow | null>(null)
   const manualMode = ref<'add' | 'copy' | 'edit'>('add')
   const editingRow = ref<AccessoryRow | null>(null)
-  const manualGroupId = ref<string>(crypto.randomUUID())
-  const manualImageUrl = ref('')
   const materialRows = ref<AccessoryRow[]>([])
   const orderRows = ref<AccessoryRow[]>([])
   const projectTarget = ref<'manual' | 'order'>('manual')
@@ -703,6 +743,7 @@
     remark: '',
     sketch: null,
     sketchPath: null,
+    imageUrls: [],
     specificationModel: '',
     baseUnitId: null,
     materialTypeId: null,
@@ -817,7 +858,7 @@
   const columns: ColumnOption<AccessoryRow>[] = [
     { type: 'selection', width: 48, fixed: 'left' },
     { type: 'globalIndex', label: '序号', width: 72, fixed: 'left' },
-    { prop: 'image', label: '图片', width: 78, useSlot: true, fixed: 'left' },
+    { prop: 'image', label: '图片', width: 104, useSlot: true, fixed: 'left' },
     {
       prop: 'drawingProjectName',
       label: '项目名称（图纸）',
@@ -935,7 +976,7 @@
       span: 12,
       options: options.codeRules.map((rule) => ({ label: rule.ruleName, value: rule.id }))
     },
-    { key: 'sketchPath', label: '图片 / 加工草图', type: 'slot', span: 24 }
+    { key: 'imageUrls', label: '图片', type: 'slot', span: 24 }
   ])
   const manualRules: FormRules = {
     projectName: [{ required: true, message: '请填写图纸项目名称', trigger: 'blur' }],
@@ -1096,9 +1137,14 @@
   function onSelectionChange(rows: AccessoryRow[]): void {
     selectedRows.value = rows
   }
+  function onPageChange(nextPage: number): void {
+    page.value = nextPage
+    clearSelectedRows()
+  }
   function onPageSizeChange(size: number): void {
     pageSize.value = size
     page.value = 1
+    clearSelectedRows()
   }
   function canChangeRow(row?: AccessoryRow): boolean {
     return Boolean(row && !row.materialId && !row.workOrders?.length)
@@ -1138,6 +1184,7 @@
       remark: '',
       sketch: null,
       sketchPath: null,
+      imageUrls: [],
       specificationModel: '',
       baseUnitId: null,
       materialTypeId: null,
@@ -1145,8 +1192,6 @@
       categoryId: null,
       codeRuleId: null
     })
-    manualImageUrl.value = ''
-    manualGroupId.value = crypto.randomUUID()
   }
   async function openManual(mode: 'add' | 'copy' | 'edit', row?: AccessoryRow): Promise<void> {
     if (mode !== 'add' && !row) return
@@ -1161,18 +1206,10 @@
         projectName: row.list.projectName,
         drawingName: row.list.drawingName,
         projectId: row.list.projectId,
-        customerId: row.list.customerId
+        customerId: row.list.customerId,
+        imageUrls: [...(row.imageUrls?.length ? row.imageUrls : row.material?.imageUrls || [])]
       })
-      manualGroupId.value = row.list.sourcePath?.split('/')[1] || crypto.randomUUID()
-      if (row.sketchPath) {
-        try {
-          manualImageUrl.value = await signAccessoryPath(row.sketchPath)
-        } catch {
-          ElMessage.warning('加工草图暂时无法预览，可继续编辑文字信息')
-        }
-      }
     }
-    await loadOptions(manual.tenantId)
     await manualDialogRef.value?.handleOpen(undefined, {
       title: { add: '新增配件加工件', copy: '复制配件加工件', edit: '编辑配件加工件' }[mode],
       subtitle:
@@ -1180,6 +1217,15 @@
           ? `${row?.list.drawingName} · 原表第 ${row?.rowNo} 行`
           : '手工添加到配件加工清单',
       confirmText: mode === 'edit' ? '保存更改' : '保存配件加工清单',
+      loading: true,
+      loadingText: '正在加载物料选项…',
+      onOpen: async (_data, api) => {
+        try {
+          await loadOptions(manual.tenantId)
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: saveManual
     })
   }
@@ -1191,21 +1237,8 @@
     manual.categoryId = null
     manual.codeRuleId = null
     manual.sketchPath = null
-    manualImageUrl.value = ''
-    manualGroupId.value = crypto.randomUUID()
+    manual.imageUrls = []
     void loadOptions(tenantId)
-  }
-  async function uploadManualSketch(
-    file: File
-  ): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
-    if (!manual.tenantId) throw new Error('请先选择目标租户')
-    return uploadAccessoryFile(manual.tenantId, manualGroupId.value, 'sketch', file, file.name)
-  }
-  function onManualSketchUploaded(resources: Api.DataCenter.Resources.ResourceListItem[]): void {
-    manual.sketchPath = resources[0]?.storagePath || null
-  }
-  function onManualImageChanged(value: string | string[] | null): void {
-    if (!value || (Array.isArray(value) && !value.length)) manual.sketchPath = null
   }
   function manualItem(): AccessoryProcessingItem {
     return {
@@ -1218,6 +1251,7 @@
       remark: manual.remark.trim(),
       sketch: manual.sketch,
       sketchPath: manual.sketchPath,
+      imageUrls: manual.imageUrls,
       specificationModel: normalizeNullableText(manual.specificationModel),
       baseUnitId: manual.baseUnitId,
       materialTypeId: manual.materialTypeId,
@@ -1273,24 +1307,158 @@
       return false
     }
   }
-  async function deleteSelected(): Promise<void> {
-    const row = selectedRows.value[0]
-    if (!canChangeRow(row)) return
-    try {
-      await confirmAction(`确定删除“${row.name}”吗？删除后无法恢复。`, '删除加工件', {
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      })
-    } catch {
-      return
+  const deleteDependencyMeta: Record<string, MasterDataDeleteDependencyMeta> = {
+    accessory_work_order: {
+      label: '关联生产工单',
+      unit: '张',
+      description: '工单属于生产业务记录，请先在生产工单页面核对并处理。',
+      actionLabel: '去看工单',
+      routeName: 'MesWorkOrder',
+      order: 10
+    },
+    accessory_parent_bom: {
+      label: '作为成品的项目 BOM',
+      unit: '份',
+      description: '物料是 BOM 的成品，需先处理 BOM 后才能删除编码。',
+      actionLabel: '去看 BOM',
+      routeName: 'MdmBomMaintenance',
+      order: 20
+    },
+    accessory_component_bom: {
+      label: '作为组件的项目 BOM',
+      unit: '份',
+      description: '物料已列入 BOM 组件，需先处理对应 BOM。',
+      actionLabel: '去看 BOM',
+      routeName: 'MdmBomMaintenance',
+      order: 30
+    },
+    accessory_shared_material: {
+      label: '共用物料编码的加工件',
+      unit: '件',
+      description: '其他加工件仍使用同一物料编码，请先分别核对。',
+      actionLabel: '去处理',
+      order: 40
+    },
+    accessory_other_reference: {
+      label: '其他业务引用',
+      unit: '项',
+      description: '服务端发现其他业务引用；请根据提示到相关业务页面处理。',
+      actionLabel: '去处理',
+      order: 50
     }
+  }
+
+  function deleteGuardOptions(
+    rows: AccessoryRow[],
+    mode: 'items' | 'codes'
+  ): Pick<MasterDataDeleteGuardOpenOptions, 'resourceLabel' | 'resources' | 'dependencyMeta'> {
+    return {
+      resourceLabel: mode === 'items' ? '加工件' : '物料编码',
+      resources: rows.map((row) => ({ id: row.id, label: row.name })),
+      dependencyMeta: deleteDependencyMeta
+    }
+  }
+
+  async function inspectDeleteReferences(
+    rows: AccessoryRow[],
+    mode: 'items' | 'codes'
+  ): Promise<boolean> {
+    return (
+      (await deleteGuardRef.value?.inspect({
+        ...deleteGuardOptions(rows, mode),
+        fetchDependencies: () => fetchAccessoryDeleteDependencies(rows)
+      })) ?? true
+    )
+  }
+
+  async function showDeleteDependencyFailure(
+    cause: unknown,
+    rows: AccessoryRow[],
+    mode: 'items' | 'codes'
+  ): Promise<boolean> {
+    if (!(cause instanceof Error) || !/引用|关联|使用/.test(cause.message)) return false
+    const rawCause = cause.cause
+    const code =
+      rawCause && typeof rawCause === 'object' && 'code' in rawCause ? rawCause.code : undefined
+    if (code !== '22023' && code !== '23503') return false
+    const message = getFriendlySupabaseErrorMessage(cause, '仍有业务记录引用所选资料，请先处理关联')
+    await deleteGuardRef.value?.inspect({
+      ...deleteGuardOptions(rows, mode),
+      fetchDependencies: async () => [
+        {
+          resourceId: rows[0].id,
+          dependencyCode: 'accessory_other_reference',
+          recordId: rows[0].id,
+          targetId: rows[0].id,
+          recordNo: message,
+          recordSummary: '本批次未删除任何记录',
+          createdAt: new Date().toISOString(),
+          cleanupAllowed: false
+        }
+      ]
+    })
+    return true
+  }
+
+  async function deleteSelected(): Promise<void> {
+    const rows = [...selectedRows.value]
+    if (!rows.length || deleteBusy.value || !sameTenant(rows)) return
+    deleteBusy.value = true
+    const codedCount = rows.filter((row) => row.materialId).length
     try {
-      await deleteAccessoryItem(row.id)
-      ElMessage.success('加工件已删除')
+      if (await inspectDeleteReferences(rows, 'items')) return
+      await confirmAction(
+        `确定删除选中的 ${rows.length} 件加工件吗？${codedCount ? `其中 ${codedCount} 件已编码，将一并删除未被业务引用的物料编码。` : ''}此操作无法恢复；若存在 BOM 或工单引用，本批次不会删除任何记录。`,
+        '批量删除加工件',
+        {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      const result = await deleteAccessoryItems(
+        rows.map((row) => row.id),
+        'items'
+      )
+      ElMessage.success(`已删除 ${result.processed} 件加工件`)
       await loadLists()
     } catch (cause) {
-      ElMessage.error(getFriendlySupabaseErrorMessage(cause, '加工件删除失败，请重试'))
+      if (cause === 'cancel' || cause === 'close') return
+      if (await showDeleteDependencyFailure(cause, rows, 'items')) return
+      ElMessage.error(getFriendlySupabaseErrorMessage(cause, '批量删除失败，请刷新后重试'))
+    } finally {
+      deleteBusy.value = false
+    }
+  }
+  async function resetSelectedCodes(): Promise<void> {
+    const rows = [...selectedRows.value]
+    if (
+      !rows.length ||
+      deleteBusy.value ||
+      rows.some((row) => !row.materialId) ||
+      !sameTenant(rows)
+    )
+      return
+    deleteBusy.value = true
+    try {
+      if (await inspectDeleteReferences(rows, 'codes')) return
+      await confirmAction(
+        `确定删除选中的 ${rows.length} 个物料编码吗？加工件会保留为待编码状态，核对后可重新生成。若存在 BOM 或工单引用，本批次不会修改任何记录。`,
+        '删除物料编码',
+        { confirmButtonText: '删除编码', cancelButtonText: '取消', type: 'warning' }
+      )
+      const result = await deleteAccessoryItems(
+        rows.map((row) => row.id),
+        'codes'
+      )
+      ElMessage.success(`已删除 ${result.processed} 个物料编码，加工件可重新编辑和编码`)
+      await loadLists()
+    } catch (cause) {
+      if (cause === 'cancel' || cause === 'close') return
+      if (await showDeleteDependencyFailure(cause, rows, 'codes')) return
+      ElMessage.error(getFriendlySupabaseErrorMessage(cause, '物料编码删除失败，请刷新后重试'))
+    } finally {
+      deleteBusy.value = false
     }
   }
   function sameTenant(rows: AccessoryRow[]): boolean {
@@ -1302,20 +1470,30 @@
     const rows = selectedRows.value.filter((row) => !row.materialId)
     if (!rows.length || !sameTenant(rows)) return
     materialRows.value = rows
-    await loadOptions(rows[0].list.tenantId)
-    materialConfig.materialTypeId =
-      options.types.find((item) => item.typeName === '半成品')?.id || ''
-    materialConfig.categoryId =
-      options.categories.find((item) => item.categoryName === '配件')?.id || ''
-    materialConfig.codeRuleId =
-      options.codeRules.find((item) => item.strategy === 'material_type')?.id ||
-      options.codeRules[0]?.id ||
-      ''
-    materialConfig.imageUrlsByItem = Object.fromEntries(rows.map((row) => [row.id, []]))
+    materialConfig.imageUrlsByItem = Object.fromEntries(
+      rows.map((row) => [row.id, [...(row.imageUrls || [])]])
+    )
     await materialDialogRef.value?.handleOpen(undefined, {
       title: '生成物料编码',
       subtitle: '物料类型、来源、分类和编码策略与 MDM 物料编码使用同一套选项。',
       confirmText: '执行生成',
+      loading: true,
+      loadingText: '正在加载物料选项…',
+      onOpen: async (_data, api) => {
+        try {
+          await loadOptions(rows[0].list.tenantId)
+          materialConfig.materialTypeId =
+            options.types.find((item) => item.typeName === '半成品')?.id || ''
+          materialConfig.categoryId =
+            options.categories.find((item) => item.categoryName === '配件')?.id || ''
+          materialConfig.codeRuleId =
+            options.codeRules.find((item) => item.strategy === 'material_type')?.id ||
+            options.codeRules[0]?.id ||
+            ''
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: async () => {
         try {
           await materialFormRef.value?.validate()
@@ -1383,7 +1561,6 @@
       return
     }
     orderRows.value = rows
-    await loadOptions(rows[0].list.tenantId)
     Object.assign(workOrderConfig, {
       projectId: linkedProjects[0] || '',
       constructionNo: '',
@@ -1394,6 +1571,15 @@
       title: '转生产工单',
       subtitle: '按加工件逐件生成到生产工单数据库，重复执行不会重复建单。',
       confirmText: '执行转单',
+      loading: true,
+      loadingText: '正在加载项目选项…',
+      onOpen: async (_data, api) => {
+        try {
+          await loadOptions(rows[0].list.tenantId)
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: async () => {
         try {
           await workOrderFormRef.value?.validate()
@@ -1464,6 +1650,12 @@
     page.value = 1
     clearSelectedRows()
   })
+  watch(filteredRows, () => {
+    page.value = Math.min(
+      page.value,
+      Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value))
+    )
+  })
   watch([projectKeyword, projectTree], () => {
     treeRef.value?.filter(projectKeyword.value)
   })
@@ -1490,21 +1682,24 @@
     &__toolbar {
       display: flex;
       flex: 0 0 auto;
-      align-items: center;
+      flex-wrap: wrap;
       gap: 10px;
+      align-items: center;
       min-width: 0;
       padding: 9px 12px;
-      overflow-x: auto;
-      white-space: nowrap;
-      scrollbar-width: thin;
     }
 
     &__actions,
     &__search {
       display: flex;
-      flex: 0 0 auto;
-      align-items: center;
       gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    &__actions {
+      flex: 1 1 1050px;
+      flex-wrap: wrap;
     }
 
     &__actions :deep(.el-button + .el-button) {
@@ -1512,6 +1707,7 @@
     }
 
     &__search {
+      flex: 0 1 auto;
       margin-left: auto;
     }
 
@@ -1604,19 +1800,19 @@
 
       strong {
         overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 13px;
         font-weight: 600;
         color: var(--el-text-color-primary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       small {
-        overflow: hidden;
         margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 11px;
         color: var(--el-text-color-secondary);
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
@@ -1634,6 +1830,7 @@
       height: auto;
       min-height: 48px;
       padding-block: 5px;
+      padding-right: 10px;
       margin-bottom: 2px;
       border: 1px solid transparent;
       border-radius: var(--el-border-radius-base);
@@ -1662,9 +1859,12 @@
     }
 
     &__tree-count {
+      flex: none;
       min-width: 24px;
       padding: 2px 5px;
+      margin-left: 6px;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
       color: var(--el-text-color-secondary);
       text-align: center;
       background: var(--art-gray-100);
@@ -1679,10 +1879,15 @@
       min-width: 0;
       min-height: 0;
       padding-top: var(--art-space-2);
+    }
 
-      > .art-table {
-        flex: 1;
-        min-height: 0;
+    &__table-viewport {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+
+      :deep(.art-table .el-table) {
+        margin-top: 0;
       }
     }
 
@@ -1690,11 +1895,20 @@
       display: flex;
       flex: 0 0 auto;
       flex-wrap: wrap;
-      align-items: center;
       gap: 4px 8px;
+      align-items: center;
       min-height: 24px;
       font-size: 12px;
       color: var(--el-text-color-secondary);
+    }
+  }
+
+  @media (width <= 1400px) {
+    .accessory-processing-page__actions {
+      flex-basis: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: thin;
     }
   }
 </style>

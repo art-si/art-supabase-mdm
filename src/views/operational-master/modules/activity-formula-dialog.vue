@@ -272,6 +272,14 @@
                   />
                 </div>
               </template>
+              <template #empty>
+                <ArtEmptyState
+                  title="未找到匹配项"
+                  description="请调整关键词或清空筛选条件。"
+                  size="compact"
+                  :visual-size="64"
+                />
+              </template>
             </ElTree>
           </aside>
 

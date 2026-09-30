@@ -1,6 +1,10 @@
 <template>
   <ArtPermissionGuard permission="MdmBomMaintenance:View" resource-name="BOM 维护">
     <div class="bom-maintenance-page business-workspace-page art-full-height">
+      <MasterDeleteProcessingNotice
+        v-if="targetBomId"
+        action-hint="当前列表已定位到关联的 BOM。请核对组件并处理引用，完成后返回原页面继续删除。"
+      />
       <BusinessWorkspaceHeader
         eyebrow="ENGINEERING MASTER"
         title="BOM 维护"
@@ -34,6 +38,7 @@
           :search-items="searchItems"
           :columns-factory="columnsFactory"
           :header-actions="headerActions"
+          :selection-actions="selectionActions"
           header-actions-placement="workspace"
           :search-bar-props="{ span: 6, labelWidth: 82, showExpand: false, isExpand: true }"
           :table-props="{
@@ -57,6 +62,7 @@
   import dayjs from 'dayjs'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { exportExcel } from '@/utils/file'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -74,14 +80,17 @@
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
+    ArtTableQueryHeaderActionContext,
     ArtTableQueryProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import {
     deleteBom,
+    deleteBoms,
     deleteBomGroup,
     fetchBomGroups,
     fetchBoms,
@@ -101,10 +110,17 @@
 
   defineOptions({ name: 'MdmBomMaintenance' })
   const { confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
+  const route = useRoute()
+  const targetBomId = computed(() =>
+    route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
+      ? route.query.recordId
+      : ''
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof BomDialog>>()
   const groupDialogRef = ref<InstanceType<typeof BomGroupDialog>>()
@@ -250,6 +266,7 @@
       {
         ...params,
         tenantId: tenantId.value,
+        id: targetBomId.value || undefined,
         groupIds: selectedGroupId.value ? descendantIds(selectedGroupId.value) : undefined
       },
       options
@@ -272,6 +289,18 @@
       label: '导出',
       permission: 'MdmBomMaintenance:Export',
       onClick: () => void exportRows()
+    }
+  ]
+  const selectionActions: ArtTableQueryHeaderAction[] = [
+    {
+      type: 'delete',
+      permission: 'MdmBomMaintenance:Delete',
+      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
+        `确定删除选中的 ${selectedCount} 个设计状态 BOM 及其全部组件吗？删除后无法恢复。`,
+      onClick: async ({ selectedRows, api }) => {
+        await deleteBoms(selectedRows.map((row) => String(row.id)))
+        await api.refreshRemove()
+      }
     }
   ]
   const identity = (row: BomRecord) => (
@@ -350,7 +379,8 @@
         type: 'warning'
       })
       await deleteBom(row.id)
-      return void refresh()
+      await tableRef.value?.refreshRemove()
+      return
     }
     const targets: Record<string, BomStatus> = {
       submit: 'review',
@@ -370,6 +400,12 @@
     await refresh()
   }
   const columnsFactory = (): ColumnOption<BomRecord>[] => [
+    {
+      type: 'selection',
+      width: 50,
+      fixed: 'left',
+      selectable: (row: BomRecord) => row.status === 'design' && hasAuth('MdmBomMaintenance:Delete')
+    },
     { type: 'globalIndex', label: '序号', width: 72, fixed: 'left' },
     {
       prop: 'materialId',
@@ -501,6 +537,11 @@
     userStore.ensureDictLoaded('mdmBomStatus')
   ])
   watch(tenantId, () => void loadGroups(), { immediate: true })
+  watch(targetBomId, () => {
+    selectedGroupId.value = ''
+    Object.assign(search, { keyword: '', purpose: undefined, status: undefined })
+    void tableRef.value?.refreshCreate()
+  })
 </script>
 
 <style scoped lang="scss">

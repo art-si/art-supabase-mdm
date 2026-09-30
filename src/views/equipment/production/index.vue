@@ -85,6 +85,14 @@
                         <span :title="data.name">{{ data.name }}</span>
                       </span>
                     </template>
+                    <template #empty>
+                      <ArtEmptyState
+                        title="暂无可显示内容"
+                        description="请调整当前范围或稍后刷新。"
+                        size="compact"
+                        :visual-size="64"
+                      />
+                    </template>
                   </ElTree>
                 </ElScrollbar>
               </ArtAsyncState>
@@ -240,6 +248,7 @@
 </template>
 
 <script setup lang="tsx">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElImage, ElTag } from 'element-plus'
   import TreeUtils from '@/utils/tree'

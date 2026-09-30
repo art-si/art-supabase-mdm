@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex h-14 w-16 items-center justify-center overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-700"
+    class="flex h-14 w-16 items-center justify-center overflow-hidden rounded border border-[var(--el-border-color-lighter)] bg-[var(--default-box-color)]"
   >
     <ElImage
       v-if="url"

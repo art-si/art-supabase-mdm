@@ -71,11 +71,20 @@
             />
           </div>
         </template>
+        <template #empty>
+          <ArtEmptyState
+            title="未找到匹配项"
+            description="请调整关键词或清空筛选条件。"
+            size="compact"
+            :visual-size="64"
+          />
+        </template>
       </ElTree>
     </ElScrollbar>
   </ArtSectionCard>
 </template>
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { ref, computed, watch, nextTick } from 'vue'
   import type { ElTree } from 'element-plus'
   import type { ProductionDepartment } from '@mdm/api'

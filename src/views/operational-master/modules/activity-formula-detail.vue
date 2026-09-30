@@ -52,6 +52,14 @@
               </span>
             </div>
           </template>
+          <template #empty>
+            <ArtEmptyState
+              title="暂无可显示内容"
+              description="请调整当前范围或稍后刷新。"
+              size="compact"
+              :visual-size="64"
+            />
+          </template>
         </ElTree>
         <ArtEmptyState
           v-else

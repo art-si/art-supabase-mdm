@@ -121,7 +121,13 @@
                     </button>
                   </li>
                 </ul>
-                <p v-else class="route-maintenance__sequence-empty">暂无工序</p>
+                <ArtEmptyState
+                  v-else
+                  title="暂无工序"
+                  description="为当前序列添加工序后即可配置执行顺序。"
+                  size="compact"
+                  :visual-size="52"
+                />
               </li>
             </ul>
           </ElScrollbar>
@@ -2594,14 +2600,6 @@
           content: '｜';
         }
       }
-    }
-
-    &__sequence-empty {
-      padding: 0 0 var(--art-space-1) 53px;
-      margin: 0;
-      font-size: var(--art-font-size-caption);
-      line-height: 24px;
-      color: var(--el-text-color-placeholder);
     }
 
     &__sequence-index {
