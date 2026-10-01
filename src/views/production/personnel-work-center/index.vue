@@ -62,6 +62,7 @@
 
 <script setup lang="tsx">
   import { computed, reactive, ref, watch } from 'vue'
+  import { storeToRefs } from 'pinia'
   import { ElAvatar, ElButton, ElMessage, ElTag } from 'element-plus'
   import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import type { ColumnOption } from '@/types'
@@ -77,7 +78,7 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { exportExcel } from '@/utils/file'
@@ -98,7 +99,11 @@
 
   defineOptions({ name: 'MdmPersonnelWorkCenter' })
 
-  const user = useUserStore()
+  const tenantScopeStore = useTenantScopeStore()
+  const { effectiveTenantId, isAllTenants, tenantOptions } = storeToRefs(tenantScopeStore)
+  const tenantNames = computed(() =>
+    Object.fromEntries(tenantOptions.value.map((tenant) => [tenant.id, tenant.tenantName]))
+  )
   const { hasAuth } = useAuth()
   const { confirmAction } = useArtFeedback()
   const tableRef = ref<ArtTableQueryExpose>()
@@ -172,7 +177,7 @@
     fetchPersonnelWorkCenterConfigs(
       {
         ...params,
-        tenantId: user.info.tenantId || '',
+        tenantId: effectiveTenantId.value || '',
         departmentIds: departmentIds()
       },
       options
@@ -191,7 +196,8 @@
     scope.loading = true
     scope.error = ''
     try {
-      const rows = await fetchProductionDepartments(user.info.tenantId || '')
+      await tenantScopeStore.loadTenantOptions()
+      const rows = await fetchProductionDepartments(effectiveTenantId.value)
       if (version !== loadVersion) return
       scope.departments = rows
       await refresh()
@@ -288,7 +294,11 @@
           </ElAvatar>
           <span>
             <strong>{row.name}</strong>
-            <small>{row.jobTitle || '现场作业员'}</small>
+            <small>
+              {isAllTenants.value
+                ? `${tenantNames.value[row.tenantId] || row.tenantId} · ${row.jobTitle || '现场作业员'}`
+                : row.jobTitle || '现场作业员'}
+            </small>
           </span>
         </div>
       )
@@ -449,8 +459,12 @@
   ]
 
   watch(
-    () => user.info.tenantId,
-    () => void loadDepartments(),
+    effectiveTenantId,
+    () => {
+      scope.departments = []
+      scope.selected = ''
+      void loadDepartments()
+    },
     { immediate: true }
   )
 </script>

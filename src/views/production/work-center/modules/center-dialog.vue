@@ -194,6 +194,7 @@
   }
   const form = reactive({
     model: createWorkCenter(),
+    mode: 'add' as OpenData['mode'],
     id: undefined as string | undefined,
     readonly: false,
     tab: '基本资料',
@@ -205,6 +206,7 @@
     activityFormulas: [] as WorkCenterReference[],
     activities: [] as WorkCenterActivityInput[]
   })
+  const defaultsLoadedFor = ref('')
   const sections = ['报工规则', '生产控制', '人员与排程', '自动化'] as const
   const sectionMeta = {
     报工规则: {
@@ -391,6 +393,7 @@
   async function handleOpen(data: OpenData) {
     dialogFullscreen.value = false
     Object.assign(form, {
+      mode: data.mode,
       model: data.row
         ? (cloneDeep(pick(data.row, Object.keys(createWorkCenter()))) as WorkCenterInput)
         : createWorkCenter(),
@@ -410,6 +413,7 @@
       form.mainSelection = []
     }
     if (!data.row) form.model.departmentId = data.departmentId || ''
+    defaultsLoadedFor.value = referenceTenantId.value
     await dialogRef.value?.handleOpen(data, {
       title: {
         add: '新增工作中心',
@@ -430,7 +434,9 @@
           await Promise.all(editorDictionaryCodes.map((code) => user.ensureDictLoaded(code)))
           const [defaults, people, activities] = await Promise.all([
             data.mode === 'add'
-              ? fetchCenterDefaults(referenceTenantId.value || user.info.tenantId || '')
+              ? referenceTenantId.value
+                ? fetchCenterDefaults(referenceTenantId.value)
+                : Promise.resolve(null)
               : Promise.resolve(null),
             form.model.personIds.length
               ? fetchCenterPeople(form.model.personIds)
@@ -515,6 +521,17 @@
     void loadActivityFormulas().catch(() => {
       form.error = '活动公式加载失败，请重试'
     })
+    if (form.mode === 'add' && tenantId !== defaultsLoadedFor.value) {
+      defaultsLoadedFor.value = tenantId
+      void fetchCenterDefaults(tenantId)
+        .then((defaults) => {
+          if (referenceTenantId.value === tenantId)
+            form.model.policy = cloneDeep(defaults || createCenterPolicy())
+        })
+        .catch(() => {
+          form.error = '工作中心默认配置加载失败，请重试'
+        })
+    }
   })
   defineExpose({ handleOpen })
 </script>

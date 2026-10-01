@@ -133,9 +133,9 @@ export async function fetchWorkCenters(p: WorkspaceQuery, options?: { signal?: A
       '*,operationControlCode:mdm_operation_control_code!mdm_work_center_operation_control_code_fk(id,code:control_code,name:control_code_name)',
       { count: 'exact' }
     )
-    .eq('tenant_id', p.tenantId)
     .order('sort')
     .order('code')
+  if (p.tenantId) q = q.eq('tenant_id', p.tenantId)
   if (p.keyword) q = q.or(buildOrIlikeFilter(['code', 'name'], p.keyword))
   if (p.departmentIds) q = q.in('department_id', p.departmentIds)
   q = q.range((p.current - 1) * p.size, p.current * p.size - 1)
@@ -151,21 +151,21 @@ export async function fetchWorkCenters(p: WorkspaceQuery, options?: { signal?: A
   const [departmentResult, mainCenterResult] = await Promise.all([
     departmentIds.length
       ? responseHandle<WorkCenterDepartment[]>(() => {
-          const query = supabase
+          let query = supabase
             .from('mdm_production_department')
             .select('id,name,code')
-            .eq('tenant_id', p.tenantId)
             .in('id', departmentIds)
+          if (p.tenantId) query = query.eq('tenant_id', p.tenantId)
           return options?.signal ? query.abortSignal(options.signal) : query
         }, read)
       : Promise.resolve({ data: [] as WorkCenterDepartment[] }),
     mainCenterIds.length
       ? responseHandle<MainCenterReference[]>(() => {
-          const query = supabase
+          let query = supabase
             .from('mdm_work_center')
             .select('id,code,name')
-            .eq('tenant_id', p.tenantId)
             .in('id', mainCenterIds)
+          if (p.tenantId) query = query.eq('tenant_id', p.tenantId)
           return options?.signal ? query.abortSignal(options.signal) : query
         }, read)
       : Promise.resolve({ data: [] as MainCenterReference[] })
@@ -260,19 +260,31 @@ export async function fetchAvailableMainCenters(
   )
   return { data: data?.records ?? [], total: data?.total ?? 0 }
 }
-export async function fetchCenterImportReferences(codes: string[], employeeNos: string[]) {
+export async function fetchCenterImportReferences(
+  codes: string[],
+  employeeNos: string[],
+  tenantId: string
+) {
   const [centers, people] = await Promise.all([
     codes.length
       ? responseHandle<Pick<WorkCenter, 'id' | 'code'>[]>(
-          () => supabase.from('mdm_work_center').select('id,code').in('code', codes),
+          () =>
+            supabase
+              .from('mdm_work_center')
+              .select('id,code')
+              .eq('tenant_id', tenantId)
+              .in('code', codes),
           read
         )
       : Promise.resolve({ data: [] }),
     fetchCenterPersonReferences({ employeeNos })
   ])
-  return { centers: centers.data ?? [], people }
+  return {
+    centers: centers.data ?? [],
+    people: people.filter((person) => person.tenantId === tenantId)
+  }
 }
-export async function importWorkCenters(inputs: WorkCenterInput[]) {
+export async function importWorkCenters(inputs: Array<WorkCenterInput & { tenantId: string }>) {
   await responseHandle(
     () =>
       supabase
@@ -851,12 +863,12 @@ export async function fetchCenterDefaults(tenantId: string) {
   )
   return data?.policy
 }
-export async function saveCenterDefaults(policy: CenterPolicy) {
+export async function saveCenterDefaults(policy: CenterPolicy, tenantId: string) {
   await responseHandle(
     () =>
       supabase
         .from('mdm_work_center_defaults')
-        .upsert({ policy }, { onConflict: 'tenant_id' })
+        .upsert({ tenant_id: tenantId, policy }, { onConflict: 'tenant_id' })
         .select('id'),
     write
   )

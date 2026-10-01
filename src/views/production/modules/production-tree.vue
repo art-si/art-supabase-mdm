@@ -60,7 +60,7 @@
             <span aria-hidden="true"><ArtSvgIcon :icon="organizationIcon(data)" /></span>
             <span>
               <strong :title="data.name">{{ data.name }}</strong>
-              <small :title="data.code">{{ data.code }}</small>
+              <small :title="departmentSubtitle(data)">{{ departmentSubtitle(data) }}</small>
             </span>
             <ElTag v-if="!data.enabled" type="info" size="small">停用</ElTag>
             <ArtSvgIcon
@@ -89,6 +89,8 @@
   import type { ElTree } from 'element-plus'
   import type { ProductionDepartment } from '@mdm/api'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { storeToRefs } from 'pinia'
   import { productionTree } from './production-model'
   const props = withDefaults(
     defineProps<{
@@ -106,6 +108,14 @@
   )
   const emit = defineEmits<{ select: [id: string]; refresh: [] }>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
+  const { isAllTenants, tenantOptions } = storeToRefs(useTenantScopeStore())
+  const tenantNames = computed(() =>
+    Object.fromEntries(tenantOptions.value.map((tenant) => [tenant.id, tenant.tenantName]))
+  )
+  const departmentSubtitle = (department: ProductionDepartment): string =>
+    isAllTenants.value
+      ? `${tenantNames.value[department.tenantId] || department.tenantId} · ${department.code}`
+      : department.code
   const keyword = ref('')
   const nodes = computed(() => productionTree.listToTree(props.departments))
   const activeCount = computed(() => props.departments.filter((row) => row.enabled).length)

@@ -74,17 +74,20 @@ function checkRows(rows: Record<string, unknown>[]) {
 }
 export function parseDepartmentImport(
   rows: Record<string, unknown>[],
-  departments: ProductionDepartment[]
+  departments: ProductionDepartment[],
+  tenantId: string
 ): ProductionDepartmentInput[] {
   checkRows(rows)
+  if (!tenantId) throw new Error('请先选择目标租户再导入')
   return rows.map((row, index) => {
     const parentCode = cell(row, '上级部门编码')
-    const parent = departments.find((d) => d.code === parentCode)
+    const parent = departments.find((d) => d.tenantId === tenantId && d.code === parentCode)
     if (parentCode && !parent)
       throw new Error(`第 ${index + 2} 行：上级部门编码不存在，请先导入上级部门`)
     return {
       ...createDepartment(),
       ...presentation(row, index),
+      tenantId,
       name: required(row, '部门名称', index),
       code: required(row, '部门编码', index),
       factory: cell(row, '所属工厂'),
@@ -96,15 +99,18 @@ export function parseDepartmentImport(
 export function parsePeopleImport(
   rows: Record<string, unknown>[],
   departments: ProductionDepartment[],
-  defaultDepartmentId: string
+  defaultDepartmentId: string,
+  tenantId: string
 ): ProductionPersonInput[] {
   checkRows(rows)
+  if (!tenantId) throw new Error('请先选择目标租户再导入')
   return rows.map((row, index) => {
     const departmentCode = cell(row, '部门编码')
     const departmentId = departmentCode
-      ? departments.find((d) => d.code === departmentCode)?.id
+      ? departments.find((d) => d.tenantId === tenantId && d.code === departmentCode)?.id
       : defaultDepartmentId
-    if (!departmentId) throw new Error(`第 ${index + 2} 行：请选择所属部门或填写已有部门编码`)
+    if (!departmentId || !departments.some((d) => d.tenantId === tenantId && d.id === departmentId))
+      throw new Error(`第 ${index + 2} 行：请选择目标租户内的所属部门或填写已有部门编码`)
     const employeeNo = required(row, '工号', index)
     const workLabel = cell(row, '工作类型') || '正式工'
     const workType = (
@@ -123,13 +129,14 @@ export function parsePeopleImport(
       throw new Error(`第 ${index + 2} 行：入职日期应为 YYYY-MM-DD 格式`)
     const codes = cell(row, '权限部门编码').split(/[，,]/).filter(Boolean)
     const permissionDepartmentIds = codes.map((code) => {
-      const department = departments.find((d) => d.code === code.trim())
+      const department = departments.find((d) => d.tenantId === tenantId && d.code === code.trim())
       if (!department) throw new Error(`第 ${index + 2} 行：权限部门编码不存在`)
       return department.id
     })
     return {
       ...createPerson(),
       ...presentation(row, index),
+      tenantId,
       departmentId,
       employeeNo,
       name: required(row, '姓名', index),
@@ -145,24 +152,33 @@ export function parsePeopleImport(
     }
   })
 }
-export async function exportDepartments(departments: ProductionDepartment[]) {
+export async function exportDepartments(
+  departments: ProductionDepartment[],
+  tenantNames?: Record<string, string>
+) {
   const data = departments.map((row) => ({
     ...row,
+    tenantName: tenantNames?.[row.tenantId] || row.tenantId,
     parentCode: departments.find((d) => d.id === row.parentId)?.code || '',
     enabledText: row.enabled ? '启用' : '禁用'
   }))
   await exportExcel({
     data,
-    columns: Object.entries(departmentLabels).map(([key, title]) => ({ key, title })),
+    columns: [
+      ...(tenantNames ? [{ key: 'tenantName', title: '所属租户' }] : []),
+      ...Object.entries(departmentLabels).map(([key, title]) => ({ key, title }))
+    ],
     filename: '生产部门'
   })
 }
 export async function exportPeople(
   people: ProductionPerson[],
-  departments: ProductionDepartment[]
+  departments: ProductionDepartment[],
+  tenantNames?: Record<string, string>
 ) {
   const data = people.map((row) => ({
     ...row,
+    tenantName: tenantNames?.[row.tenantId] || row.tenantId,
     departmentCode: row.department?.code || '',
     permissionDepartmentCodes: row.permissionDepartmentIds
       .map((id) => departments.find((d) => d.id === id)?.code || '')
@@ -172,7 +188,10 @@ export async function exportPeople(
   }))
   await exportExcel({
     data,
-    columns: Object.entries(personLabels).map(([key, title]) => ({ key, title })),
+    columns: [
+      ...(tenantNames ? [{ key: 'tenantName', title: '所属租户' }] : []),
+      ...Object.entries(personLabels).map(([key, title]) => ({ key, title }))
+    ],
     filename: '生产人员配置'
   })
 }

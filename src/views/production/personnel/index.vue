@@ -104,6 +104,7 @@
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed, watch } from 'vue'
+  import { storeToRefs } from 'pinia'
   import { ElAvatar, ElMessage, ElTag } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -119,6 +120,8 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import {
@@ -177,6 +180,12 @@
     }
   )
   const user = useUserStore()
+  const tenantScopeStore = useTenantScopeStore()
+  const { effectiveTenantId, isAllTenants, tenantOptions } = storeToRefs(tenantScopeStore)
+  const tenantNames = computed(() =>
+    Object.fromEntries(tenantOptions.value.map((tenant) => [tenant.id, tenant.tenantName]))
+  )
+  const tenantName = (tenantId: string): string => tenantNames.value[tenantId] || tenantId
   const { hasAuth } = useAuth()
   const canViewPeople = computed(
     () => !props.departmentMode && hasAuth('MdmProductionPersonnel:View')
@@ -215,7 +224,7 @@
       label: '生产部门',
       value: scope.departments.length,
       icon: 'ri:node-tree',
-      description: '当前租户组织层级',
+      description: isAllTenants.value ? '全部租户组织层级' : '当前租户组织层级',
       loading: scope.loading
     },
     {
@@ -310,7 +319,8 @@
     scope.loading = true
     scope.error = ''
     try {
-      const rows = await fetchProductionDepartments(user.info.tenantId || '')
+      await tenantScopeStore.loadTenantOptions()
+      const rows = await fetchProductionDepartments(effectiveTenantId.value)
       if (request !== departmentRequest) return
       scope.departments = rows
       if (scope.selected && !rows.some((d) => d.id === scope.selected)) scope.selected = ''
@@ -332,7 +342,7 @@
   async function fetchTableData(params: ProductionPeopleQuery, options?: { signal?: AbortSignal }) {
     if (!canViewPeople.value) throw new Error('人员信息需要单独授权')
     return fetchProductionPeople(
-      { ...params, tenantId: user.info.tenantId || '', departmentIds: departmentIds() },
+      { ...params, tenantId: effectiveTenantId.value, departmentIds: departmentIds() },
       options
     )
   }
@@ -462,7 +472,9 @@
           <span aria-hidden="true">{row.kind === '工厂' ? '厂' : '组'}</span>
           <span>
             <strong title={row.name}>{row.name}</strong>
-            <small title={row.code}>{row.code}</small>
+            <small title={row.code}>
+              {isAllTenants.value ? `${tenantName(row.tenantId)} · ${row.code}` : row.code}
+            </small>
           </span>
         </div>
       )
@@ -549,7 +561,11 @@
           </ElAvatar>
           <span>
             <strong title={row.name}>{row.name}</strong>
-            <small title={row.employeeNo}>{row.employeeNo || '工号待完善'}</small>
+            <small title={row.employeeNo}>
+              {isAllTenants.value
+                ? `${tenantName(row.tenantId)} · ${row.employeeNo || '工号待完善'}`
+                : row.employeeNo || '工号待完善'}
+            </small>
           </span>
         </div>
       )
@@ -714,10 +730,22 @@
   function importError() {
     ElMessage.error('文件解析失败，请使用标准 Excel 文件重试。')
   }
+  function importTenantId(): string {
+    return resolveTenantWriteTargetId({
+      explicitTenantId: effectiveTenantId.value || selectedDepartment.value?.tenantId,
+      actorTenantId: user.info.tenantId,
+      isPlatformSuper: user.isPlatformSuper
+    })
+  }
   async function importDepartments(rows: Record<string, unknown>[]) {
     let payload
     try {
-      payload = parseDepartmentImport(rows, scope.departments)
+      const tenantId = importTenantId()
+      payload = parseDepartmentImport(
+        rows,
+        scope.departments.filter((department) => department.tenantId === tenantId),
+        tenantId
+      )
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入数据无效'))
       return
@@ -735,7 +763,13 @@
   async function importPeople(rows: Record<string, unknown>[]) {
     let payload
     try {
-      payload = parsePeopleImport(rows, scope.departments, scope.selected)
+      const tenantId = importTenantId()
+      payload = parsePeopleImport(
+        rows,
+        scope.departments.filter((department) => department.tenantId === tenantId),
+        scope.selected,
+        tenantId
+      )
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '导入数据无效'))
       return
@@ -749,7 +783,7 @@
   }
   async function exportDepartmentList() {
     try {
-      await exportDepartments(scope.departments)
+      await exportDepartments(scope.departments, isAllTenants.value ? tenantNames.value : undefined)
     } catch {
       ElMessage.error('部门导出失败，请重试。')
     }
@@ -761,7 +795,7 @@
       for (let current = 1; current <= 10; current++) {
         const response = await fetchProductionPeople({
           ...table.search,
-          tenantId: user.info.tenantId || '',
+          tenantId: effectiveTenantId.value,
           departmentIds: departmentIds(),
           current,
           size: 1000
@@ -777,14 +811,23 @@
         ElMessage.info('当前筛选范围没有可导出的人员。')
         return
       }
-      if (canViewPeople.value) await exportPeople(people, scope.departments)
+      if (canViewPeople.value)
+        await exportPeople(
+          people,
+          scope.departments,
+          isAllTenants.value ? tenantNames.value : undefined
+        )
     } catch {
       ElMessage.error('人员导出失败，请重试。')
     }
   }
   watch(
-    () => user.info.tenantId || '',
-    () => void loadDepartments(),
+    effectiveTenantId,
+    () => {
+      scope.departments = []
+      scope.selected = ''
+      void loadDepartments()
+    },
     { immediate: true }
   )
 </script>

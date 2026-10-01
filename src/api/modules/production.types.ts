@@ -48,7 +48,7 @@ export interface ProductionPerson extends ProductionPersonInput {
   department: { id: string; name: string; code: string } | null
 }
 export interface ProductionPeopleQuery {
-  tenantId: string
+  tenantId?: string | null
   departmentIds?: string[]
   keyword?: string
   phone?: string

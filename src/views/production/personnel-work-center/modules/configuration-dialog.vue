@@ -71,7 +71,8 @@
   } from '@/components/core/forms/art-data-select/types'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { storeToRefs } from 'pinia'
   import {
     fetchUnconfiguredPersonnelSelector,
     fetchWorkCenters,
@@ -99,7 +100,7 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const user = useUserStore()
+  const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const form = reactive({
@@ -171,8 +172,10 @@
     )
 
   async function fetchCenters(params: DataSelectFetchParams) {
+    const targetTenantId =
+      form.people[0]?.tenantId || selectedDepartment.value?.tenantId || effectiveTenantId.value
     const result = await fetchWorkCenters({
-      tenantId: user.info.tenantId || '',
+      tenantId: targetTenantId || '',
       keyword: params.keyword,
       departmentIds: form.departmentIds,
       current: params.page,

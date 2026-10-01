@@ -39,20 +39,14 @@ const writeOptions = {
 }
 
 export async function fetchProductionDepartments(
-  tenantId: string
+  tenantId?: string | null
 ): Promise<ProductionDepartment[]> {
   const { data } = await fetchAllRangePages<ProductionDepartment>(({ from, to }) =>
-    responseHandle<ProductionDepartment[]>(
-      () =>
-        supabase
-          .from('mdm_production_department')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('sort')
-          .order('code')
-          .range(from, to),
-      readOptions
-    )
+    responseHandle<ProductionDepartment[]>(() => {
+      let query = supabase.from('mdm_production_department').select('*').order('sort').order('code')
+      if (tenantId) query = query.eq('tenant_id', tenantId)
+      return query.range(from, to)
+    }, readOptions)
   )
   return data ?? []
 }
@@ -126,9 +120,9 @@ export async function fetchProductionPeople(
   let query = supabase
     .from('mdm_production_personnel')
     .select('*,department:mdm_production_department(id,name,code)', { count: 'exact' })
-    .eq('tenant_id', tenantId)
     .order('sort')
     .order('employee_no')
+  if (tenantId) query = query.eq('tenant_id', tenantId)
   if (departmentIds) query = query.in('department_id', departmentIds)
   if (keyword) query = query.or(buildOrIlikeFilter(['name', 'employee_no', 'barcode'], keyword))
   if (phone) query = query.ilike('phone', `%${phone}%`)
