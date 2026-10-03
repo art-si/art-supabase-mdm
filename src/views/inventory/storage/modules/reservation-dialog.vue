@@ -35,6 +35,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { ElMessage } from 'element-plus'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -149,7 +151,7 @@
   }
   async function submit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       await saveInventoryReservation(context.value.warehouse.tenantId, {
         ...form,
@@ -158,7 +160,8 @@
       })
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '库存预留保存失败，请检查填写内容和网络后重试')
       return false
     }
   }

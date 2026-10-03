@@ -18,13 +18,15 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { ref, reactive, computed } from 'vue'
   import { cloneDeep, pick } from 'lodash-es'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { fetchGetEnableOrganizationTree } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     saveProductionDepartment,
     type ProductionDepartment,
@@ -195,7 +197,7 @@
       },
       onConfirm: async () => {
         try {
-          await formRef.value?.validate()
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
           const payload: ProductionDepartmentInput = {
             ...form.model,
             name: form.model.name.trim(),
@@ -206,7 +208,8 @@
           }
           await saveProductionDepartment(payload, form.id)
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '生产部门保存失败，请检查填写内容和网络后重试')
           return false
         }
       }

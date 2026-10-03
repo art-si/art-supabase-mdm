@@ -77,9 +77,10 @@
   /></ArtDialog>
 </template>
 <script setup lang="tsx">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
   import { computed, ref, reactive, shallowRef } from 'vue'
   import { ElMessage } from 'element-plus'
@@ -234,7 +235,7 @@
       confirmText: '保存调整',
       onConfirm: async () => {
         try {
-          await formRef.value?.validate()
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
           if (!center.value || !form.personId) return false
           if (
             form.range.length !== 2 ||
@@ -252,7 +253,8 @@
           })
           await load()
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心人员保存失败，请检查填写内容和网络后重试')
           return false
         }
       }

@@ -7,6 +7,7 @@
       :error="error"
       :empty="!loading && !error && !items.length"
       empty-title="包内暂无板材明细"
+      empty-description="排包明细生成后可在此核对板材。"
       @retry="load"
     >
       <ArtTable

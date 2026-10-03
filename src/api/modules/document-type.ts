@@ -4,6 +4,7 @@ import { applyFilters, fetchAllRangePages } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import TreeUtils from '@/utils/tree'
+import { chunk } from 'lodash-es'
 import type {
   DocumentTypeExportQuery,
   DocumentTypeExportRecord,
@@ -67,7 +68,7 @@ export async function fetchDocumentTypeList(
     { skipEmpty: true, camelToSnake: false }
   )
 
-  if (menuIds?.length) query = query.in('menu_id', menuIds)
+  if (menuIds?.length) query = query.overlaps('menu_ids', menuIds)
   if (keyword.trim()) {
     query = query.or(
       buildOrIlikeFilter(['document_type_code', 'document_type_name', 'remark'], keyword.trim())
@@ -84,13 +85,13 @@ export async function fetchDocumentTypeList(
 export async function fetchDocumentTypeStats(tenantId?: string | null): Promise<DocumentTypeStats> {
   let query = supabase
     .from('mdm_document_type')
-    .select('id,tenant_id,menu_id,enabled,is_default,update_time')
+    .select('id,tenant_id,menu_id,menu_ids,enabled,is_default,update_time')
   if (tenantId) query = query.eq('tenant_id', tenantId)
 
   const { data } = await responseHandle<DocumentTypeRecord[]>(() => query, readOptions)
   const rows = data ?? []
   const menuCounts = rows.reduce<Record<string, number>>((counts, row) => {
-    counts[row.menuId] = (counts[row.menuId] ?? 0) + 1
+    for (const menuId of row.menuIds) counts[menuId] = (counts[menuId] ?? 0) + 1
     return counts
   }, {})
 
@@ -170,9 +171,10 @@ export async function updateDocumentType(id: string, input: DocumentTypeUpdateIn
 export async function copyDocumentType(sourceId: string, input: DocumentTypeUpdateInput) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('copy_mdm_document_type', {
+      supabase.rpc('copy_mdm_document_type_with_menus', {
         p_source_id: sourceId,
         p_menu_id: input.menuId,
+        p_menu_ids: input.menuIds,
         p_document_type_code: input.documentTypeCode,
         p_document_type_name: input.documentTypeName,
         p_is_default: input.isDefault,
@@ -201,7 +203,7 @@ export async function deleteDocumentTypes(ids: string[]) {
 export async function exportDocumentTypes(
   params: DocumentTypeExportQuery
 ): Promise<DocumentTypeExportRecord[]> {
-  const { data } = await responseHandle<DocumentTypeExportRecord[]>(
+  const { data } = await responseHandle<Array<Omit<DocumentTypeExportRecord, 'menuIds'>>>(
     () =>
       supabase.rpc('export_mdm_document_types', {
         p_tenant_id: params.tenantId ?? null,
@@ -213,5 +215,17 @@ export async function exportDocumentTypes(
       }),
     { ...readOptions, errorMessage: '导出数据加载失败，请检查当前权限后重试' }
   )
-  return data ?? []
+  const rows = data ?? []
+  const menuIdsById = new Map<string, string[]>()
+  for (const ids of chunk(
+    rows.map((row) => row.id),
+    200
+  )) {
+    const { data: assignments } = await responseHandle<Array<{ id: string; menuIds: string[] }>>(
+      () => supabase.from('mdm_document_type').select('id,menu_ids').in('id', ids),
+      { ...readOptions, errorMessage: '导出菜单归属加载失败，请重试' }
+    )
+    for (const assignment of assignments ?? []) menuIdsById.set(assignment.id, assignment.menuIds)
+  }
+  return rows.map((row) => ({ ...row, menuIds: menuIdsById.get(row.id) ?? [row.menuId] }))
 }

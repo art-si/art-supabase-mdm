@@ -281,7 +281,7 @@
   import dayjs from 'dayjs'
   import { uniqBy } from 'lodash-es'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { storeToRefs } from 'pinia'
   import { useAuth } from '@/hooks/core/useAuth'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'

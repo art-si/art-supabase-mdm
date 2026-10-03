@@ -78,7 +78,7 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { exportExcel } from '@/utils/file'
@@ -296,7 +296,7 @@
             <strong>{row.name}</strong>
             <small>
               {isAllTenants.value
-                ? `${tenantNames.value[row.tenantId] || row.tenantId} · ${row.jobTitle || '现场作业员'}`
+                ? `${tenantNames.value[row.tenantId] || '租户信息待加载'} · ${row.jobTitle || '现场作业员'}`
                 : row.jobTitle || '现场作业员'}
             </small>
           </span>

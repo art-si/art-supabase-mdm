@@ -49,6 +49,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage, type FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -199,21 +201,31 @@
         },
         {
           label: '所属菜单功能',
-          key: 'menuId',
+          key: 'menuIds',
           type: 'treeSelect',
           span: 12,
-          options: form.menuTree,
+          options: treeUtils.mapTree(form.menuTree, (menu) => ({
+            ...menu,
+            disabled:
+              menu.type !== 'menu' ||
+              !form.documentTypes
+                .find((item) => item.id === form.data.documentTypeId)
+                ?.menuIds.includes(menu.id)
+          })),
           props: {
-            disabled: true,
+            multiple: true,
+            collapseTags: true,
+            collapseTagsTooltip: true,
+            filterable: true,
             checkStrictly: true,
-            placeholder: '选择单据类型后自动带入',
+            placeholder: '选择一个或多个菜单功能',
             props: {
               label: (node: SelectableMenuNode) =>
                 String(node.meta?.title || node.name || '未命名菜单'),
               value: 'id'
             }
           },
-          description: '由所属单据类型自动带入，确保业务口径一致。'
+          description: '从左侧菜单功能层级选择，可关联所选单据类型下的多个功能页面。'
         },
         {
           label: '业务类型编号',
@@ -276,6 +288,14 @@
           span: 8,
           options: getDictMap.value.mdmBusinessInventoryDirection ?? [],
           props: { clearable: true, placeholder: '默认为空' }
+        },
+        {
+          label: '出入库标志',
+          key: 'stockMovement',
+          type: 'segment',
+          span: 16,
+          options: getDictMap.value.mdmStockMovementDirection ?? [],
+          description: '用于标识该业务类型的库存流转方向。'
         },
         {
           label: '货主类型',
@@ -350,7 +370,9 @@
         { required: shouldExposeTenantField.value, message: '请选择所属租户', trigger: 'change' }
       ],
       documentTypeId: [{ required: true, message: '请选择所属单据类型', trigger: 'change' }],
-      menuId: [{ required: true, message: '请先选择所属单据类型', trigger: 'change' }],
+      menuIds: [
+        { required: true, type: 'array', min: 1, message: '请选择所属菜单功能', trigger: 'change' }
+      ],
       businessTypeCode: [
         { required: true, message: '请输入业务类型编号', trigger: 'blur' },
         {
@@ -427,6 +449,7 @@
     Object.assign(form.data, {
       documentTypeId: '',
       menuId: '',
+      menuIds: [],
       sourceBusinessTypeId: null,
       sortOrder: 10
     })
@@ -439,6 +462,11 @@
     Object.assign(form.data, {
       documentTypeId: documentTypeId ?? '',
       menuId: selected?.menuId ?? '',
+      menuIds: selected?.menuIds?.length
+        ? [...selected.menuIds]
+        : selected
+          ? [selected.menuId]
+          : [],
       sourceBusinessTypeId: null
     })
     void refreshSuggestedSort()
@@ -477,8 +505,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '业务类型校验未完成，请稍后重试', 'warning')
       return false
     }
     try {
@@ -493,7 +522,8 @@
         emit('success', 'add')
       }
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '业务类型保存失败，请检查权限和填写内容后重试')
       return false
     }
   }
@@ -525,13 +555,17 @@
           await Promise.all([
             userStore.ensureDictLoaded('commonBoolean'),
             userStore.ensureDictLoaded('mdmBusinessInventoryDirection'),
+            userStore.ensureDictLoaded('mdmStockMovementDirection'),
             userStore.ensureDictLoaded('mdmBusinessOwnerType')
           ])
           await reloadReferenceOptions()
           const documentType = form.documentTypes.find(
             (item) => item.id === form.data.documentTypeId
           )
-          if (documentType) form.data.menuId = documentType.menuId
+          if (documentType && !form.data.menuIds.length)
+            form.data.menuIds = documentType.menuIds?.length
+              ? [...documentType.menuIds]
+              : [documentType.menuId]
           await refreshSuggestedSort()
           await nextTick()
           formRef.value?.clearValidate()

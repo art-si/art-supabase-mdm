@@ -111,6 +111,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref } from 'vue'
   import dayjs from 'dayjs'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -415,7 +417,7 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!form.model.patternId || !form.model.shiftIndex) return false
       const startDate =
         form.model.dateMode === 'range' ? form.model.dateRange[0] : form.model.startDate
@@ -442,7 +444,8 @@
       )
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '排班方案保存失败，请检查填写内容和网络后重试')
       return false
     }
   }

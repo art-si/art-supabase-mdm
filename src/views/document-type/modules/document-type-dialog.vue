@@ -152,6 +152,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage, type FormRules } from 'element-plus'
   import { uniq } from 'lodash-es'
@@ -222,8 +224,9 @@
   const componentTypeOptions = ref<ComponentTypeRecord[]>([])
   const isProductionType = computed(() =>
     Boolean(
-      form.data.menuId &&
-      treeUtils.findNode(form.menuTree, form.data.menuId)?.name === 'MesWorkOrder'
+      form.data.menuIds.some(
+        (menuId) => treeUtils.findNode(form.menuTree, menuId)?.name === 'MesWorkOrder'
+      )
     )
   )
   const addExtensionField = () => {
@@ -288,17 +291,22 @@
         { label: '归属与类型标识', key: 'identitySection', type: 'divider', span: 24 },
         {
           label: '所属菜单功能',
-          key: 'menuId',
+          key: 'menuIds',
           type: 'treeSelect',
-          span: 12,
+          span: 24,
           props: {
             data: form.menuTree,
-            clearable: true,
+            multiple: true,
+            collapseTags: true,
+            collapseTagsTooltip: true,
             filterable: true,
             checkStrictly: true,
             defaultExpandAll: false,
-            placeholder: '请选择具体菜单功能',
-            onChange: () => void refreshSuggestedSort(),
+            placeholder: '请选择一个或多个具体菜单功能',
+            onChange: (menuIds: string[]) => {
+              form.data.menuId = menuIds[0] ?? ''
+              void refreshSuggestedSort()
+            },
             props: {
               label: (node: SelectableMenuNode) =>
                 String(node.meta?.title || node.name || '未命名菜单'),
@@ -306,7 +314,7 @@
               disabled: 'disabled'
             }
           },
-          description: '目录节点仅用于导航；单据类型必须归属到具体功能页面。'
+          description: '可关联多个具体功能页面；目录节点仅用于导航。'
         },
         {
           label: '单据类型编号',
@@ -470,7 +478,9 @@
       tenantId: [
         { required: shouldExposeTenantField.value, message: '请选择所属租户', trigger: 'change' }
       ],
-      menuId: [{ required: true, message: '请选择所属菜单功能', trigger: 'change' }],
+      menuIds: [
+        { required: true, type: 'array', min: 1, message: '请选择所属菜单功能', trigger: 'change' }
+      ],
       documentTypeCode: [
         { required: true, message: '请输入单据类型编号', trigger: 'blur' },
         {
@@ -493,9 +503,9 @@
 
   const summaryTitle = computed(() => form.data.documentTypeName || '新单据类型')
   const selectedMenuPath = computed(() =>
-    form.data.menuId
+    form.data.menuIds.length
       ? treeUtils
-          .getAncestors(form.menuTree, form.data.menuId)
+          .getAncestors(form.menuTree, form.data.menuIds[0])
           .map((menu) => String(menu.meta?.title || menu.name || '未命名菜单'))
           .join(' / ')
       : ''
@@ -555,14 +565,16 @@
       : undefined
     form.data = createDocumentTypeFormModel({
       tenantId: data.effectiveTenantId ?? undefined,
-      menuId: selectedMenu?.type === 'menu' ? selectedMenu.id : ''
+      menuId: selectedMenu?.type === 'menu' ? selectedMenu.id : '',
+      menuIds: selectedMenu?.type === 'menu' ? [selectedMenu.id] : []
     })
   }
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '单据类型校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -623,7 +635,8 @@
         emit('success', 'add')
       }
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '单据类型保存失败，请检查权限和填写内容后重试')
       return false
     }
   }

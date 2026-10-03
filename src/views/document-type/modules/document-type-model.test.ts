@@ -11,6 +11,7 @@ const source: DocumentTypeRecord = {
   id: 'source-id',
   tenantId: 'tenant-id',
   menuId: 'menu-id',
+  menuIds: ['menu-id'],
   documentTypeCode: 'ORDER',
   documentTypeName: '运输订单',
   isDefault: true,
@@ -33,6 +34,7 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.equal(copy.documentTypeCode, '')
   assert.equal(copy.documentTypeName, '运输订单（副本）')
   assert.equal(copy.isDefault, false)
+  assert.deepEqual(copy.menuIds, ['menu-id'])
   assert.equal(copy.sortOrder, 30)
   assert.deepEqual(copy.allowedIssueWarehouseTypes, source.allowedIssueWarehouseTypes)
 })
@@ -41,6 +43,7 @@ test('write payload normalizes text and only includes tenant when required', () 
   const model = createDocumentTypeFormModel({
     tenantId: 'tenant-id',
     menuId: 'menu-id',
+    menuIds: ['menu-id', 'second-menu-id'],
     documentTypeCode: '  order_return  ',
     documentTypeName: '  退货单  ',
     remark: '  退货业务  ',
@@ -48,6 +51,8 @@ test('write payload normalizes text and only includes tenant when required', () 
   })
 
   const tenantPayload = buildDocumentTypeInput(model, true)
+  assert.deepEqual(tenantPayload.menuIds, ['menu-id', 'second-menu-id'])
+  assert.equal(tenantPayload.menuId, 'menu-id')
   const ordinaryPayload = buildDocumentTypeInput(model, false)
 
   assert.equal(tenantPayload.documentTypeCode, 'ORDER_RETURN')

@@ -29,6 +29,7 @@
         @retry="loadOverview"
         :empty="!loading && !domains.length && !errorMessage"
         empty-title="当前租户暂无可查看的主数据"
+        empty-description="请检查主数据权限，或在来源系统建立业务记录。"
         preserve-content-structure
       >
         <template #actions
@@ -72,6 +73,7 @@
           retryable
           :empty="!totalRecords"
           empty-title="暂无可评估的主数据"
+          empty-description="来源系统建立业务记录后，可在此查看资料完整率。"
           @retry="loadOverview"
           preserve-content-structure
         >

@@ -11,6 +11,7 @@ export interface BusinessTypeDocumentReference {
   id: string
   tenantId: string
   menuId: string
+  menuIds: string[]
   documentTypeCode: string
   documentTypeName: string
   enabled: boolean
@@ -27,11 +28,13 @@ export interface BusinessTypeRecord {
   id: string
   tenantId: string
   documentTypeId: string
+  menuIds: string[]
   businessTypeCode: string
   businessTypeName: string
   isDefault: boolean
   sourceBusinessTypeId?: string | null
   inventoryDirection?: string | null
+  stockMovement: 'inbound' | 'outbound' | 'transfer'
   ownerType?: string | null
   inventoryAccounting: boolean
   remark: string
@@ -51,11 +54,13 @@ export interface BusinessTypeRecord {
 export interface BusinessTypeWriteInput {
   tenantId?: string
   documentTypeId: string
+  menuIds: string[]
   businessTypeCode: string
   businessTypeName: string
   isDefault: boolean
   sourceBusinessTypeId: string | null
   inventoryDirection: string | null
+  stockMovement: 'inbound' | 'outbound' | 'transfer'
   ownerType: string | null
   inventoryAccounting: boolean
   remark: string

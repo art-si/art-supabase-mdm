@@ -26,23 +26,6 @@
         </template>
         <div class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
           <div class="min-w-0 space-y-3">
-            <label class="block text-sm font-medium">目标租户</label>
-            <ElSelect
-              v-if="isPlatformSuper && !effectiveTenantId"
-              v-model="workspace.tenantId"
-              filterable
-              placeholder="先选择清单所属租户"
-              class="w-full"
-              @change="resetUpload"
-            >
-              <ElOption
-                v-for="tenant in tenantOptions"
-                :key="tenant.id"
-                :label="tenant.tenantName || tenant.tenantCode"
-                :value="tenant.id"
-              />
-            </ElSelect>
-            <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ activeTenantName }}</p>
             <ArtUploadFile
               v-model="workspace.sourceUrl"
               title="选择加工清单"
@@ -570,7 +553,7 @@
   import type { ColumnOption } from '@/types/component'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import {
@@ -604,7 +587,7 @@
   const { hasAuth } = useAuth()
   const userStore = useUserStore()
   const { isPlatformSuper, getDictMap } = storeToRefs(userStore)
-  const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
+  const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
   const formatDateTime = createDateTimeFormatter()
   interface WorkspaceState {
     tenantId: string
@@ -644,7 +627,7 @@
     items: AccessoryProcessingItem[]
   }
   const workspace = reactive<WorkspaceState>({
-    tenantId: effectiveTenantId.value ?? '',
+    tenantId: effectiveTenantId.value ?? userStore.getUserInfo.tenantId ?? '',
     sourceUrl: '',
     sourcePath: '',
     sourceName: '',
@@ -936,11 +919,6 @@
       lengthSummary: group.entries.map(({ item }) => `${item.lengthM.toFixed(3)} m`).join(' / ')
     }))
   })
-  const activeTenantName = computed(
-    () =>
-      tenantOptions.value.find((tenant) => tenant.id === workspace.tenantId)?.tenantName ||
-      '当前租户'
-  )
   const orderCards = computed(() =>
     draft.items.flatMap((item) =>
       (item.workOrders ?? []).map((order) => ({
@@ -992,7 +970,7 @@
   }
 
   async function uploadSource(file: File): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
-    if (!workspace.tenantId) throw new Error('请先选择目标租户')
+    if (!workspace.tenantId) throw new Error('当前账号缺少租户信息，请刷新后重试')
     const pages = await rasterizeProcessingList(file)
     const groupId = crypto.randomUUID()
     const resources = await uploadAccessoryFile(
@@ -1406,7 +1384,7 @@
   }
 
   watch(effectiveTenantId, (tenantId) => {
-    workspace.tenantId = tenantId ?? ''
+    workspace.tenantId = tenantId ?? userStore.getUserInfo.tenantId ?? ''
     resetUpload()
     void Promise.all([loadLists(), loadRecognitions()])
   })

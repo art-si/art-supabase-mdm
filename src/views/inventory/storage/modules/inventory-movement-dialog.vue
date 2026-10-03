@@ -47,6 +47,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -476,9 +478,14 @@
   )
 
   async function submit(): Promise<boolean> {
+    if (inboundWarehouseError.value) return false
     try {
-      if (inboundWarehouseError.value) return false
-      if ((await formRef.value?.validate()) === false) return false
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '库存移动校验未完成，请稍后重试', 'warning')
+      return false
+    }
+    try {
       await postInventoryMovement({
         ...form,
         warehouseId: isInbound.value ? form.warehouseId : undefined,
@@ -490,7 +497,8 @@
       })
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '库存移动提交失败，请检查库存数量和库位后重试')
       return false
     }
   }

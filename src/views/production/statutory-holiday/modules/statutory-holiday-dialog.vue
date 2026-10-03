@@ -39,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref, shallowRef, nextTick, type ComputedRef } from 'vue'
   import { storeToRefs } from 'pinia'
   import dayjs from 'dayjs'
@@ -190,7 +192,7 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       const payload: StatutoryHolidaySavePayload = {
         id: form.model.id,
         organizationId: form.model.organizationId,
@@ -202,7 +204,8 @@
       await saveStatutoryHoliday(payload)
       emit('success', form.model.id ? 'edit' : 'add')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '法定节假日保存失败，请检查填写内容和网络后重试')
       return false
     }
   }

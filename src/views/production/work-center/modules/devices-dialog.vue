@@ -63,10 +63,12 @@
   >
 </template>
 <script setup lang="tsx">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { ElMessage } from 'element-plus'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
   import { computed, ref, reactive, shallowRef } from 'vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -212,8 +214,16 @@
       confirmText: row ? '保存更改' : '关联设备',
       onConfirm: async () => {
         try {
-          await formRef.value?.validate()
-          if (!center.value) return false
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心设备校验未完成，请稍后重试', 'warning')
+          return false
+        }
+        if (!center.value) {
+          ElMessage.warning('工作中心已失效，请关闭后重新打开')
+          return false
+        }
+        try {
           if (row) {
             await saveCenterDevice(
               {
@@ -232,10 +242,12 @@
               point: form.point
             })
           }
-          await load()
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心设备保存失败，请检查设备状态后重试')
           return false
         }
+        await load()
+        return true
       }
     })
   }

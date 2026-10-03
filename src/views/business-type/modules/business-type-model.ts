@@ -1,4 +1,4 @@
-import { pick } from 'lodash-es'
+import { pick, uniq } from 'lodash-es'
 import { normalizeNonNullableText, normalizeNullableText } from '@/utils/form/normalize'
 import type { BusinessTypeRecord, BusinessTypeUpdateInput, BusinessTypeWriteInput } from '@mdm/api'
 
@@ -15,12 +15,14 @@ export const createBusinessTypeFormModel = (
   sourceId: undefined,
   tenantId: undefined,
   menuId: '',
+  menuIds: [],
   documentTypeId: '',
   businessTypeCode: '',
   businessTypeName: '',
   isDefault: false,
   sourceBusinessTypeId: null,
   inventoryDirection: null,
+  stockMovement: 'inbound',
   ownerType: null,
   inventoryAccounting: false,
   remark: '',
@@ -36,12 +38,16 @@ export const createBusinessTypeCopyModel = (source: BusinessTypeRecord): Busines
     sourceId: source.id,
     tenantId: source.tenantId,
     menuId: source.documentType?.menuId ?? '',
+    menuIds: [
+      ...(source.menuIds?.length ? source.menuIds : [source.documentType?.menuId ?? ''])
+    ].filter(Boolean),
     documentTypeId: source.documentTypeId,
     businessTypeCode: '',
     businessTypeName: `${source.businessTypeName}（副本）`,
     isDefault: false,
     sourceBusinessTypeId: source.sourceBusinessTypeId ?? null,
     inventoryDirection: source.inventoryDirection ?? null,
+    stockMovement: source.stockMovement ?? 'inbound',
     ownerType: source.ownerType ?? null,
     inventoryAccounting: source.inventoryAccounting,
     remark: source.remark,
@@ -58,11 +64,13 @@ export const buildBusinessTypeInput = (
   const payload = pick(model, [
     'tenantId',
     'documentTypeId',
+    'menuIds',
     'businessTypeCode',
     'businessTypeName',
     'isDefault',
     'sourceBusinessTypeId',
     'inventoryDirection',
+    'stockMovement',
     'ownerType',
     'inventoryAccounting',
     'remark',
@@ -73,6 +81,7 @@ export const buildBusinessTypeInput = (
   ]) as BusinessTypeWriteInput
 
   payload.businessTypeCode = normalizeNonNullableText(payload.businessTypeCode).toUpperCase()
+  payload.menuIds = uniq(payload.menuIds)
   payload.businessTypeName = normalizeNonNullableText(payload.businessTypeName)
   payload.sourceBusinessTypeId = normalizeNullableText(payload.sourceBusinessTypeId)
   payload.inventoryDirection = normalizeNullableText(payload.inventoryDirection)

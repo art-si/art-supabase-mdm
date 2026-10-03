@@ -365,22 +365,6 @@
             :show-reset="false"
             :show-submit="false"
           >
-            <template #tenantId>
-              <ElSelect
-                v-model="manual.tenantId"
-                filterable
-                class="w-full"
-                placeholder="选择所属租户"
-                @change="onManualTenantChanged"
-              >
-                <ElOption
-                  v-for="tenant in tenantOptions"
-                  :key="tenant.id"
-                  :label="tenant.tenantName || tenant.tenantCode"
-                  :value="tenant.id"
-                />
-              </ElSelect>
-            </template>
             <template #projectId>
               <div class="flex min-w-0 gap-2">
                 <ElSelect
@@ -661,7 +645,7 @@
   import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import type { ColumnOption } from '@/types/component'
@@ -975,9 +959,6 @@
   ]
 
   const manualItems = computed<FormItem[]>(() => [
-    ...(isPlatformSuper.value && !effectiveTenantId.value && manualMode.value !== 'edit'
-      ? [{ key: 'tenantId', label: '目标租户', type: 'slot' as const, span: 12 }]
-      : []),
     ...(manualMode.value === 'edit'
       ? []
       : [
@@ -1257,7 +1238,7 @@
   }
   function resetManual(): void {
     Object.assign(manual, {
-      tenantId: effectiveTenantId.value || '',
+      tenantId: effectiveTenantId.value || userStore.getUserInfo.tenantId || '',
       projectName: '',
       drawingName: '',
       projectId: null,
@@ -1315,17 +1296,6 @@
       },
       onConfirm: saveManual
     })
-  }
-  function onManualTenantChanged(tenantId: string): void {
-    manual.projectId = null
-    manual.customerId = null
-    manual.materialTypeId = null
-    manual.baseUnitId = null
-    manual.categoryId = null
-    manual.codeRuleId = null
-    manual.sketchPath = null
-    manual.imageUrls = []
-    void loadOptions(tenantId)
   }
   function manualItem(): AccessoryProcessingItem {
     return {

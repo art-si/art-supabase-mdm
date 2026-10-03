@@ -63,10 +63,15 @@ type CenterPersonReference = Pick<
 >
 
 /** One tenant-safe projection for selection, edit display, imports and adjustments. */
-async function fetchCenterPersonReferences(filter: { ids?: string[]; employeeNos?: string[] }) {
+async function fetchCenterPersonReferences(filter: {
+  ids?: string[]
+  employeeNos?: string[]
+  tenantId?: string
+}) {
   if (!filter.ids?.length && !filter.employeeNos?.length) return []
   const { data } = await fetchAllRangePages<CenterPersonReference>(({ from, to }) => {
     let query = supabase.rpc('mdm_work_center_people').select('*').order('id')
+    if (filter.tenantId) query = query.eq('tenant_id', filter.tenantId)
     if (filter.ids) query = query.in('id', filter.ids)
     if (filter.employeeNos) query = query.in('employee_no', filter.employeeNos).eq('enabled', true)
     return responseHandle<CenterPersonReference[]>(() => query.range(from, to), read)
@@ -277,11 +282,11 @@ export async function fetchCenterImportReferences(
           read
         )
       : Promise.resolve({ data: [] }),
-    fetchCenterPersonReferences({ employeeNos })
+    fetchCenterPersonReferences({ employeeNos, tenantId })
   ])
   return {
     centers: centers.data ?? [],
-    people: people.filter((person) => person.tenantId === tenantId)
+    people
   }
 }
 export async function importWorkCenters(inputs: Array<WorkCenterInput & { tenantId: string }>) {

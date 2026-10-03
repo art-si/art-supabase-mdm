@@ -33,6 +33,7 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import { ref, reactive } from 'vue'
   import { ElMessage } from 'element-plus'
@@ -70,7 +71,8 @@
           await bindOperationTemplate(ids.value, form.templateId)
           ElMessage.success({ message: '操作成功', duration: 1500 })
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '作业模板绑定失败，请检查工序状态和权限后重试')
           return false
         }
       }

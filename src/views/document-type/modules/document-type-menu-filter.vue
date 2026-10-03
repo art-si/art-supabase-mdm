@@ -498,10 +498,10 @@
         font-variant-numeric: tabular-nums;
       }
     }
+  }
 
-    :global([data-box-mode='shadow-mode']) & {
-      border-color: transparent;
-      box-shadow: var(--art-card-shadow-xs);
-    }
+  :global(html[data-box-mode='shadow-mode'] .document-type-menu-filter) {
+    border-color: transparent;
+    box-shadow: var(--art-card-shadow-xs);
   }
 </style>

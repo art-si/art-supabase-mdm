@@ -89,7 +89,7 @@
   import type { ElTree } from 'element-plus'
   import type { ProductionDepartment } from '@mdm/api'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { storeToRefs } from 'pinia'
   import { productionTree } from './production-model'
   const props = withDefaults(
@@ -114,7 +114,7 @@
   )
   const departmentSubtitle = (department: ProductionDepartment): string =>
     isAllTenants.value
-      ? `${tenantNames.value[department.tenantId] || department.tenantId} · ${department.code}`
+      ? `${tenantNames.value[department.tenantId] || '租户信息待加载'} · ${department.code}`
       : department.code
   const keyword = ref('')
   const nodes = computed(() => productionTree.listToTree(props.departments))

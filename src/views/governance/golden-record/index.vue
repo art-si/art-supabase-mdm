@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-  import MdmGovernanceCenter from '../center/index.vue'
+  import MdmGovernanceCenter from '../../governance-center/index.vue'
 
   defineOptions({ name: 'MdmGoldenRecord' })
 </script>

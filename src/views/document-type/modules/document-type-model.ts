@@ -1,4 +1,4 @@
-import { pick } from 'lodash-es'
+import { pick, uniq } from 'lodash-es'
 import { normalizeNonNullableText } from '@/utils/form/normalize'
 import type { DocumentTypeRecord, DocumentTypeUpdateInput, DocumentTypeWriteInput } from '@mdm/api'
 
@@ -14,6 +14,7 @@ export const createDocumentTypeFormModel = (
   sourceId: undefined,
   tenantId: undefined,
   menuId: '',
+  menuIds: [],
   documentTypeCode: '',
   documentTypeName: '',
   isDefault: false,
@@ -34,6 +35,7 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     sourceId: source.id,
     tenantId: source.tenantId,
     menuId: source.menuId,
+    menuIds: [...(source.menuIds?.length ? source.menuIds : [source.menuId])],
     documentTypeCode: '',
     documentTypeName: `${source.documentTypeName}（副本）`,
     isDefault: false,
@@ -55,6 +57,7 @@ export const buildDocumentTypeInput = (
   const payload = pick(model, [
     'tenantId',
     'menuId',
+    'menuIds',
     'documentTypeCode',
     'documentTypeName',
     'isDefault',
@@ -70,6 +73,8 @@ export const buildDocumentTypeInput = (
   ]) as DocumentTypeWriteInput
 
   payload.documentTypeCode = normalizeNonNullableText(payload.documentTypeCode).toUpperCase()
+  payload.menuIds = uniq(payload.menuIds)
+  payload.menuId = payload.menuIds[0] ?? ''
   payload.documentTypeName = normalizeNonNullableText(payload.documentTypeName)
   payload.remark = normalizeNonNullableText(payload.remark)
   payload.textColor = normalizeNonNullableText(payload.textColor).toUpperCase()

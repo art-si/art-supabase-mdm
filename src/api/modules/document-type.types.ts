@@ -12,6 +12,7 @@ export interface DocumentTypeRecord {
   id: string
   tenantId: string
   menuId: string
+  menuIds: string[]
   documentTypeCode: string
   documentTypeName: string
   isDefault: boolean
@@ -34,6 +35,7 @@ export interface DocumentTypeRecord {
 export interface DocumentTypeWriteInput {
   tenantId?: string
   menuId: string
+  menuIds: string[]
   documentTypeCode: string
   documentTypeName: string
   isDefault: boolean

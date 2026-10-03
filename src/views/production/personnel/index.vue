@@ -120,7 +120,7 @@
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -185,7 +185,7 @@
   const tenantNames = computed(() =>
     Object.fromEntries(tenantOptions.value.map((tenant) => [tenant.id, tenant.tenantName]))
   )
-  const tenantName = (tenantId: string): string => tenantNames.value[tenantId] || tenantId
+  const tenantName = (tenantId: string): string => tenantNames.value[tenantId] || '租户信息待加载'
   const { hasAuth } = useAuth()
   const canViewPeople = computed(
     () => !props.departmentMode && hasAuth('MdmProductionPersonnel:View')
@@ -734,7 +734,7 @@
     return resolveTenantWriteTargetId({
       explicitTenantId: effectiveTenantId.value || selectedDepartment.value?.tenantId,
       actorTenantId: user.info.tenantId,
-      isPlatformSuper: user.isPlatformSuper
+      canWriteToOtherTenant: tenantScopeStore.isPlatformScope
     })
   }
   async function importDepartments(rows: Record<string, unknown>[]) {

@@ -23,9 +23,11 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { ref } from 'vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { fetchCenterDefaults, saveCenterDefaults } from '@mdm/api'
   import { centerPolicyDictionaryCodes, createCenterPolicy } from './center-policy'
   import PolicyEditor from './policy-editor.vue'
@@ -34,6 +36,7 @@
   const error = ref('')
   const activeSection = ref<(typeof sections)[number]>('报工规则')
   const user = useUserStore()
+  const tenantScopeStore = useTenantScopeStore()
   const sections = ['报工规则', '生产控制', '人员与排程', '自动化'] as const
   const sectionDescriptions = {
     报工规则: '新增工作中心默认采用的报工方式、数量校验与操作时限。',
@@ -42,6 +45,7 @@
     自动化: '新增工作中心默认采用的班次触发与自动报工规则。'
   } as const
   async function handleOpen(tenantId: string) {
+    const scopeRevision = tenantScopeStore.revision
     policy.value = createCenterPolicy()
     error.value = ''
     activeSection.value = '报工规则'
@@ -66,9 +70,14 @@
       },
       onConfirm: async () => {
         if (error.value) return false
+        if (tenantScopeStore.revision !== scopeRevision) {
+          error.value = '租户范围已变化，请关闭后重新打开配置'
+          return false
+        }
         try {
           await saveCenterDefaults(policy.value, tenantId)
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心默认配置保存失败，请检查租户范围后重试')
           return false
         }
       }

@@ -108,7 +108,7 @@
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
@@ -343,7 +343,7 @@
           })
           return rows.map<ExportRow>((row) => ({
             ...row,
-            menuPath: resolveMenuPath(row.menuId),
+            menuPath: resolveMenuPaths(row.menuIds),
             statusLabel: row.enabled ? '启用' : '禁用'
           }))
         }
@@ -424,10 +424,10 @@
       minWidth: 230,
       formatter: (row) => (
         <div class="document-type-menu-cell">
-          <strong title={resolveMenuPath(row.menuId)}>{resolveMenuPath(row.menuId) || '--'}</strong>
-          <small title={resolveMenuComponent(row.menuId)}>
-            {resolveMenuComponent(row.menuId) || '功能页面'}
-          </small>
+          <strong title={resolveMenuPaths(row.menuIds)}>
+            {resolveMenuPaths(row.menuIds) || '--'}
+          </strong>
+          <small title={resolveMenuComponent(row.menuId)}>{row.menuIds.length} 个功能页面</small>
         </div>
       )
     },
@@ -522,6 +522,8 @@
       .getAncestors(menu.tree, menuId)
       .map((item) => String(item.meta?.title || item.name || '未命名菜单'))
       .join(' / ')
+  const resolveMenuPaths = (menuIds: string[]): string =>
+    menuIds.map(resolveMenuPath).filter(Boolean).join('；')
 
   const resolveMenuComponent = (menuId: string): string => {
     const item = treeUtils.findNode(menu.tree, menuId)
@@ -545,8 +547,10 @@
   const openDetail = (record: DocumentTypeRecord): void => {
     void detailDrawerRef.value?.handleOpen({
       record,
-      menuPath: resolveMenuPath(record.menuId),
-      isProductionType: treeUtils.findNode(menu.tree, record.menuId)?.name === 'MesWorkOrder'
+      menuPath: resolveMenuPaths(record.menuIds),
+      isProductionType: record.menuIds.some(
+        (id) => treeUtils.findNode(menu.tree, id)?.name === 'MesWorkOrder'
+      )
     })
   }
 

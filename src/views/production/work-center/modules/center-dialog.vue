@@ -132,6 +132,8 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import { ref, reactive, computed, watch } from 'vue'
@@ -475,12 +477,17 @@
           return false
         }
         try {
-          await formRef.value?.validate()
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
           const activityValidation = await activityEditorRef.value?.validate()
           if (activityValidation?.valid === false) {
             form.tab = '活动信息'
             return false
           }
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心校验未完成，请稍后重试', 'warning')
+          return false
+        }
+        try {
           const payload: WorkCenterInput = {
             ...cloneDeep(form.model),
             code: form.model.code.trim(),
@@ -495,7 +502,8 @@
           }))
           await saveWorkCenter(payload, activities, form.id)
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '工作中心保存失败，请检查活动配置和网络后重试')
           return false
         }
       }

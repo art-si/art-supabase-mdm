@@ -24,6 +24,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { fetchInventoryPolicy, saveInventoryPolicy } from '@mdm/api'
@@ -53,13 +55,11 @@
   }
 
   async function submit(): Promise<boolean> {
-    if (
-      loadError.value ||
-      !context.value ||
-      !Number.isInteger(staleDays.value) ||
-      staleDays.value < 1
-    )
+    if (loadError.value || !context.value) return false
+    if (!Number.isInteger(staleDays.value) || staleDays.value < 1) {
+      ElMessage.warning('无活动天数必须是大于零的整数')
       return false
+    }
     try {
       await saveInventoryPolicy(context.value.tenantId, {
         staleDays: staleDays.value,
@@ -67,7 +67,8 @@
       })
       emit('success', staleDays.value)
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '呆滞库存口径保存失败，请检查当前租户和网络后重试')
       return false
     }
   }

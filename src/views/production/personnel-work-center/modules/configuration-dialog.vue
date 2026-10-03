@@ -59,6 +59,8 @@
 </template>
 
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref } from 'vue'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -71,7 +73,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { storeToRefs } from 'pinia'
   import {
     fetchUnconfiguredPersonnelSelector,
@@ -254,7 +256,7 @@
       contentMaxHeight: '66vh',
       onConfirm: async () => {
         try {
-          await formRef.value?.validate()
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
           if (!form.model.personnelId) return false
           await savePersonnelCommonWorkCenters({
             personnelId: form.model.personnelId,
@@ -263,7 +265,8 @@
           })
           emit('success')
           return true
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '人员工作中心配置保存失败，请检查填写内容和网络后重试')
           return false
         }
       }

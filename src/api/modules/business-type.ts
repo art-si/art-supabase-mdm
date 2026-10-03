@@ -4,6 +4,7 @@ import { normalizeNullableText } from '@/utils/form/normalize'
 import { applyFilters, fetchAllRangePages } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import TreeUtils from '@/utils/tree'
+import { chunk } from 'lodash-es'
 import type {
   BusinessTypeDocumentReference,
   BusinessTypeExportQuery,
@@ -42,7 +43,7 @@ const businessTypeSelect = `
   *,
   tenant:sys_tenant!mdm_business_type_tenant_id_fkey(tenant_code, tenant_name),
   documentType:mdm_document_type!mdm_business_type_document_type_fkey!inner(
-    id, tenant_id, menu_id, document_type_code, document_type_name, enabled
+    id, tenant_id, menu_id, menu_ids, document_type_code, document_type_name, enabled
   )
 `
 
@@ -109,7 +110,7 @@ export async function fetchBusinessTypeList(
     { skipEmpty: true, camelToSnake: false }
   )
 
-  if (menuIds?.length) query = query.in('documentType.menu_id', menuIds)
+  if (menuIds?.length) query = query.overlaps('menu_ids', menuIds)
   if (keyword.trim()) {
     query = query.or(
       buildOrIlikeFilter(['business_type_code', 'business_type_name', 'remark'], keyword.trim())
@@ -134,8 +135,8 @@ export async function fetchBusinessTypeStats(tenantId?: string | null): Promise<
       let query = supabase
         .from('mdm_business_type')
         .select(
-          `id,tenant_id,document_type_id,enabled,is_default,update_time,
-          documentType:mdm_document_type!mdm_business_type_document_type_fkey!inner(menu_id)`
+          `id,tenant_id,document_type_id,menu_ids,enabled,is_default,update_time,
+          documentType:mdm_document_type!mdm_business_type_document_type_fkey!inner(menu_id,menu_ids)`
         )
         .order('id')
         .range(from, to)
@@ -150,8 +151,7 @@ export async function fetchBusinessTypeStats(tenantId?: string | null): Promise<
 
   const rows = data ?? []
   const menuCounts = rows.reduce<Record<string, number>>((counts, row) => {
-    const menuId = row.documentType?.menuId
-    if (menuId) counts[menuId] = (counts[menuId] ?? 0) + 1
+    for (const menuId of row.menuIds) counts[menuId] = (counts[menuId] ?? 0) + 1
     return counts
   }, {})
 
@@ -198,12 +198,12 @@ export async function fetchBusinessTypeDocumentOptions(
     ({ from, to }) => {
       let query = supabase
         .from('mdm_document_type')
-        .select('id,tenant_id,menu_id,document_type_code,document_type_name,enabled')
+        .select('id,tenant_id,menu_id,menu_ids,document_type_code,document_type_name,enabled')
         .eq('tenant_id', params.tenantId)
         .order('sort_order')
         .order('document_type_name')
         .range(from, to)
-      if (params.menuIds?.length) query = query.in('menu_id', params.menuIds)
+      if (params.menuIds?.length) query = query.overlaps('menu_ids', params.menuIds)
       if (typeof params.enabled === 'boolean') query = query.eq('enabled', params.enabled)
       return responseHandle<BusinessTypeDocumentReference[]>(() => query, {
         ...readOptions,
@@ -282,7 +282,7 @@ export async function updateBusinessType(id: string, input: BusinessTypeUpdateIn
 export async function copyBusinessType(sourceId: string, input: BusinessTypeUpdateInput) {
   return await responseHandle<string>(
     () =>
-      supabase.rpc('copy_mdm_business_type', {
+      supabase.rpc('copy_mdm_business_type_with_menus', {
         p_source_id: sourceId,
         p_document_type_id: input.documentTypeId,
         p_business_type_code: input.businessTypeCode,
@@ -290,6 +290,8 @@ export async function copyBusinessType(sourceId: string, input: BusinessTypeUpda
         p_is_default: input.isDefault,
         p_source_business_type_id: input.sourceBusinessTypeId,
         p_inventory_direction: input.inventoryDirection,
+        p_stock_movement: input.stockMovement,
+        p_menu_ids: input.menuIds,
         p_owner_type: input.ownerType,
         p_inventory_accounting: input.inventoryAccounting,
         p_remark: input.remark,
@@ -316,7 +318,9 @@ export async function deleteBusinessTypes(ids: string[]) {
 export async function exportBusinessTypes(
   params: BusinessTypeExportQuery
 ): Promise<BusinessTypeExportRecord[]> {
-  const { data } = await responseHandle<BusinessTypeExportRecord[]>(
+  const { data } = await responseHandle<
+    Array<Omit<BusinessTypeExportRecord, 'menuIds' | 'stockMovement'>>
+  >(
     () =>
       supabase.rpc('export_mdm_business_types', {
         p_tenant_id: params.tenantId ?? null,
@@ -329,5 +333,23 @@ export async function exportBusinessTypes(
       }),
     { ...readOptions, errorMessage: '导出数据加载失败，请检查当前权限后重试' }
   )
-  return data ?? []
+  const rows = data ?? []
+  const assignmentById = new Map<string, Pick<BusinessTypeRecord, 'menuIds' | 'stockMovement'>>()
+  for (const ids of chunk(
+    rows.map((row) => row.id),
+    200
+  )) {
+    const { data: assignments } = await responseHandle<
+      Array<Pick<BusinessTypeRecord, 'id' | 'menuIds' | 'stockMovement'>>
+    >(() => supabase.from('mdm_business_type').select('id,menu_ids,stock_movement').in('id', ids), {
+      ...readOptions,
+      errorMessage: '导出业务类型扩展信息加载失败，请重试'
+    })
+    for (const assignment of assignments ?? []) assignmentById.set(assignment.id, assignment)
+  }
+  return rows.map((row) => ({
+    ...row,
+    menuIds: assignmentById.get(row.id)?.menuIds ?? (row.menuId ? [row.menuId] : []),
+    stockMovement: assignmentById.get(row.id)?.stockMovement ?? 'inbound'
+  }))
 }

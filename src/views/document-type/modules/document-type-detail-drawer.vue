@@ -121,6 +121,7 @@
       id: '',
       tenantId: '',
       menuId: '',
+      menuIds: [],
       documentTypeCode: '',
       documentTypeName: '',
       isDefault: false,

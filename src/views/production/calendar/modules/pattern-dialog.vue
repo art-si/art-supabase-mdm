@@ -86,6 +86,8 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
   import { cloneDeep, pick } from 'lodash-es'
@@ -194,7 +196,7 @@
       contentMaxHeight: '72vh',
       onConfirm: async () => {
         try {
-          await formRef.value?.validate()
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
           if (calculation.value.error) {
             ElMessage.warning(calculation.value.error)
             return false
@@ -204,7 +206,8 @@
             form.id
           )
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '生产日历模式保存失败，请检查填写内容和网络后重试')
           return false
         }
       }

@@ -109,11 +109,13 @@
       id: '',
       tenantId: '',
       documentTypeId: '',
+      menuIds: [],
       businessTypeCode: '',
       businessTypeName: '',
       isDefault: false,
       sourceBusinessTypeId: null,
       inventoryDirection: null,
+      stockMovement: 'inbound',
       ownerType: null,
       inventoryAccounting: false,
       remark: '',
@@ -157,6 +159,12 @@
       span: 2
     },
     { key: 'inventoryDirection', label: '库存方向', field: 'record.inventoryDirection' },
+    {
+      key: 'stockMovement',
+      label: '出入库标志',
+      value: (data: BusinessTypeDetailData) =>
+        ({ inbound: '入库', outbound: '出库', transfer: '库存转移' })[data.record.stockMovement]
+    },
     { key: 'ownerType', label: '货主类型', field: 'record.ownerType' },
     {
       key: 'inventoryAccounting',

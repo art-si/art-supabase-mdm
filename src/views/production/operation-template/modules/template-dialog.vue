@@ -59,6 +59,8 @@
   </ArtDialog>
 </template>
 <script setup lang="tsx">
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { ref, reactive, computed } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import { ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
@@ -294,19 +296,25 @@
             ? '请添加 1 至 200 个任务项'
             : ''
         if (form.error) return false
-        const tableValidation = await taskTableRef.value?.validate()
-        if (tableValidation?.valid === false) {
-          form.error = tableValidation.firstError?.message || '请完整填写作业任务'
+        try {
+          const tableValidation = await taskTableRef.value?.validate()
+          if (tableValidation?.valid === false) {
+            form.error = tableValidation.firstError?.message || '请完整填写作业任务'
+            return false
+          }
+          if (!(await validateArtFormForSubmit(formRef.value))) return false
+        } catch (error) {
+          notifyFriendlyError(error, '作业模板校验未完成，请稍后重试', 'warning')
           return false
         }
         try {
-          await formRef.value?.validate()
           await saveOperationTemplate(
             templatePayload(form.model),
             data.mode === 'edit' ? data.row?.id : undefined
           )
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '作业模板保存失败，请检查任务项和网络后重试')
           return false
         }
       }

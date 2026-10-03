@@ -108,7 +108,7 @@
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
@@ -169,7 +169,11 @@
   }
 
   type TableParams = SearchModel & Pick<BusinessTypeQuery, 'current' | 'size'>
-  type ExportRow = BusinessTypeExportRecord & { menuPath: string; statusLabel: string }
+  type ExportRow = BusinessTypeExportRecord & {
+    menuPath: string
+    statusLabel: string
+    stockMovementLabel: string
+  }
 
   const route = useRoute()
   const tableRef = ref<ArtTableQueryExpose>()
@@ -326,6 +330,7 @@
           { key: 'sourceBusinessTypeCode', title: '源业务类型编号' },
           { key: 'sourceBusinessTypeName', title: '源业务类型' },
           { key: 'inventoryDirection', title: '库存方向' },
+          { key: 'stockMovementLabel', title: '出入库标志' },
           { key: 'ownerType', title: '货主类型' },
           {
             key: 'inventoryAccounting',
@@ -356,7 +361,10 @@
           })
           return rows.map<ExportRow>((row) => ({
             ...row,
-            menuPath: resolveMenuPath(row.menuId ?? ''),
+            menuPath: resolveMenuPaths(row.menuIds),
+            stockMovementLabel: { inbound: '入库', outbound: '出库', transfer: '库存转移' }[
+              row.stockMovement
+            ],
             statusLabel: row.enabled ? '启用' : '禁用'
           }))
         }
@@ -440,6 +448,21 @@
           </small>
         </div>
       )
+    },
+    {
+      prop: 'menuIds',
+      label: '所属菜单功能',
+      minWidth: 220,
+      formatter: (row) => (
+        <span title={resolveMenuPaths(row.menuIds)}>{resolveMenuPaths(row.menuIds) || '--'}</span>
+      )
+    },
+    {
+      prop: 'stockMovement',
+      label: '出入库标志',
+      width: 110,
+      formatter: (row) =>
+        ({ inbound: '入库', outbound: '出库', transfer: '库存转移' })[row.stockMovement]
     },
     {
       prop: 'inventoryDirection',
@@ -587,8 +610,8 @@
       .getAncestors(menu.tree, menuId)
       .map((item) => String(item.meta?.title || item.name || '未命名菜单'))
       .join(' / ')
-
-  const rowMenuId = (record: BusinessTypeRecord): string => record.documentType?.menuId ?? ''
+  const resolveMenuPaths = (menuIds: string[]): string =>
+    menuIds.map(resolveMenuPath).filter(Boolean).join('；')
 
   const openDialog = (mode: 'add' | 'copy' | 'edit', record?: BusinessTypeRecord): void => {
     void dialogRef.value?.handleOpen({
@@ -607,7 +630,7 @@
   const openDetail = (record: BusinessTypeRecord): void => {
     void detailDrawerRef.value?.handleOpen({
       record,
-      menuPath: resolveMenuPath(rowMenuId(record))
+      menuPath: resolveMenuPaths(record.menuIds)
     })
   }
 

@@ -28,6 +28,7 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
   import dayjs from 'dayjs'
@@ -247,7 +248,8 @@
               leadDays: form.model.leadDays
             })
           emit('success')
-        } catch {
+        } catch (error) {
+          notifyFriendlyError(error, '生产日历操作失败，请检查日期和轮班配置后重试')
           return false
         }
       }

@@ -60,7 +60,7 @@
   </div>
 </template>
 <script setup lang="tsx">
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
   import { ref, reactive, computed, watch } from 'vue'
   import { storeToRefs } from 'pinia'
@@ -79,7 +79,7 @@
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
   import { useAuth } from '@/hooks/core/useAuth'
   import { exportExcel } from '@/utils/file'
@@ -137,6 +137,12 @@
     total: 0
   })
   const selectedDepartment = computed(() => scope.departments.find((d) => d.id === scope.selected))
+  const targetTenantId = (): string =>
+    resolveTenantWriteTargetId({
+      explicitTenantId: effectiveTenantId.value || selectedDepartment.value?.tenantId,
+      actorTenantId: user.info.tenantId,
+      canWriteToOtherTenant: tenantScopeStore.isPlatformScope
+    })
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '工作中心',
@@ -279,7 +285,7 @@
             </ElButton>
             <small title={r.code}>
               {isAllTenants.value
-                ? `${tenantNames.value[r.tenantId] || r.tenantId} · ${r.code}`
+                ? `${tenantNames.value[r.tenantId] || '租户信息待加载'} · ${r.code}`
                 : r.code}
             </small>
           </span>
@@ -451,42 +457,47 @@
     }
   }
   async function importRows(rows: Record<string, unknown>[]) {
+    let inputs: ReturnType<typeof parseCenterImport>
     try {
       if (!rows.length || rows.length > 1000) {
         ElMessage.warning('每次可导入 1 至 1000 行')
         return
       }
-      const targetTenantId = resolveTenantWriteTargetId({
-        explicitTenantId: effectiveTenantId.value || selectedDepartment.value?.tenantId,
-        actorTenantId: user.info.tenantId,
-        isPlatformSuper: user.isPlatformSuper
-      })
+      const targetId = targetTenantId()
+      const scopeRevision = tenantScopeStore.revision
       const [references, defaults] = await Promise.all([
         fetchCenterImportReferences(
           uniq(rows.map((r) => String(r['主工序位'] || '').trim()).filter(Boolean)),
           uniq(rows.flatMap((r) => splitStaffNumbers(r['人员工号']))),
-          targetTenantId
+          targetId
         ),
-        fetchCenterDefaults(targetTenantId)
+        fetchCenterDefaults(targetId)
       ])
-      const inputs = parseCenterImport(
+      if (tenantScopeStore.revision !== scopeRevision) throw new Error('租户范围已变化，请重新导入')
+      inputs = parseCenterImport(
         rows,
         {
           ...references,
-          departments: scope.departments.filter(
-            (department) => department.tenantId === targetTenantId
-          ),
+          departments: scope.departments.filter((department) => department.tenantId === targetId),
           defaults: defaults || createCenterPolicy()
         },
-        targetTenantId
+        targetId
       )
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('第 '))
+        notifyFriendlyError(error, '导入失败，请检查对应行后重试')
+      else if (error instanceof Error && error.message === '请先选择目标租户')
+        ElMessage.warning('请先选择目标租户')
+      else if (error instanceof Error && error.message === '租户范围已变化，请重新导入')
+        ElMessage.warning('租户范围已变化，请重新导入')
+      else ElMessage.error('导入失败，请检查表头、编码唯一性和产线归属')
+      return
+    }
+    try {
       await importWorkCenters(inputs)
       await refresh()
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('第 ')) ElMessage.error(error.message)
-      else if (error instanceof Error && error.message === '请先选择目标租户')
-        ElMessage.warning(error.message)
-      else ElMessage.error('导入失败，请检查表头、编码唯一性和产线归属')
+    } catch {
+      /* API owns failure feedback. */
     }
   }
   const headerActions: ArtTableQueryHeaderAction[] = [
@@ -505,12 +516,7 @@
       permission: 'MdmWorkCenter:Configure',
       onClick: () => {
         try {
-          const targetTenantId = resolveTenantWriteTargetId({
-            explicitTenantId: effectiveTenantId.value || selectedDepartment.value?.tenantId,
-            actorTenantId: user.info.tenantId,
-            isPlatformSuper: user.isPlatformSuper
-          })
-          void defaultsDialog.value?.handleOpen(targetTenantId)
+          void defaultsDialog.value?.handleOpen(targetTenantId())
         } catch {
           ElMessage.warning('请先选择目标租户或左侧部门后再配置默认值')
         }

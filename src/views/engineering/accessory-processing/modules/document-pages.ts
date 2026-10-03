@@ -1,9 +1,4 @@
-import { renderAsync } from 'docx-preview'
-import { toPng } from 'html-to-image'
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-
-GlobalWorkerOptions.workerSrc = workerUrl
 
 export interface DocumentPage {
   dataUrl: string
@@ -44,6 +39,8 @@ async function rasterizeImage(file: File): Promise<DocumentPage[]> {
 }
 
 async function rasterizePdf(file: File): Promise<DocumentPage[]> {
+  const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist')
+  GlobalWorkerOptions.workerSrc = workerUrl
   const task = getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
   const pdf = await task.promise
   try {
@@ -67,6 +64,10 @@ async function rasterizePdf(file: File): Promise<DocumentPage[]> {
 }
 
 async function rasterizeDocx(file: File): Promise<DocumentPage[]> {
+  const [{ renderAsync }, { toPng }] = await Promise.all([
+    import('docx-preview'),
+    import('html-to-image')
+  ])
   const host = document.createElement('div')
   host.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;background:#fff;z-index:-1'
   document.body.appendChild(host)
