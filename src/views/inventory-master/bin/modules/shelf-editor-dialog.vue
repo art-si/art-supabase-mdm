@@ -58,7 +58,7 @@
   const existingBins = shallowRef<StorageBin[]>([])
   const originalLevels = ref(1)
   const originalColumns = ref(1)
-  const form = reactive({
+  const form = ref({
     shelfCode: '',
     levels: 1,
     columns: 1,
@@ -70,7 +70,7 @@
   const removedCount = computed(
     () =>
       existingBins.value.filter(
-        (bin) => (bin.levelNo ?? 0) > form.levels || (bin.columnNo ?? 0) > form.columns
+        (bin) => (bin.levelNo ?? 0) > form.value.levels || (bin.columnNo ?? 0) > form.value.columns
       ).length
   )
   const items = computed<FormItem[]>(() => [
@@ -104,7 +104,7 @@
       }
     },
     { key: 'applyMaxQuantity', label: '统一修改每格最大数量', type: 'switch', span: 24 },
-    ...(form.applyMaxQuantity
+    ...(form.value.applyMaxQuantity
       ? [
           {
             key: 'maxQuantity',
@@ -147,7 +147,7 @@
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
-      if (form.levels > originalLevels.value || form.columns > originalColumns.value) {
+      if (form.value.levels > originalLevels.value || form.value.columns > originalColumns.value) {
         if (!canAdd.value) {
           ElMessage.warning('当前账号无新增库位权限，无法增加货架层列')
           return false
@@ -157,16 +157,16 @@
         ElMessage.warning('当前账号无删除库位权限，无法缩小货架层列')
         return false
       }
-      const shelfCode = form.shelfCode.trim().toUpperCase()
+      const shelfCode = form.value.shelfCode.trim().toUpperCase()
       await updateStorageShelf({
         warehouseId: context.value.warehouse.id,
         zoneId: context.value.zone?.id ?? null,
         currentShelfCode: context.value.code,
         shelfCode,
-        levels: form.levels,
-        columns: form.columns,
-        applyMaxQuantity: form.applyMaxQuantity,
-        maxQuantity: form.maxQuantity,
+        levels: form.value.levels,
+        columns: form.value.columns,
+        applyMaxQuantity: form.value.applyMaxQuantity,
+        maxQuantity: form.value.maxQuantity,
         expectedBinIds: existingBins.value.map((bin) => bin.id)
       })
       emit('success', shelfCode)
@@ -195,7 +195,7 @@
     originalLevels.value = Math.max(1, ...shelfBins.map((bin) => bin.levelNo ?? 0))
     originalColumns.value = Math.max(1, ...shelfBins.map((bin) => bin.columnNo ?? 0))
     const firstQuantity = shelfBins[0].maxQuantity
-    Object.assign(form, {
+    Object.assign(form.value, {
       shelfCode: data.code,
       levels: originalLevels.value,
       columns: originalColumns.value,

@@ -24,7 +24,7 @@
   import { cloneDeep, pick } from 'lodash-es'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { fetchGetEnableOrganizationTree } from '@/api/system-manage'
+  import { fetchEnabledOrganizationTree } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
@@ -89,7 +89,7 @@
       label: '系统部门',
       type: 'treeSelect',
       span: 24,
-      api: fetchGetEnableOrganizationTree,
+      api: fetchEnabledOrganizationTree,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.model.tenantId }),
       resultField: 'data',

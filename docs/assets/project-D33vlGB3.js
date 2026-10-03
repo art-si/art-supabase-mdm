@@ -1,1 +1,0 @@
-import{$r as e,Hr as t,Ri as n}from"./supabase-C1jv5PV7.js";import{t as r}from"./operational-master-BLNWay59.js";var i=e({name:`MdmSalesProject`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

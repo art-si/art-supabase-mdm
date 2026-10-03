@@ -92,7 +92,7 @@
     transfer_in_transit: ['transfer_in_transit', 'in_stock'],
     out: ['out', 'pending_in']
   }
-  const form = reactive({
+  const form = ref({
     serialNo: '',
     workOrderId: null as string | null,
     materialId: '',
@@ -172,9 +172,9 @@
       await saveInventorySerial(
         context.value.warehouse.tenantId,
         {
-          ...form,
-          serialNo: form.serialNo.trim(),
-          remark: normalizeNullableText(form.remark)
+          ...form.value,
+          serialNo: form.value.serialNo.trim(),
+          remark: normalizeNullableText(form.value.remark)
         },
         context.value.row?.id
       )
@@ -188,7 +188,7 @@
   async function handleOpen(data: SerialDialogContext): Promise<void> {
     context.value = data
     const row = data.row
-    Object.assign(form, {
+    Object.assign(form.value, {
       serialNo: row?.serialNo ?? '',
       workOrderId: row?.workOrderId ?? null,
       materialId: row?.materialId ?? '',

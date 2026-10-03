@@ -2,6 +2,7 @@ import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { mapWithConcurrency } from '@/utils/async'
 import { keyBy, uniq } from 'lodash-es'
 import type {
   EmployeeSelectorContractParams,
@@ -759,25 +760,20 @@ export async function fetchProcessSteps(
   )
   const rows = data ?? []
   if (!rows.length) return { data: rows, total: total ?? 0, current: p.current, size: p.size }
-  const { data: assignments } = await responseHandle<Array<{ processRouteStepId: string }>>(
-    () =>
-      supabase
+  const assignmentCounts = new Map(
+    await mapWithConcurrency(rows, 3, async (row) => {
+      const countQuery = supabase
         .from('mdm_bom_item')
-        .select('process_route_step_id')
-        .in(
-          'process_route_step_id',
-          rows.map((row) => row.id)
-        )
-        .limit(10000),
-    read
+        .select('id', { count: 'exact', head: true })
+        .eq('process_route_step_id', row.id)
+        .eq('tenant_id', row.tenantId)
+      const { total: count } = await responseHandle<never[]>(
+        () => (options?.signal ? countQuery.abortSignal(options.signal) : countQuery),
+        read
+      )
+      return [row.id, count ?? 0] as const
+    })
   )
-  const assignmentCounts = new Map<string, number>()
-  for (const assignment of assignments ?? []) {
-    assignmentCounts.set(
-      assignment.processRouteStepId,
-      (assignmentCounts.get(assignment.processRouteStepId) ?? 0) + 1
-    )
-  }
   return {
     data: rows.map((row) => ({
       ...row,

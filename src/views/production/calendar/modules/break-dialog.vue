@@ -52,26 +52,26 @@
 </template>
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { ref, reactive, computed } from 'vue'
+  import { ref, computed } from 'vue'
   import { cloneDeep } from 'lodash-es'
   import { ElMessage } from 'element-plus'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ProductionShift, ShiftBreak } from '@mdm/api'
   import { calculateBreaks } from '../../modules/production-model'
   const dialogRef = ref<ArtDialogExpose>()
-  const form = reactive({
+  const form = ref({
     shift: { name: '', startTime: '08:00', endTime: '17:00' },
     rows: [] as ShiftBreak[]
   })
   const preview = computed(() => {
     try {
-      return { minutes: calculateBreaks(form.shift, form.rows), error: '' }
+      return { minutes: calculateBreaks(form.value.shift, form.value.rows), error: '' }
     } catch (error) {
       return { minutes: 0, error: getFriendlySupabaseErrorMessage(error, '休息时间无效') }
     }
   })
   async function handleOpen(shift: ProductionShift, onSave: (rows: ShiftBreak[]) => void) {
-    Object.assign(form, { shift: cloneDeep(shift), rows: cloneDeep(shift.breaks) })
+    Object.assign(form.value, { shift: cloneDeep(shift), rows: cloneDeep(shift.breaks) })
     await dialogRef.value?.handleOpen(undefined, {
       title: '休息时段设置',
       confirmText: '保存休息时段',
@@ -80,7 +80,7 @@
           ElMessage.warning(preview.value.error)
           return false
         }
-        onSave(cloneDeep(form.rows))
+        onSave(cloneDeep(form.value.rows))
       }
     })
   }

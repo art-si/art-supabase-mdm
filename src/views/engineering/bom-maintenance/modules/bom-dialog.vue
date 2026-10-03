@@ -252,16 +252,18 @@
     sort: 10,
     items: []
   })
-  const form = reactive(initialForm())
-  const tenantId = computed(() => form.tenantId)
-  const scopedUnits = computed(() => units.value.filter((unit) => unit.tenantId === form.tenantId))
+  const form = ref(initialForm())
+  const tenantId = computed(() => form.value.tenantId)
+  const scopedUnits = computed(() =>
+    units.value.filter((unit) => unit.tenantId === form.value.tenantId)
+  )
   const inheritedParentUnitId = computed(() => {
     const parent = selectedParent.value[0]
     return parent?.productionUnitId || parent?.baseUnitId || ''
   })
   const firstProcessStep = computed(() => processSteps.value[0] ?? null)
   const assignedComponentCount = computed(
-    () => form.items.filter((item) => Boolean(item.processRouteStepId)).length
+    () => form.value.items.filter((item) => Boolean(item.processRouteStepId)).length
   )
   const batchSelectedSteps = computed<DataSelectRecord[]>(() => {
     const step = processSteps.value.find((item) => item.id === batchSelectedStepId.value)
@@ -274,7 +276,7 @@
       type: 'select',
       options: tenantOptions.value,
       props: {
-        disabled: Boolean(form.id),
+        disabled: Boolean(form.value.id),
         filterable: true,
         placeholder: '请选择本次维护的数据归属租户'
       }
@@ -294,8 +296,8 @@
         clearable: false,
         filterable: true,
         loading: routeLoading.value,
-        disabled: !form.materialId || routeLoading.value || !processRoutes.value.length,
-        placeholder: form.materialId ? '请选择组件分配路线' : '请先选择父项物料',
+        disabled: !form.value.materialId || routeLoading.value || !processRoutes.value.length,
+        placeholder: form.value.materialId ? '请选择组件分配路线' : '请先选择父项物料',
         onChange: handleProcessRouteChange
       }
     },
@@ -350,7 +352,7 @@
         clearable: !inheritedParentUnitId.value,
         placeholder: inheritedParentUnitId.value
           ? '已由父项物料自动带入'
-          : form.materialId
+          : form.value.materialId
             ? '父项未维护单位，请在此补充'
             : '请先选择父项物料'
       }
@@ -407,11 +409,11 @@
   let materialCategoryRequestVersion = 0
   const loadMaterialCategories = async (): Promise<void> => {
     const requestVersion = ++materialCategoryRequestVersion
-    if (!form.tenantId) {
+    if (!form.value.tenantId) {
       materialCategories.value = []
       return
     }
-    const categories = await fetchMaterialCategories(form.tenantId)
+    const categories = await fetchMaterialCategories(form.value.tenantId)
     if (requestVersion === materialCategoryRequestVersion) materialCategories.value = categories
   }
   const sequenceTypeLabel = (value?: string | null): string =>
@@ -477,7 +479,7 @@
   const normalizeComponentAssignments = (forceFirst = false): void => {
     const validIds = new Set(processSteps.value.map((step) => step.id))
     const firstStep = firstProcessStep.value
-    form.items.forEach((item) => {
+    form.value.items.forEach((item) => {
       if (!forceFirst && item.processRouteStepId && validIds.has(item.processRouteStepId)) {
         syncComponentAssignment(item, item.processRouteStepId)
         return
@@ -487,13 +489,13 @@
   }
   const loadProcessSteps = async (routeId?: string | null, forceFirst = false): Promise<void> => {
     processSteps.value = []
-    if (!routeId || !form.tenantId) {
+    if (!routeId || !form.value.tenantId) {
       normalizeComponentAssignments(forceFirst)
       return
     }
     stepLoading.value = true
     try {
-      const rows = await fetchBomProcessRouteSteps(form.tenantId, routeId)
+      const rows = await fetchBomProcessRouteSteps(form.value.tenantId, routeId)
       processSteps.value = [...rows].sort(
         (left, right) =>
           (left.sequence?.sequenceNo ?? 0) - (right.sequence?.sequenceNo ?? 0) ||
@@ -511,23 +513,23 @@
   ): Promise<void> => {
     processRoutes.value = []
     processSteps.value = []
-    if (!materialId || !form.tenantId) {
-      form.processRouteId = null
+    if (!materialId || !form.value.tenantId) {
+      form.value.processRouteId = null
       return
     }
     routeLoading.value = true
     try {
-      processRoutes.value = await fetchBomProcessRoutes(form.tenantId, materialId)
+      processRoutes.value = await fetchBomProcessRoutes(form.value.tenantId, materialId)
       const preferred = processRoutes.value.find((route) => route.id === preferredRouteId)
-      form.processRouteId = preferred?.id ?? processRoutes.value[0]?.id ?? null
-      await loadProcessSteps(form.processRouteId)
+      form.value.processRouteId = preferred?.id ?? processRoutes.value[0]?.id ?? null
+      await loadProcessSteps(form.value.processRouteId)
     } finally {
       routeLoading.value = false
     }
   }
   const handleProcessRouteChange = async (value: string): Promise<void> => {
-    form.processRouteId = value || null
-    await loadProcessSteps(form.processRouteId, true)
+    form.value.processRouteId = value || null
+    await loadProcessSteps(form.value.processRouteId, true)
   }
   const assignAllComponentsToFirstStep = (): void => {
     normalizeComponentAssignments(true)
@@ -540,7 +542,7 @@
     const step = rows[0] as BomProcessRouteStepOption | undefined
     if (!step || !selectedComponentRows.value.length) return
     const selectedIds = selectedComponentRows.value.map((item) => item.componentMaterialId)
-    form.items = assignBomComponentsToStep(form.items, selectedIds, step)
+    form.value.items = assignBomComponentsToStep(form.value.items, selectedIds, step)
     batchSelectedStepId.value = step.id
     selectedComponentRows.value = []
     componentTableRef.value?.elTableRef?.clearSelection()
@@ -619,7 +621,7 @@
           class="w-full!"
         >
           {componentTypes.value
-            .filter((item) => item.tenantId === form.tenantId)
+            .filter((item) => item.tenantId === form.value.tenantId)
             .map((item) => (
               <ElOption
                 key={item.id}
@@ -857,27 +859,28 @@
   const handleParentChange = async (_value: unknown, rows: DataSelectRecord[]) => {
     const row = rows[0] as MaterialArchive | undefined
     selectedParent.value = row ? [row] : []
-    form.baseUnitId = row?.productionUnitId || row?.baseUnitId || ''
+    form.value.baseUnitId = row?.productionUnitId || row?.baseUnitId || ''
     await loadProcessRoutes(row?.id)
-    if (row && !form.baseUnitId) {
+    if (row && !form.value.baseUnitId) {
       ElMessage.warning('该父项物料未维护生产单位，请在“生产单位”字段补充后保存')
     }
-    if (!row || !form.items.some((item) => item.componentMaterialId === row.id)) return
+    if (!row || !form.value.items.some((item) => item.componentMaterialId === row.id)) return
     handleRemoveComponentById(row.id)
     ElMessage.info('父项物料不能同时作为组件，已从组件明细中移除')
   }
   const isComponentMaterialDisabled = (row: DataSelectRecord) =>
-    row.id === form.materialId || form.items.some((item) => item.componentMaterialId === row.id)
+    row.id === form.value.materialId ||
+    form.value.items.some((item) => item.componentMaterialId === row.id)
   const syncComponentSelection = (materials: MaterialArchive[]) => {
     selectedComponents.value = materials
   }
   const handleRemoveComponentById = (componentMaterialId: string) => {
     const result = removeBomComponentSelection(
-      form.items,
+      form.value.items,
       selectedComponents.value,
       componentMaterialId
     )
-    form.items = result.items
+    form.value.items = result.items
     syncComponentSelection(result.materials)
     selectedComponentIds.value = []
     pickerSelectedComponents.value = []
@@ -888,14 +891,14 @@
     handleRemoveComponentById(row.componentMaterialId)
   const handleComponentsConfirm = (_value: unknown, rows: DataSelectRecord[]) => {
     const result = mergeBomComponentSelection(
-      form.items,
+      form.value.items,
       selectedComponents.value,
       rows as MaterialArchive[],
-      form.materialId,
+      form.value.materialId,
       dayjs().format('YYYY-MM-DD'),
       firstProcessStep.value
     )
-    form.items = result.items
+    form.value.items = result.items
     syncComponentSelection(result.materials)
     selectedComponentIds.value = []
     pickerSelectedComponents.value = []
@@ -945,7 +948,7 @@
     }
 
     try {
-      await saveBom(form)
+      await saveBom(form.value)
       emit('success')
       return true
     } catch (error) {
@@ -954,7 +957,7 @@
     }
   }
   const handleOpen = async (data: BomDialogOpenData): Promise<void> => {
-    Object.assign(form, initialForm())
+    Object.assign(form.value, initialForm())
     tenantOptions.value = data.tenantOptions
     units.value = data.units
     groups.value = data.groups
@@ -965,19 +968,19 @@
     pickerSelectedComponents.value = []
     selectedComponentRows.value = []
     batchSelectedStepId.value = undefined
-    if (data.row) Object.assign(form, cloneDeep(data.row))
-    form.tenantId = data.row?.tenantId || data.tenantId
-    form.effectiveFrom ||= dayjs().format('YYYY-MM-DD')
-    form.effectiveTo ||= '9999-12-31'
-    form.items.forEach((item) => {
-      item.effectiveFrom ||= form.effectiveFrom
-      item.effectiveTo ||= form.effectiveTo
+    if (data.row) Object.assign(form.value, cloneDeep(data.row))
+    form.value.tenantId = data.row?.tenantId || data.tenantId
+    form.value.effectiveFrom ||= dayjs().format('YYYY-MM-DD')
+    form.value.effectiveTo ||= '9999-12-31'
+    form.value.items.forEach((item) => {
+      item.effectiveFrom ||= form.value.effectiveFrom
+      item.effectiveTo ||= form.value.effectiveTo
     })
     if (data.copy) {
-      form.id = undefined
-      form.bomCode = ''
-      form.version = ''
-      form.status = 'design'
+      form.value.id = undefined
+      form.value.bomCode = ''
+      form.value.version = ''
+      form.value.status = 'design'
     }
     await dialogRef.value?.handleOpen(data, {
       title: data.copy ? '复制 BOM' : data.row ? '编辑 BOM' : '新增 BOM',
@@ -992,9 +995,9 @@
             data.loadUnits?.().then((rows) => {
               units.value = rows
             }),
-            loadProcessRoutes(form.materialId, data.row?.processRouteId),
+            loadProcessRoutes(form.value.materialId, data.row?.processRouteId),
             loadMaterialCategories(),
-            fetchComponentTypeOptions(form.tenantId).then((rows) => {
+            fetchComponentTypeOptions(form.value.tenantId).then((rows) => {
               componentTypes.value = rows
             })
           ])
@@ -1008,13 +1011,13 @@
     })
   }
   watch(
-    () => form.tenantId,
+    () => form.value.tenantId,
     (value, previous) => {
       if (value === previous || !previous) return
-      form.materialId = ''
-      form.processRouteId = null
-      form.baseUnitId = ''
-      form.items = []
+      form.value.materialId = ''
+      form.value.processRouteId = null
+      form.value.baseUnitId = ''
+      form.value.items = []
       componentTypes.value = []
       processRoutes.value = []
       processSteps.value = []

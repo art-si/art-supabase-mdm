@@ -226,6 +226,7 @@
       strong {
         color: var(--el-text-color-primary);
       }
+
       small {
         margin-top: 2px;
         font-size: 11px;
@@ -250,12 +251,14 @@
         display: grid;
         min-width: 0;
       }
+
       strong,
       small {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+
       small {
         font-size: 10px;
         color: var(--el-text-color-secondary);

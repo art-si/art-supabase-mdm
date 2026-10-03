@@ -153,7 +153,7 @@
 
 <script setup lang="ts">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
-  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage, type FormRules } from 'element-plus'
   import { uniq } from 'lodash-es'
@@ -171,6 +171,7 @@
   import {
     copyDocumentType,
     createDocumentType,
+    fetchDocumentTypeDefaultConflicts,
     fetchNextDocumentTypeSort,
     updateDocumentType,
     fetchComponentTypeOptions
@@ -218,6 +219,7 @@
   const formRef = ref<FormExpose>()
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const userStore = useUserStore()
+  const { confirmAction } = useArtFeedback()
   const { getDictMap } = storeToRefs(userStore)
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
@@ -342,7 +344,7 @@
           type: 'segment',
           span: 8,
           props: { options: booleanOptions.value, onChange: handleDefaultChange },
-          description: '同一菜单功能只能设置一个默认项。'
+          description: '同一菜单功能只有一个默认项；保存时会提示并替换冲突的默认项。'
         },
         {
           label: '排序',
@@ -621,6 +623,39 @@
       form.data.extensionFields = []
       form.data.packingEnabled = false
       form.data.packingThicknessFieldKey = null
+    }
+
+    if (form.data.isDefault) {
+      let conflicts: Awaited<ReturnType<typeof fetchDocumentTypeDefaultConflicts>>
+      try {
+        conflicts = await fetchDocumentTypeDefaultConflicts({
+          tenantId: form.data.tenantId,
+          menuIds: form.data.menuIds,
+          excludeId: form.mode === 'edit' ? form.data.id : undefined
+        })
+      } catch (error) {
+        notifyFriendlyError(error, '默认单据类型校验失败，请稍后重试')
+        return false
+      }
+      if (conflicts.length) {
+        const names = conflicts
+          .slice(0, 3)
+          .map((item) => `${item.documentTypeCode}（${item.documentTypeName}）`)
+          .join('、')
+        const more = conflicts.length > 3 ? `等 ${conflicts.length} 项` : ''
+        try {
+          await confirmAction(
+            `保存后将取消 ${names}${more} 的默认标记，包括它们关联的其他菜单功能。确定将当前类型设为所选菜单的默认项吗？`,
+            '替换默认单据类型',
+            { confirmButtonText: '确认替换' }
+          )
+        } catch (error) {
+          if (error !== 'cancel' && error !== 'close') {
+            notifyFriendlyError(error, '替换默认单据类型的确认未完成，请重试')
+          }
+          return false
+        }
+      }
     }
 
     try {

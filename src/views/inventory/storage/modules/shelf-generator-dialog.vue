@@ -39,7 +39,7 @@
   const dialogRef = ref<ArtDialogExpose<ShelfGeneratorContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<ShelfGeneratorContext>()
-  const form = reactive({
+  const form = ref({
     shelfCode: '',
     levels: 4,
     columns: 3,
@@ -105,11 +105,11 @@
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       const { warehouse, zone } = context.value
-      const shelfCode = form.shelfCode.trim().toUpperCase()
+      const shelfCode = form.value.shelfCode.trim().toUpperCase()
       const prefix = [warehouse.warehouseCode, zone?.zoneCode, shelfCode].filter(Boolean).join('-')
       const bins: StorageBinInput[] = []
-      for (let level = 1; level <= form.levels; level++) {
-        for (let column = 1; column <= form.columns; column++) {
+      for (let level = 1; level <= form.value.levels; level++) {
+        for (let column = 1; column <= form.value.columns; column++) {
           const code = `${prefix}-L${level}-C${column}`
           if (code.length > 60) {
             ElMessage.warning('生成编码超过 60 个字符，请缩短货架编码')
@@ -125,14 +125,14 @@
             shelfCode,
             levelNo: level,
             columnNo: column,
-            maxQuantity: form.maxQuantity,
+            maxQuantity: form.value.maxQuantity,
             maxWeightKg: null,
             maxAreaSqm: null,
             fixedMaterialId: null,
             allowMix: true,
             supportsSerial: false,
             status: 'available',
-            sort: (form.levels - level) * 100 + column,
+            sort: (form.value.levels - level) * 100 + column,
             remark: null
           })
         }
@@ -147,7 +147,7 @@
   }
   async function handleOpen(data: ShelfGeneratorContext): Promise<void> {
     context.value = data
-    Object.assign(form, { shelfCode: '', levels: 4, columns: 3, maxQuantity: null })
+    Object.assign(form.value, { shelfCode: '', levels: 4, columns: 3, maxQuantity: null })
     await dialogRef.value?.handleOpen(data, {
       title: '批量生成货架库位',
       subtitle: `${data.warehouse.warehouseName} · ${data.zone?.zoneName ?? '仓库直挂'}`,

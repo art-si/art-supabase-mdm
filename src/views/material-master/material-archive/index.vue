@@ -1062,12 +1062,6 @@
     color: var(--el-text-color-secondary);
   }
 
-  :deep(.material-archive-page__actions) {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-
   .material-detail {
     display: grid;
     gap: 18px;

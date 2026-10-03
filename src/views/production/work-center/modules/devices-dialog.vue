@@ -99,7 +99,7 @@
   const state = reactive({ rows: [] as CenterDevice[], loading: false, error: '' })
   const userStore = useUserStore()
   void userStore.ensureDictLoaded('mdmWorkCenterEquipmentPoint')
-  const form = reactive({ equipmentIds: [] as string[], isMain: false, point: '无' })
+  const form = ref({ equipmentIds: [] as string[], isMain: false, point: '无' })
   const items = computed<FormItem[]>(() => [
     { key: 'equipmentIds', label: '设备', hidden: Boolean(editingRow.value) },
     {
@@ -202,7 +202,7 @@
   }
   async function openDevice(row?: CenterDevice) {
     editingRow.value = row
-    Object.assign(form, {
+    Object.assign(form.value, {
       equipmentIds: row ? [row.equipmentId] : [],
       isMain: row?.isMain ?? !state.rows.length,
       point: row?.point || '无'
@@ -229,17 +229,17 @@
               {
                 workCenterId: center.value.id,
                 equipmentId: row.equipmentId,
-                isMain: form.isMain,
-                point: form.point
+                isMain: form.value.isMain,
+                point: form.value.point
               },
               row.id
             )
           } else {
             await addCenterDevices({
               workCenterId: center.value.id,
-              equipmentIds: form.equipmentIds,
-              mainEquipmentId: form.isMain ? form.equipmentIds[0] || null : null,
-              point: form.point
+              equipmentIds: form.value.equipmentIds,
+              mainEquipmentId: form.value.isMain ? form.value.equipmentIds[0] || null : null,
+              point: form.value.point
             })
           }
         } catch (error) {
@@ -252,7 +252,7 @@
     })
   }
   function updateEquipmentIds(value: DataSelectModelValue) {
-    form.equipmentIds = Array.isArray(value) ? value.map(String) : []
+    form.value.equipmentIds = Array.isArray(value) ? value.map(String) : []
   }
   function updateSelection(rows: DataSelectRecord[]) {
     selection.value = rows.map((row) => ({

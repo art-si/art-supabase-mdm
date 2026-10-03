@@ -1,6 +1,8 @@
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import { uniqBy } from 'lodash-es'
+import { mapWithConcurrency } from '@/utils/async'
+import { fetchAllRangePages } from '@/utils/supabase/pagination'
 import {
   type RecordDeleteDependency,
   type MasterDataDeleteDependencyDetail
@@ -216,10 +218,19 @@ export async function restoreAccessoryRecognitionFiles(
     throw new Error('该识别记录的原件索引无效，请重新上传清单')
   }
   const prefix = `${match[1]}/${match[2]}`
-  const [sourceResult, sketchResult] = await Promise.all([
-    supabase.storage.from(bucket).list(`${prefix}/source`, { limit: 100 }),
-    supabase.storage.from(bucket).list(`${prefix}/sketch`, { limit: 100 })
-  ])
+  const [sourceResult, sketchResult] = await Promise.all(
+    ['source', 'sketch'].map((folder) =>
+      fetchAllRangePages(
+        async ({ from, to }) =>
+          supabase.storage.from(bucket).list(`${prefix}/${folder}`, {
+            offset: from,
+            limit: to - from + 1,
+            sortBy: { column: 'name', order: 'asc' }
+          }),
+        { pageSize: 100 }
+      )
+    )
+  )
   if (sourceResult.error || sketchResult.error) {
     throw new Error('识别原件或草图读取失败，请稍后重试', {
       cause: sourceResult.error || sketchResult.error
@@ -233,10 +244,11 @@ export async function restoreAccessoryRecognitionFiles(
     )
     return sketchFile ? `${prefix}/sketch/${sketchFile.name}` : null
   })
-  const [sourceSigned, ...sketchSigned] = await Promise.all([
-    sourcePath ? signAccessoryPath(sourcePath) : Promise.resolve(''),
-    ...sketchPaths.map((path) => (path ? signAccessoryPath(path) : Promise.resolve('')))
-  ])
+  const [sourceSigned, ...sketchSigned] = await mapWithConcurrency(
+    [sourcePath, ...sketchPaths],
+    3,
+    (path) => (path ? signAccessoryPath(path) : Promise.resolve(''))
+  )
   return { sourcePath, sourceUrl: sourceSigned, sketchPaths, sketchUrls: sketchSigned }
 }
 

@@ -145,6 +145,25 @@ export async function fetchNextDocumentTypeSort(menuId: string, tenantId?: strin
   return Math.max(10, (data?.[0]?.sortOrder ?? 0) + 10)
 }
 
+export async function fetchDocumentTypeDefaultConflicts(params: {
+  tenantId?: string
+  menuIds: string[]
+  excludeId?: string
+}): Promise<Array<Pick<DocumentTypeRecord, 'id' | 'documentTypeCode' | 'documentTypeName'>>> {
+  if (!params.menuIds.length) return []
+  let query = supabase
+    .from('mdm_document_type')
+    .select('id,document_type_code,document_type_name')
+    .eq('is_default', true)
+    .overlaps('menu_ids', params.menuIds)
+  if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
+  if (params.excludeId) query = query.neq('id', params.excludeId)
+  const { data } = await responseHandle<
+    Array<Pick<DocumentTypeRecord, 'id' | 'documentTypeCode' | 'documentTypeName'>>
+  >(() => query, { ...readOptions, showErrorMessage: false })
+  return data ?? []
+}
+
 export async function createDocumentType(input: DocumentTypeWriteInput) {
   return await responseHandle(
     () =>

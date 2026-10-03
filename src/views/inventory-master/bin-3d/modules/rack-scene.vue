@@ -38,7 +38,6 @@
       <strong>当前浏览器无法显示立体场景</strong>
       <span>可在右侧货架层位列表中继续查看库位。</span>
     </div>
-    <div v-else class="rack-scene__hint">拖动旋转 · 滚轮缩放 · 右键平移 · 点击层位查看详情</div>
   </div>
 </template>
 
@@ -543,16 +542,6 @@
     color: #c2d0e2;
   }
 
-  .rack-scene__hint {
-    position: absolute;
-    right: 16px;
-    bottom: 14px;
-    z-index: 2;
-    font-size: 11px;
-    color: #b6c3d4;
-    pointer-events: none;
-  }
-
   .rack-scene__fallback {
     position: absolute;
     inset: 0;
@@ -575,12 +564,6 @@
   @media (width <= 640px) {
     .rack-scene {
       min-height: 420px;
-    }
-
-    .rack-scene__hint {
-      right: 12px;
-      left: 12px;
-      text-align: center;
     }
   }
 </style>

@@ -64,7 +64,7 @@
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const context = shallowRef<ActionContext>()
-  const form = reactive({ comment: '', winnerRecordId: '' })
+  const form = ref({ comment: '', winnerRecordId: '' })
   const state = reactive({
     title: '',
     subtitle: '',
@@ -177,18 +177,18 @@
     }
     try {
       if (current.kind === 'quality') {
-        await transitionMdmQualityIssue(current.row.id, current.action, form.comment)
+        await transitionMdmQualityIssue(current.row.id, current.action, form.value.comment)
       } else if (current.kind === 'change') {
-        await transitionMdmChangeRequest(current.row.id, current.action, form.comment)
+        await transitionMdmChangeRequest(current.row.id, current.action, form.value.comment)
       } else if (current.kind === 'match') {
         await reviewMdmMatchCandidate(
           current.row.id,
           current.action,
-          current.action === 'accept' ? form.winnerRecordId : null,
-          form.comment.trim()
+          current.action === 'accept' ? form.value.winnerRecordId : null,
+          form.value.comment.trim()
         )
       } else {
-        await replayMdmOutboxDelivery(current.row.id, form.comment.trim())
+        await replayMdmOutboxDelivery(current.row.id, form.value.comment.trim())
       }
       emit('success')
       return true
@@ -200,8 +200,8 @@
 
   async function handleOpen(next: ActionContext): Promise<void> {
     context.value = next
-    form.comment = ''
-    form.winnerRecordId = next.kind === 'match' ? next.row.leftRecordId : ''
+    form.value.comment = ''
+    form.value.winnerRecordId = next.kind === 'match' ? next.row.leftRecordId : ''
     Object.assign(state, {
       title: '',
       subtitle: '',

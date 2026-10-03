@@ -215,17 +215,20 @@
         border-radius: 50%;
       }
     }
+
     &__fields {
       display: grid;
       gap: var(--art-space-2);
     }
+
     &__fields > div {
       display: flex;
-      justify-content: space-between;
       gap: var(--art-space-2);
+      justify-content: space-between;
       padding: var(--art-space-2);
       border-bottom: 1px solid var(--el-border-color-lighter);
     }
+
     &__fields small {
       color: var(--el-text-color-secondary);
     }

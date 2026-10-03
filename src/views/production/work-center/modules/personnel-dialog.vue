@@ -117,7 +117,7 @@
     people: [] as EmployeeIntegrationItem[],
     rows: [] as CenterAdjustment[]
   })
-  const form = reactive({
+  const form = ref({
     personId: undefined as string | undefined,
     kind: '短期加入',
     range: [] as string[]
@@ -228,7 +228,7 @@
     }
   }
   async function openAdjustment() {
-    Object.assign(form, { personId: undefined, kind: '短期加入', range: [] })
+    Object.assign(form.value, { personId: undefined, kind: '短期加入', range: [] })
     formError.value = ''
     await adjustmentDialog.value?.handleOpen(undefined, {
       title: '添加临时调整',
@@ -236,20 +236,20 @@
       onConfirm: async () => {
         try {
           if (!(await validateArtFormForSubmit(formRef.value))) return false
-          if (!center.value || !form.personId) return false
+          if (!center.value || !form.value.personId) return false
           if (
-            form.range.length !== 2 ||
-            new Date(form.range[1]).getTime() <= new Date(form.range[0]).getTime()
+            form.value.range.length !== 2 ||
+            new Date(form.value.range[1]).getTime() <= new Date(form.value.range[0]).getTime()
           ) {
             formError.value = '结束时间必须晚于开始时间'
             return false
           }
           await saveCenterAdjustment({
             workCenterId: center.value.id,
-            personId: form.personId,
-            kind: form.kind,
-            startTime: form.range[0],
-            endTime: form.range[1]
+            personId: form.value.personId,
+            kind: form.value.kind,
+            startTime: form.value.range[0],
+            endTime: form.value.range[1]
           })
           await load()
           emit('success')

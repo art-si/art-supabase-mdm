@@ -539,6 +539,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getScrollBehavior } from '@/utils/ui/scroll'
   import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { ElCollapse, ElCollapseItem, ElMessage } from 'element-plus'
@@ -1072,7 +1073,7 @@
       await nextTick()
       document
         .getElementById('accessory-recognition-result')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
     } catch (error) {
       const message = getFriendlySupabaseErrorMessage(error, '加工清单识别失败，请重试')
       if (draft.items.length) {
@@ -1082,7 +1083,7 @@
         await nextTick()
         document
           .getElementById('accessory-recognition-result')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
       }
     } finally {
       workspace.recognizing = false
@@ -1303,7 +1304,7 @@
       await nextTick()
       document
         .getElementById('accessory-recognition-result')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '识别记录打开失败，请重试'))
     } finally {
@@ -1380,7 +1381,7 @@
       )
     }
     await loadProjects()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: getScrollBehavior() })
   }
 
   watch(effectiveTenantId, (tenantId) => {

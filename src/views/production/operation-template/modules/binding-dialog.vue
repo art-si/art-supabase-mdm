@@ -35,7 +35,7 @@
 <script setup lang="ts">
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
-  import { ref, reactive } from 'vue'
+  import { ref } from 'vue'
   import { ElMessage } from 'element-plus'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
@@ -45,7 +45,7 @@
   const user = useUserStore()
   const dialogRef = ref<ArtDialogExpose>()
   const ids = ref<string[]>([])
-  const form = reactive({ templateId: undefined as string | undefined })
+  const form = ref({ templateId: undefined as string | undefined })
   const fetchChoices = (p: DataSelectFetchParams) =>
     fetchOperationTemplates({
       tenantId: user.info.tenantId || '',
@@ -56,19 +56,19 @@
     })
   async function handleOpen(selectedIds: string[]) {
     ids.value = selectedIds
-    form.templateId = undefined
+    form.value.templateId = undefined
     await dialogRef.value?.handleOpen(undefined, {
       title: '绑定作业模板',
       subtitle: '选择一个启用模板并应用到当前工艺工序',
       confirmText: '绑定',
       contentMaxHeight: '56vh',
       onConfirm: async () => {
-        if (!form.templateId) {
+        if (!form.value.templateId) {
           ElMessage.warning('请选择作业模板')
           return false
         }
         try {
-          await bindOperationTemplate(ids.value, form.templateId)
+          await bindOperationTemplate(ids.value, form.value.templateId)
           ElMessage.success({ message: '操作成功', duration: 1500 })
           emit('success')
         } catch (error) {

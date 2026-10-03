@@ -12,9 +12,7 @@ import '@styles/index.scss'
 const openData: IndustryGroupDialogOpenData = {
   groups: [],
   tenantId: '00000000-0000-0000-0000-000000000001',
-  tenantOptions: [
-    { label: '测试租户', value: '00000000-0000-0000-0000-000000000001' }
-  ]
+  tenantOptions: [{ label: '测试租户', value: '00000000-0000-0000-0000-000000000001' }]
 }
 
 const Preview = defineComponent({

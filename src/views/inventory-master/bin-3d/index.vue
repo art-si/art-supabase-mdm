@@ -279,11 +279,14 @@
                   <strong>{{ selectedZone?.zoneName || '仓库直挂' }}</strong>
                   <small>{{ racks.length }} 组货架 · {{ zoneBins.length }} 个层位</small>
                 </div>
-                <div class="scene-legend" aria-label="货架状态图例">
-                  <span><i class="legend-dot is-empty"></i>空位</span>
-                  <span><i class="legend-dot is-occupied"></i>有货</span>
-                  <span><i class="legend-dot is-abnormal"></i>异常</span>
-                  <span><i class="legend-dot is-disabled"></i>停用</span>
+                <div class="scene-footer">
+                  <div class="scene-legend" aria-label="货架状态图例">
+                    <span><i class="legend-dot is-empty"></i>空位</span>
+                    <span><i class="legend-dot is-occupied"></i>有货</span>
+                    <span><i class="legend-dot is-abnormal"></i>异常</span>
+                    <span><i class="legend-dot is-disabled"></i>停用</span>
+                  </div>
+                  <p class="scene-hint">拖动旋转 · 滚轮缩放 · 右键平移 · 点击层位查看详情</p>
                 </div>
               </div>
             </ArtSectionCard>
@@ -735,17 +738,31 @@
     color: #b7c6d9;
   }
 
-  .scene-legend {
+  .scene-footer {
     position: absolute;
+    right: 16px;
     bottom: 14px;
     left: 18px;
     z-index: 3;
     display: flex;
     flex-wrap: wrap;
-    gap: 7px 13px;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: space-between;
     font-size: 11px;
-    color: #d4e0f1;
     pointer-events: none;
+  }
+
+  .scene-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 13px;
+    color: #d4e0f1;
+  }
+
+  .scene-hint {
+    margin: 0;
+    color: #b6c3d4;
   }
 
   .scene-legend span {
@@ -874,9 +891,8 @@
       left: 12px;
     }
 
-    .scene-legend {
+    .scene-footer {
       right: 12px;
-      bottom: 44px;
       left: 12px;
     }
   }

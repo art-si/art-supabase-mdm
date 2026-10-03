@@ -57,7 +57,7 @@
   import { storeToRefs } from 'pinia'
   import { useUserStore } from '@/store/modules/user'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import { fetchGetEnableOrganizationOptionsList } from '@/api/system-manage'
+  import { fetchEnabledOrganizationOptionsList } from '@/api/system-manage'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -288,7 +288,7 @@
   async function loadOrganizations(): Promise<void> {
     organizationLoadError.value = false
     try {
-      const result = await fetchGetEnableOrganizationOptionsList(form.tenantId)
+      const result = await fetchEnabledOrganizationOptionsList(form.tenantId)
       form.organizations = (result.data ?? []).filter(
         (item): item is typeof item & { id: string } => Boolean(item.id)
       )

@@ -50,7 +50,7 @@
   const context = shallowRef<PackagePlacementContext>()
   const bins = ref<StorageBin[]>([])
   const loadError = ref(false)
-  const form = reactive({ binId: null as string | null })
+  const form = ref({ binId: null as string | null })
   const items = computed<FormItem[]>(() =>
     context.value?.warehouse.enableLocations
       ? [
@@ -80,7 +80,7 @@
         context.value.warehouse.tenantId,
         context.value.pack.id,
         context.value.warehouse.id,
-        form.binId
+        form.value.binId
       )
       emit('success')
       return true
@@ -105,7 +105,7 @@
   }
   async function handleOpen(data: PackagePlacementContext): Promise<void> {
     context.value = data
-    form.binId = data.pack.binId
+    form.value.binId = data.pack.binId
     bins.value = []
     loadError.value = false
     await dialogRef.value?.handleOpen(data, {

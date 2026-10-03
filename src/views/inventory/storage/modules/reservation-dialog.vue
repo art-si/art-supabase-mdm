@@ -71,7 +71,7 @@
     )
   )
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
-  const form = reactive({
+  const form = ref({
     workOrderId: '',
     materialId: '',
     warehouseId: '',
@@ -154,9 +154,9 @@
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       await saveInventoryReservation(context.value.warehouse.tenantId, {
-        ...form,
-        binId: form.binId || null,
-        remark: normalizeNullableText(form.remark)
+        ...form.value,
+        binId: form.value.binId || null,
+        remark: normalizeNullableText(form.value.remark)
       })
       emit('success')
       return true
@@ -171,7 +171,7 @@
       return
     }
     context.value = data
-    Object.assign(form, {
+    Object.assign(form.value, {
       workOrderId: '',
       materialId: '',
       warehouseId: data.warehouse.id,
