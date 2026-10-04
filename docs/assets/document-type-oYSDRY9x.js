@@ -1,1 +1,0 @@
-import{kr as e,mi as t,vr as n}from"./supabase-E2-FAsPZ.js";import{t as r}from"./operational-master-CqJj9gR7.js";var i=e({name:`MdmDocumentType`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

@@ -1,1 +1,0 @@
-import{kr as e,mi as t,vr as n}from"./supabase-E2-FAsPZ.js";import{t as r}from"./governance-center-CcsBKjWd.js";var i=e({name:`MdmChangeManagement`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`changes`}))}});export{i as default};

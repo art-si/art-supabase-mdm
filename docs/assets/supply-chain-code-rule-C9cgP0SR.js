@@ -1,0 +1,1 @@
+import{kr as e,mi as t,vr as n}from"./supabase-E2-FAsPZ.js";import{t as r}from"./inventory-configuration-BVnvfK1p.js";var i=e({name:`MdmSupplyChainCodeRule`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

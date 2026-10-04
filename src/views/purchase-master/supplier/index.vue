@@ -79,6 +79,7 @@
     ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
+  import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
   import {
     deleteMasterGroup,
     deletePurchaseSuppliers,
@@ -207,21 +208,25 @@
       exportFilename: '供应商主数据',
       exportSheetName: '供应商',
       exportColumns,
-      exportApi: async ({ selectedIds, searchParams, maxRows }) => {
-        const limit = Math.min(maxRows ?? 10000, 10000)
-        const rows: PurchaseSupplier[] = []
-        for (let current = 1; rows.length < limit; current++) {
-          const result = await fetchPurchaseSuppliers({
-            ...searchParams,
-            current,
-            size: Math.min(500, limit - rows.length),
-            tenantId: effectiveTenantId.value,
-            groupIds: groupIds.value,
-            ids: selectedIds.length ? selectedIds.map(String) : undefined
-          } as SupplierQuery)
-          rows.push(...result.records)
-          if (rows.length >= result.total || !result.records.length) break
+      exportApi: async ({ selectedIds, searchParams }) => {
+        const query: Omit<SupplierQuery, 'current' | 'size'> = {
+          ...searchParams,
+          tenantId: effectiveTenantId.value,
+          groupIds: groupIds.value?.slice(),
+          ids: selectedIds.length ? selectedIds.map(String) : undefined
         }
+        const rows = await loadAllDocumentPages<PurchaseSupplier, { from: number; to: number }>(
+          async ({ from, to }) => {
+            const size = to - from + 1
+            const result = await fetchPurchaseSuppliers({
+              ...query,
+              current: from / size + 1,
+              size
+            })
+            return { data: result.records, total: result.total }
+          },
+          { from: 0, to: 499 }
+        )
         return {
           data: rows.map((row) => ({
             ...row,
@@ -291,7 +296,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 136,
+      width: 160,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>

@@ -1,6 +1,7 @@
 <template>
   <ArtPermissionGuard permission="MdmDocumentType:View" resource-name="单据类型">
     <div class="document-type-page business-workspace-page art-full-height">
+      <MasterDeleteProcessingNotice />
       <BusinessWorkspaceHeader
         density="compact"
         eyebrow="DOCUMENT TYPE GOVERNANCE"
@@ -65,6 +66,7 @@
 
       <DocumentTypeDialog ref="dialogRef" @success="handleSaved" />
       <DocumentTypeDetailDrawer ref="detailDrawerRef" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
       <ArtDrawer ref="menuDrawerRef">
         <DocumentTypeMenuFilter
           class="document-type-page__drawer-filter"
@@ -82,7 +84,7 @@
 
 <script setup lang="tsx">
   import dayjs from 'dayjs'
-  import { ElTag } from 'element-plus'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -93,6 +95,8 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
@@ -108,13 +112,20 @@
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { recordDeleteGuardOptions } from '@/hooks/core/useRecordDeleteGuard'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
+  import {
+    getFriendlySupabaseErrorMessage,
+    markErrorAsUserNotified,
+    wasErrorUserNotified
+  } from '@/utils/supabase/error'
   import TreeUtils from '@/utils/tree'
   import {
     deleteDocumentTypes,
     exportDocumentTypes,
+    fetchDocumentTypeBusinessReferenceStatuses,
     fetchDocumentTypeList,
     fetchDocumentTypeMenuTree,
     fetchDocumentTypeStats,
@@ -132,7 +143,7 @@
   } from './modules/document-type-detail-drawer.vue'
   import DocumentTypeMenuFilter from './modules/document-type-menu-filter.vue'
 
-  defineOptions({ name: 'MdmDocumentType' })
+  defineOptions({ name: 'MdmDocumentTypeWorkspace' })
 
   const declaredPermissions = [
     'MdmDocumentType:View',
@@ -172,6 +183,13 @@
   type ExportRow = DocumentTypeExportRecord & { menuPath: string; statusLabel: string }
 
   const route = useRoute()
+  const referencedRecordNo = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode === 'mdm_document_type' &&
+    typeof route.query.recordNo === 'string'
+      ? route.query.recordNo
+      : ''
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (data: DocumentTypeDialogOpenData) => Promise<void> }>()
   const detailDrawerRef = ref<{ handleOpen: (data: DocumentTypeDetailData) => Promise<void> }>()
@@ -185,6 +203,39 @@
     storeToRefs(tenantScopeStore)
   const { hasAuth, hasAnyAuth } = useAuth()
   const { confirmDelete } = useArtFeedback()
+  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
+  const deleteBusy = ref(false)
+  const inspectDeleteReferences = async (rows: DocumentTypeRecord[]): Promise<boolean> => {
+    if (!deleteGuardRef.value) {
+      ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
+      return true
+    }
+    const options = recordDeleteGuardOptions(
+      { table: 'mdm_document_type', ids: rows.map((row) => row.id) },
+      '单据类型',
+      rows.map((row) => ({
+        id: row.id,
+        label: `${row.documentTypeName} · ${row.documentTypeCode}`
+      }))
+    )
+    if (!options.fetchDependencies) return true
+    const fetchDependencies = options.fetchDependencies
+    return deleteGuardRef.value.inspect({
+      ...options,
+      fetchDependencies: async (ids) => {
+        const references = await fetchDependencies(ids)
+        const statusById = await fetchDocumentTypeBusinessReferenceStatuses(
+          references
+            .filter((row) => row.dependencyCode === 'mdm_business_type' && row.targetId)
+            .map((row) => row.targetId)
+        )
+        return references.map((row) => ({
+          ...row,
+          recordStatus: statusById.get(row.targetId) ?? row.recordStatus
+        }))
+      }
+    })
+  }
   const canManage = computed(() =>
     hasAnyAuth([
       'MdmDocumentType:Add',
@@ -197,7 +248,8 @@
 
   const menu: UnwrapNestedRefs<MenuGroup> = reactive<MenuGroup>({
     tree: [],
-    selectedId: typeof route.query.menuId === 'string' ? route.query.menuId : '',
+    selectedId:
+      !referencedRecordNo.value && typeof route.query.menuId === 'string' ? route.query.menuId : '',
     loading: false
   })
   const overview: UnwrapNestedRefs<OverviewGroup> = reactive<OverviewGroup>({
@@ -271,7 +323,11 @@
   )
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
-    search: { keyword: '', enabled: undefined, isDefault: undefined },
+    search: {
+      keyword: referencedRecordNo.value,
+      enabled: undefined,
+      isDefault: undefined
+    },
     searchItems: computed<SearchFormItem[]>(() => [
       {
         key: 'keyword',
@@ -353,12 +409,8 @@
       {
         type: 'delete',
         permission: 'MdmDocumentType:Delete',
-        content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-          `确定删除选中的 ${selectedCount} 条单据类型吗？已被业务单据引用的类型不会被删除。`,
-        onClick: async ({ selectedRows, api }) => {
-          await deleteDocumentTypes(selectedRows.map((row) => String(row.id)))
-          await Promise.all([api.refreshRemove(), loadStats()])
-        }
+        confirm: false,
+        onClick: ({ selectedRows }) => removeRows(selectedRows as DocumentTypeRecord[])
       }
     ])
   })
@@ -493,7 +545,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 136,
+      width: 160,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>
@@ -510,6 +562,7 @@
           <ArtButtonTable
             type="delete"
             permission="MdmDocumentType:Delete"
+            disabled={deleteBusy.value}
             onClick={() => void removeRow(row)}
           />
         </BusinessTableRowActions>
@@ -554,10 +607,37 @@
     })
   }
 
+  const removeRows = async (rows: DocumentTypeRecord[]): Promise<void> => {
+    if (deleteBusy.value || !rows.length) return
+    deleteBusy.value = true
+    try {
+      const blocked = await inspectDeleteReferences(rows)
+      if (blocked) throw markErrorAsUserNotified(new Error('关联检查已显示'))
+      await confirmDelete(
+        rows.length === 1
+          ? `确定删除单据类型“${rows[0].documentTypeName}”吗？`
+          : `确定删除选中的 ${rows.length} 条单据类型吗？`
+      )
+      await deleteDocumentTypes(rows.map((row) => row.id))
+      await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
+    } catch (error) {
+      if (error === 'cancel' || error === 'close') {
+        throw markErrorAsUserNotified(new Error('已取消删除'))
+      }
+      throw error
+    } finally {
+      deleteBusy.value = false
+    }
+  }
+
   const removeRow = async (row: DocumentTypeRecord): Promise<void> => {
-    await confirmDelete(`确定删除单据类型“${row.documentTypeName}”吗？`)
-    await deleteDocumentTypes([row.id])
-    await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
+    try {
+      await removeRows([row])
+    } catch (error) {
+      if (!wasErrorUserNotified(error)) {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '单据类型删除失败，请重试'))
+      }
+    }
   }
 
   const loadStats = async (): Promise<void> => {
@@ -630,6 +710,11 @@
   }
 
   onMounted(() => void initialize())
+  watch(referencedRecordNo, (recordNo) => {
+    table.search.keyword = recordNo
+    if (recordNo) menu.selectedId = ''
+    void tableRef.value?.getData()
+  })
   watch(effectiveTenantId, () => void refreshContext())
 </script>
 

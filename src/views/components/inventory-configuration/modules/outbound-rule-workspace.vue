@@ -71,7 +71,7 @@
 
   const commonEnabledStatusOptions = useDictionaryOptions('commonEnabledStatus')
 
-  defineOptions({ name: 'MdmOutboundRule' })
+  defineOptions({ name: 'MdmOutboundRuleWorkspace' })
 
   interface DialogExpose {
     handleOpen: (data: OutboundRuleDialogOpenData) => Promise<void>

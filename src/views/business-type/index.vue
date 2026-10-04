@@ -1,6 +1,7 @@
 <template>
   <ArtPermissionGuard permission="MdmBusinessType:View" resource-name="业务类型">
     <div class="business-type-page business-workspace-page art-full-height">
+      <MasterDeleteProcessingNotice />
       <BusinessWorkspaceHeader
         density="compact"
         eyebrow="BUSINESS TYPE GOVERNANCE"
@@ -93,6 +94,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
@@ -132,7 +134,7 @@
   } from './modules/business-type-detail-drawer.vue'
   import BusinessTypeMenuFilter from './modules/business-type-menu-filter.vue'
 
-  defineOptions({ name: 'MdmBusinessType' })
+  defineOptions({ name: 'MdmBusinessTypeWorkspace' })
 
   const declaredPermissions = [
     'MdmBusinessType:View',
@@ -176,6 +178,13 @@
   }
 
   const route = useRoute()
+  const referencedRecordNo = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode === 'mdm_business_type' &&
+    typeof route.query.recordNo === 'string'
+      ? route.query.recordNo
+      : ''
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (data: BusinessTypeDialogOpenData) => Promise<void> }>()
   const detailDrawerRef = ref<{ handleOpen: (data: BusinessTypeDetailData) => Promise<void> }>()
@@ -202,7 +211,8 @@
 
   const menu: UnwrapNestedRefs<MenuGroup> = reactive<MenuGroup>({
     tree: [],
-    selectedId: typeof route.query.menuId === 'string' ? route.query.menuId : '',
+    selectedId:
+      !referencedRecordNo.value && typeof route.query.menuId === 'string' ? route.query.menuId : '',
     loading: false
   })
   const overview: UnwrapNestedRefs<OverviewGroup> = reactive<OverviewGroup>({
@@ -277,7 +287,11 @@
   )
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
-    search: { keyword: '', enabled: undefined, isDefault: undefined },
+    search: {
+      keyword: referencedRecordNo.value,
+      enabled: undefined,
+      isDefault: undefined
+    },
     searchItems: computed<SearchFormItem[]>(() => [
       {
         key: 'keyword',
@@ -581,7 +595,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 136,
+      width: 160,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>
@@ -712,6 +726,11 @@
   }
 
   onMounted(() => void initialize())
+  watch(referencedRecordNo, (recordNo) => {
+    table.search.keyword = recordNo
+    if (recordNo) menu.selectedId = ''
+    void tableRef.value?.getData()
+  })
   watch(effectiveTenantId, () => {
     if (!isInitializing.value) void refreshContext()
   })

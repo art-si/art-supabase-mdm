@@ -306,6 +306,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { exportExcel, viewAttachment } from '@/utils/file'
+  import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import TreeUtils from '@/utils/tree'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -744,15 +745,15 @@
     }
   ]
   const exportRows = async (): Promise<void> => {
-    const result = await fetchEsopDocuments({
+    const rows = await loadAllLinePages(fetchEsopDocuments, {
       ...search,
       tenantId: tenantId.value,
       categoryIds: selectedCategoryIds.value.length ? selectedCategoryIds.value : undefined,
       current: 1,
-      size: 10000
+      size: 500
     })
     await exportExcel({
-      data: result.data.map((row) => ({
+      data: rows.map((row) => ({
         documentCode: row.documentCode,
         documentName: row.documentName,
         category: row.category?.categoryName,

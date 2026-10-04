@@ -219,6 +219,17 @@ export async function deleteDocumentTypes(ids: string[]) {
   )
 }
 
+export async function fetchDocumentTypeBusinessReferenceStatuses(
+  ids: string[]
+): Promise<Map<string, string>> {
+  if (!ids.length) return new Map()
+  const { data } = await responseHandle<Array<{ id: string; enabled: boolean }>>(
+    () => supabase.from('mdm_business_type').select('id,enabled').in('id', ids),
+    { ...readOptions, showErrorMessage: false, errorMessage: '业务类型状态检查失败，请重试' }
+  )
+  return new Map((data ?? []).map((row) => [row.id, row.enabled ? '启用' : '停用']))
+}
+
 export async function exportDocumentTypes(
   params: DocumentTypeExportQuery
 ): Promise<DocumentTypeExportRecord[]> {

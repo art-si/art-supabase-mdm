@@ -72,7 +72,7 @@
 
   const commonEnabledStatusOptions = useDictionaryOptions('commonEnabledStatus')
 
-  defineOptions({ name: 'MdmSupplyChainCodeRule' })
+  defineOptions({ name: 'MdmSupplyChainCodeRuleWorkspace' })
 
   interface DialogExpose {
     handleOpen: (data: SupplyChainCodeRuleDialogOpenData) => Promise<void>

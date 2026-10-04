@@ -70,6 +70,7 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { exportExcel } from '@/utils/file'
+  import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -571,9 +572,16 @@
     }
   ]
   const exportRows = async () => {
-    const result = await fetchBoms({ ...search, tenantId: tenantId.value, current: 1, size: 10000 })
+    const rows = await loadAllLinePages(fetchBoms, {
+      ...search,
+      tenantId: tenantId.value,
+      id: targetBomId.value || undefined,
+      groupIds: selectedGroupId.value ? descendantIds(selectedGroupId.value) : undefined,
+      current: 1,
+      size: 500
+    })
     await exportExcel({
-      data: result.data.map((row) => ({
+      data: rows.map((row) => ({
         code: row.bomCode,
         materialCode: row.material?.materialCode,
         materialName: row.material?.materialName,
