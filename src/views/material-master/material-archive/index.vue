@@ -563,7 +563,7 @@
       {
         title: '生产',
         description: '计划与制造口径',
-        icon: 'ri:factory-line',
+        icon: 'ri:building-4-line',
         items: [
           { label: '生产单位', value: unitLabel(row.productionUnitId) },
           {

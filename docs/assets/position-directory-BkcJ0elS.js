@@ -1,1 +1,0 @@
-import{$r as e,Hr as t,Ri as n}from"./supabase-mNBZ-mdX.js";import{t as r}from"./catalog-Bw78Ufd1.js";var i=e({name:`MdmPositionDirectory`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

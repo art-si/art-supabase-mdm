@@ -112,7 +112,7 @@
                           <ArtSvgIcon
                             :icon="
                               data.isVirtual
-                                ? 'ri:layers-line'
+                                ? 'ri:stack-line'
                                 : data.hasChildren
                                   ? 'ri:git-branch-line'
                                   : 'ri:box-3-line'
@@ -339,7 +339,7 @@
     return (
       <div class="bom-structure-page__material">
         <span aria-hidden="true">
-          <ArtSvgIcon icon={row.isVirtual ? 'ri:layers-line' : 'ri:box-3-line'} />
+          <ArtSvgIcon icon={row.isVirtual ? 'ri:stack-line' : 'ri:box-3-line'} />
         </span>
         <div>
           <strong title={row.materialName}>{row.materialName}</strong>

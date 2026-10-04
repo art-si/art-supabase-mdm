@@ -1,1 +1,0 @@
-import{F as e,L as t,R as n,W as r}from"./hasIn-CJfyGIyQ.js";function i(i,a,o){if(!r(o))return!1;var s=typeof a;return(s==`number`?e(o)&&n(a,o.length):s==`string`&&a in o)?t(o[a],i):!1}export{i as t};

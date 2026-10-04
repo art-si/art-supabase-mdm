@@ -1,3 +1,4 @@
+import { buildSupabaseRpcRange } from '@/utils/supabase'
 import type { EmployeeSelectorContractParams } from '@/api/integration/employees'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
@@ -373,8 +374,7 @@ export async function fetchStatutoryHolidayList(params: StatutoryHolidaySearchPa
   const result = await responseHandle<StatutoryHolidayListResult>(
     () =>
       supabase.rpc('mdm_list_statutory_holidays_secure', {
-        p_from: from,
-        p_to: Math.max(params.to ?? from + 999, from),
+        ...buildSupabaseRpcRange(from, params.to ?? from + 999),
         p_organization_id: params.organizationId || null,
         p_holiday_type: params.holidayType || null,
         p_year: params.year ? Number(params.year) : null

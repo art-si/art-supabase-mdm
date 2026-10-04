@@ -1,4 +1,5 @@
 import type { CenterPolicy, WorkCenterInput } from '@mdm/api'
+import { uniq } from 'lodash-es'
 import { centerPolicyFields, createWorkCenter } from './center-policy'
 
 export const centerPolicyColumns = [
@@ -57,7 +58,7 @@ export function parseCenterImport(
     if (mainCenterId === undefined) return fail('主工序位必须为已存在的工作中心编号')
     const personIds =
       personnelMode === '指定人员'
-        ? [...new Set(splitStaffNumbers(row['人员工号']))].map(
+        ? uniq(splitStaffNumbers(row['人员工号'])).map(
             (no) =>
               refs.people.find((p) => p.employeeNo === no)?.id ??
               fail(`人员工号 ${no} 不存在或已禁用`)

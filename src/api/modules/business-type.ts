@@ -4,7 +4,7 @@ import { normalizeNullableText } from '@/utils/form/normalize'
 import { applyFilters, fetchAllRangePages } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import TreeUtils from '@/utils/tree'
-import { chunk } from 'lodash-es'
+import { chunk, uniq } from 'lodash-es'
 import type {
   BusinessTypeDocumentReference,
   BusinessTypeExportQuery,
@@ -51,13 +51,11 @@ async function attachSourceBusinessTypes(
   rows: BusinessTypeRecord[],
   signal?: AbortSignal
 ): Promise<BusinessTypeRecord[]> {
-  const sourceIds = [
-    ...new Set(
-      rows
-        .map((row) => row.sourceBusinessTypeId)
-        .filter((id): id is string => typeof id === 'string' && Boolean(id))
-    )
-  ]
+  const sourceIds = uniq(
+    rows
+      .map((row) => row.sourceBusinessTypeId)
+      .filter((id): id is string => typeof id === 'string' && Boolean(id))
+  )
   if (!sourceIds.length) return rows
 
   const query = supabase

@@ -1,3 +1,4 @@
+import { toDateStartTimestamp, toDateEndTimestamp } from '@/utils/time/date-boundary'
 import { omit } from 'lodash-es'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
@@ -56,9 +57,9 @@ export async function fetchEsopDocuments(
   if (params.status) query = query.eq('status', params.status)
   if (params.categoryIds?.length) query = query.in('category_id', params.categoryIds)
   if (params.uploadDateRange?.[0])
-    query = query.gte('upload_time', `${params.uploadDateRange[0]}T00:00:00`)
+    query = query.gte('upload_time', toDateStartTimestamp(params.uploadDateRange[0]))
   if (params.uploadDateRange?.[1])
-    query = query.lte('upload_time', `${params.uploadDateRange[1]}T23:59:59.999`)
+    query = query.lte('upload_time', toDateEndTimestamp(params.uploadDateRange[1]))
   query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
   const { data, total } = await responseHandle<EsopDocument[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
