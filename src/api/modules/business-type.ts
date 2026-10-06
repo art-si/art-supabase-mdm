@@ -3,6 +3,7 @@ import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { applyFilters, fetchAllRangePages } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import TreeUtils from '@/utils/tree'
 import { chunk, uniq } from 'lodash-es'
 import type {
@@ -108,6 +109,7 @@ export async function fetchBusinessTypeList(
   params: BusinessTypeQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(params)
   const {
     current,
     size,
@@ -123,7 +125,8 @@ export async function fetchBusinessTypeList(
     .select(businessTypeSelect, { count: 'exact' })
     .order('sort_order', { ascending: true })
     .order('business_type_name', { ascending: true })
-    .range((current - 1) * size, current * size - 1)
+    .order('id')
+    .range(pageRange.from, pageRange.to)
 
   query = applyFilters(
     query,

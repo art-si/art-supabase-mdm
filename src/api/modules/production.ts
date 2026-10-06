@@ -3,7 +3,7 @@ import type { EmployeeSelectorContractParams } from '@/api/integration/employees
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { parseProductionShifts } from './production-shifts'
-import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'
 import TreeUtils from '@/utils/tree'
 import type {
   ProductionDepartment,
@@ -117,6 +117,7 @@ export async function fetchProductionPeople(
   params: ProductionPeopleQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(params)
   const { current, size, tenantId, departmentIds, keyword, phone, enabled } = params
   let query = supabase
     .from('mdm_production_personnel')
@@ -128,7 +129,7 @@ export async function fetchProductionPeople(
   if (keyword) query = query.or(buildOrIlikeFilter(['name', 'employee_no', 'barcode'], keyword))
   if (phone) query = query.ilike('phone', `%${phone}%`)
   if (typeof enabled === 'boolean') query = query.eq('enabled', enabled)
-  query = query.range((current - 1) * size, current * size - 1)
+  query = query.order('id').range(pageRange.from, pageRange.to)
   const { data, total } = await responseHandle<ProductionPerson[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions

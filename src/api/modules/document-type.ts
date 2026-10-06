@@ -2,6 +2,7 @@ import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { applyFilters, fetchAllRangePages } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import TreeUtils from '@/utils/tree'
 import { chunk } from 'lodash-es'
@@ -50,13 +51,15 @@ export async function fetchDocumentTypeList(
   params: DocumentTypeQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(params)
   const { current, size, keyword = '', tenantId, menuIds, enabled, isDefault } = params
   let query = supabase
     .from('mdm_document_type')
     .select(documentTypeSelect, { count: 'exact' })
     .order('sort_order', { ascending: true })
     .order('document_type_name', { ascending: true })
-    .range((current - 1) * size, current * size - 1)
+    .order('id')
+    .range(pageRange.from, pageRange.to)
 
   query = applyFilters(
     query,

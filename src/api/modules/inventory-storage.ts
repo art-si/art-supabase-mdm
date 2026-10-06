@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import type {
   InventoryBatch,
@@ -125,6 +126,7 @@ export async function fetchStorageMaterialsPage(
   current: number,
   size: number
 ) {
+  const pageRange = buildSupabasePageRange({ current, size })
   let query = supabase
     .from('mdm_material')
     .select(
@@ -135,7 +137,7 @@ export async function fetchStorageMaterialsPage(
     .eq('status', 'enabled')
     .order('material_code')
     .order('id')
-    .range((current - 1) * size, current * size - 1)
+    .range(pageRange.from, pageRange.to)
   if (keyword.trim())
     query = query.or(buildOrIlikeFilter(['material_code', 'material_name'], keyword))
   const { data, total } = await responseHandle<StorageMaterial[]>(() => query, readOptions)
