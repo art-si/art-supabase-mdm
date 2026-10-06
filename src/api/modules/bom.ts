@@ -1,6 +1,8 @@
+import type { ApiFeedbackOptions } from '@/types/api/request'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import type { MasterDataDeleteDependencyDetail } from '@/api/master-data-delete'
 import { keyBy, uniq } from 'lodash-es'
 import { buildBomWritePayload } from './bom-write-payload'
@@ -34,37 +36,30 @@ const writeOptions = {
 }
 
 export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSignal }) {
-  let materialIds: string[] = []
-  if (params.keyword) {
-    let materialQuery = supabase
-      .from('mdm_material')
-      .select('id')
-      .or(
-        buildOrIlikeFilter(
-          ['material_code', 'material_name', 'specification_model', 'drawing_no', 'description'],
-          params.keyword
-        )
-      )
-      .limit(200)
-    if (params.tenantId) materialQuery = materialQuery.eq('tenant_id', params.tenantId)
-    const { data } = await responseHandle<Array<{ id: string }>>(() => materialQuery, readOptions)
-    materialIds = (data ?? []).map((row) => row.id)
-  }
   let query = supabase
     .from('mdm_bom')
     .select(
-      '*,group:mdm_master_group!mdm_bom_group_fkey(id,code,name),material:mdm_material!mdm_bom_material_fkey(id,tenant_id,material_code,material_name,specification_model,drawing_no,description,material_source,special_purchase_type,base_unit_id,production_unit_id,default_warehouse_id,material_issue_method,backflush_method,over_issue_control_method,baseUnit:mdm_unit_of_measure!mdm_material_base_unit_fkey(id,unit_code,unit_name,symbol),productionUnit:mdm_unit_of_measure!mdm_material_production_unit_id_fkey(id,unit_code,unit_name,symbol),defaultWarehouse:mdm_warehouse!mdm_material_default_warehouse_fkey(id,warehouse_code,warehouse_name)),processRoute:mdm_process_route!mdm_bom_process_route_fkey(id,tenant_id,material_id,code,name,version,is_default,enabled),baseUnit:mdm_unit_of_measure!mdm_bom_unit_fkey(id,unit_code,unit_name,symbol),items:mdm_bom_item(id,tenant_id,bom_id,component_material_id,component_type_id,sequence_no,quantity,unit_id,scrap_rate,mrp_enabled,default_issue_warehouse_id,issue_method,backflush_method,over_issue_control_method,project_text,position_no,process_route_step_id,operation_name,effective_from,effective_to,remark,componentType:mdm_component_type!mdm_bom_item_component_type_fk(id,component_type_code,component_type_name,tag_style,text_color),component:mdm_material!mdm_bom_item_material_fkey(id,tenant_id,material_code,material_name,specification_model,drawing_no,description,material_source,special_purchase_type,base_unit_id,auxiliary_unit_id,auxiliary_unit_2_id,unit_conversions,production_unit_id,default_warehouse_id,material_issue_method,backflush_method,over_issue_control_method,baseUnit:mdm_unit_of_measure!mdm_material_base_unit_fkey(id,unit_code,unit_name,symbol),productionUnit:mdm_unit_of_measure!mdm_material_production_unit_id_fkey(id,unit_code,unit_name,symbol),defaultWarehouse:mdm_warehouse!mdm_material_default_warehouse_fkey(id,warehouse_code,warehouse_name)),processRouteStep:mdm_process_route_step!mdm_bom_item_process_route_step_fkey(id,tenant_id,route_id,code,name,sort,work_center_id,work_center_ids,workCenter:mdm_work_center!mdm_process_route_step_tenant_id_work_center_id_fkey(id,code,name),sequence:mdm_process_route_sequence!mdm_process_route_step_sequence_fk(id,sequence_no,sequence_type)),unit:mdm_unit_of_measure!mdm_bom_item_unit_fkey(id,unit_code,unit_name,symbol),defaultIssueWarehouse:mdm_warehouse!mdm_bom_item_default_issue_warehouse_fkey(id,warehouse_code,warehouse_name))',
+      (params.keyword ? 'materialSearch:mdm_material!mdm_bom_material_fkey(),' : '') +
+        '*,group:mdm_master_group!mdm_bom_group_fkey(id,code,name),material:mdm_material!mdm_bom_material_fkey(id,tenant_id,material_code,material_name,specification_model,drawing_no,description,material_source,special_purchase_type,base_unit_id,production_unit_id,default_warehouse_id,material_issue_method,backflush_method,over_issue_control_method,baseUnit:mdm_unit_of_measure!mdm_material_base_unit_fkey(id,unit_code,unit_name,symbol),productionUnit:mdm_unit_of_measure!mdm_material_production_unit_id_fkey(id,unit_code,unit_name,symbol),defaultWarehouse:mdm_warehouse!mdm_material_default_warehouse_fkey(id,warehouse_code,warehouse_name)),processRoute:mdm_process_route!mdm_bom_process_route_fkey(id,tenant_id,material_id,code,name,version,is_default,enabled),baseUnit:mdm_unit_of_measure!mdm_bom_unit_fkey(id,unit_code,unit_name,symbol),items:mdm_bom_item(id,tenant_id,bom_id,component_material_id,component_type_id,sequence_no,quantity,unit_id,scrap_rate,mrp_enabled,default_issue_warehouse_id,issue_method,backflush_method,over_issue_control_method,project_text,position_no,process_route_step_id,operation_name,effective_from,effective_to,remark,componentType:mdm_component_type!mdm_bom_item_component_type_fk(id,component_type_code,component_type_name,tag_style,text_color),component:mdm_material!mdm_bom_item_material_fkey(id,tenant_id,material_code,material_name,specification_model,drawing_no,description,material_source,special_purchase_type,base_unit_id,auxiliary_unit_id,auxiliary_unit_2_id,unit_conversions,production_unit_id,default_warehouse_id,material_issue_method,backflush_method,over_issue_control_method,baseUnit:mdm_unit_of_measure!mdm_material_base_unit_fkey(id,unit_code,unit_name,symbol),productionUnit:mdm_unit_of_measure!mdm_material_production_unit_id_fkey(id,unit_code,unit_name,symbol),defaultWarehouse:mdm_warehouse!mdm_material_default_warehouse_fkey(id,warehouse_code,warehouse_name)),processRouteStep:mdm_process_route_step!mdm_bom_item_process_route_step_fkey(id,tenant_id,route_id,code,name,sort,work_center_id,work_center_ids,workCenter:mdm_work_center!mdm_process_route_step_tenant_id_work_center_id_fkey(id,code,name),sequence:mdm_process_route_sequence!mdm_process_route_step_sequence_fk(id,sequence_no,sequence_type)),unit:mdm_unit_of_measure!mdm_bom_item_unit_fkey(id,unit_code,unit_name,symbol),defaultIssueWarehouse:mdm_warehouse!mdm_bom_item_default_issue_warehouse_fkey(id,warehouse_code,warehouse_name))',
       { count: 'exact' }
     )
     .order('sort')
     .order('update_time', { ascending: false })
+    .order('id')
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.id) query = query.eq('id', params.id)
   if (params.keyword) {
     const baseFilter = buildOrIlikeFilter(['bom_code', 'version', 'description'], params.keyword)
-    query = query.or(
-      materialIds.length ? `${baseFilter},material_id.in.(${materialIds.join(',')})` : baseFilter
-    )
+    query = query
+      .or(
+        buildOrIlikeFilter(
+          ['material_code', 'material_name', 'specification_model', 'drawing_no', 'description'],
+          params.keyword
+        ),
+        { referencedTable: 'materialSearch' }
+      )
+      .or(`${baseFilter},materialSearch.not.is.null`)
+    if (params.tenantId) query = query.eq('materialSearch.tenant_id', params.tenantId)
   }
   if (params.materialId) query = query.eq('material_id', params.materialId)
   if (params.groupIds?.length) query = query.in('group_id', params.groupIds)
@@ -93,14 +88,21 @@ export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSign
 }
 
 export async function fetchBomGroups(tenantId?: string | null): Promise<BomGroup[]> {
-  let query = supabase
-    .from('mdm_master_group')
-    .select('id,tenant_id,code,name,parent_id,sort,enabled,remark')
-    .eq('domain', 'bom')
-    .order('sort')
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<BomGroup[]>(() => query, readOptions)
-  return data ?? []
+  return loadAllDocumentPages<BomGroup, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) => {
+      let query = supabase
+        .from('mdm_master_group')
+        .select('id,tenant_id,code,name,parent_id,sort,enabled,remark', { count: 'exact' })
+        .eq('domain', 'bom')
+        .order('sort')
+        .order('code')
+        .order('id')
+        .range(from, to)
+      if (tenantId) query = query.eq('tenant_id', tenantId)
+      return responseHandle<BomGroup[]>(() => query, readOptions)
+    },
+    {}
+  )
 }
 
 export async function saveBomGroup(payload: BomGroupInput): Promise<string> {
@@ -111,7 +113,12 @@ export async function saveBomGroup(payload: BomGroupInput): Promise<string> {
         p_id: id || null,
         p_payload: keysToSnakeDeep(input)
       }),
-    { ...writeOptions, message: 'BOM 分组已保存' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      errorMessage: 'BOM 分组保存失败，请检查填写内容和网络后重试'
+    }
   )
   return data ?? ''
 }
@@ -129,7 +136,12 @@ export async function saveBom(payload: BomInput): Promise<string> {
   const items = keysToSnakeDeep(writePayload.items)
   const { data } = await responseHandle<string>(
     () => supabase.rpc('mdm_save_bom_with_assignments', { p_header: header, p_items: items }),
-    writeOptions
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      errorMessage: 'BOM 保存失败，请检查物料和用量后重试'
+    }
   )
   return data ?? ''
 }
@@ -138,39 +150,52 @@ export async function fetchBomProcessRoutes(
   tenantId: string,
   materialId: string
 ): Promise<BomProcessRouteOption[]> {
-  const { data } = await responseHandle<BomProcessRouteOption[]>(
-    () =>
-      supabase
-        .from('mdm_process_route')
-        .select('id,tenant_id,material_id,code,name,version,is_default,enabled')
-        .eq('tenant_id', tenantId)
-        .eq('material_id', materialId)
-        .eq('enabled', true)
-        .order('is_default', { ascending: false })
-        .order('update_time', { ascending: false }),
-    readOptions
+  return loadAllDocumentPages<BomProcessRouteOption, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<BomProcessRouteOption[]>(
+        () =>
+          supabase
+            .from('mdm_process_route')
+            .select('id,tenant_id,material_id,code,name,version,is_default,enabled', {
+              count: 'exact'
+            })
+            .eq('tenant_id', tenantId)
+            .eq('material_id', materialId)
+            .eq('enabled', true)
+            .order('is_default', { ascending: false })
+            .order('update_time', { ascending: false })
+            .order('id')
+            .range(from, to),
+        readOptions
+      ),
+    {}
   )
-  return data ?? []
 }
 
 export async function fetchBomProcessRouteSteps(
   tenantId: string,
   routeId: string
 ): Promise<BomProcessRouteStepOption[]> {
-  const { data } = await responseHandle<BomProcessRouteStepOption[]>(
-    () =>
-      supabase
-        .from('mdm_process_route_step')
-        .select(
-          'id,tenant_id,route_id,code,name,sort,work_center_id,work_center_ids,workCenter:mdm_work_center!mdm_process_route_step_tenant_id_work_center_id_fkey(id,code,name),sequence:mdm_process_route_sequence!mdm_process_route_step_sequence_fk(id,sequence_no,sequence_type)'
-        )
-        .eq('tenant_id', tenantId)
-        .eq('route_id', routeId)
-        .order('sort')
-        .order('code'),
-    readOptions
+  return loadAllDocumentPages<BomProcessRouteStepOption, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<BomProcessRouteStepOption[]>(
+        () =>
+          supabase
+            .from('mdm_process_route_step')
+            .select(
+              'id,tenant_id,route_id,code,name,sort,work_center_id,work_center_ids,workCenter:mdm_work_center!mdm_process_route_step_tenant_id_work_center_id_fkey(id,code,name),sequence:mdm_process_route_sequence!mdm_process_route_step_sequence_fk(id,sequence_no,sequence_type)',
+              { count: 'exact' }
+            )
+            .eq('tenant_id', tenantId)
+            .eq('route_id', routeId)
+            .order('sort')
+            .order('code')
+            .order('id')
+            .range(from, to),
+        readOptions
+      ),
+    {}
   )
-  return data ?? []
 }
 
 export async function transitionBom(id: string, status: BomStatus): Promise<void> {
@@ -227,10 +252,7 @@ export async function fetchBomDeleteDependencies(
   }))
 }
 
-export async function deleteBom(
-  id: string,
-  options?: { showErrorMessage?: boolean }
-): Promise<void> {
+export async function deleteBom(id: string, options?: ApiFeedbackOptions): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_bom', { p_bom_id: id }), {
     ...writeOptions,
     message: 'BOM 已删除',
@@ -239,10 +261,7 @@ export async function deleteBom(
   })
 }
 
-export async function deleteBoms(
-  ids: string[],
-  options?: { showErrorMessage?: boolean }
-): Promise<void> {
+export async function deleteBoms(ids: string[], options?: ApiFeedbackOptions): Promise<void> {
   await responseHandle<number>(() => supabase.rpc('mdm_delete_boms', { p_bom_ids: ids }), {
     ...writeOptions,
     message: '已删除选中的 BOM',

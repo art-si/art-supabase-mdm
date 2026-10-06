@@ -119,25 +119,6 @@ export async function saveInventoryPolicy(
   )
 }
 
-export async function fetchStorageMaterials(
-  tenantId: string,
-  keyword = ''
-): Promise<StorageMaterial[]> {
-  let query = supabase
-    .from('mdm_material')
-    .select(
-      'id,tenant_id,material_code,material_name,specification_model,description,material_source,material_type,inbound_warehouse_id,category_id,gross_weight'
-    )
-    .eq('tenant_id', tenantId)
-    .eq('status', 'enabled')
-    .order('material_code')
-    .limit(100)
-  if (keyword.trim())
-    query = query.or(buildOrIlikeFilter(['material_code', 'material_name'], keyword))
-  const { data } = await responseHandle<StorageMaterial[]>(() => query, readOptions)
-  return data ?? []
-}
-
 export async function fetchStorageMaterialsPage(
   tenantId: string,
   keyword: string,
@@ -153,6 +134,7 @@ export async function fetchStorageMaterialsPage(
     .eq('tenant_id', tenantId)
     .eq('status', 'enabled')
     .order('material_code')
+    .order('id')
     .range((current - 1) * size, current * size - 1)
   if (keyword.trim())
     query = query.or(buildOrIlikeFilter(['material_code', 'material_name'], keyword))

@@ -133,7 +133,8 @@
           <div class="component-type-page__table-pane">
             <ArtTableQuery
               ref="tableRef"
-              v-model="search"
+              :model-value="search"
+              @update:model-value="replaceReactiveModel(search, $event)"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -159,6 +160,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElTag, type ElTree } from 'element-plus'

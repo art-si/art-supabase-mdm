@@ -53,7 +53,8 @@
         <ArtForm
           v-show="activeTab === 'document'"
           ref="formRef"
-          v-model="form"
+          :model-value="form"
+          @update:model-value="replaceReactiveModel(form, $event)"
           :items="documentItems"
           :rules="rules"
           :span="12"
@@ -101,7 +102,8 @@
 
         <ArtForm
           v-show="activeTab === 'scope'"
-          v-model="form"
+          :model-value="form"
+          @update:model-value="replaceReactiveModel(form, $event)"
           :items="scopeItems"
           :span="24"
           label-position="top"
@@ -157,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'

@@ -1,8 +1,10 @@
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import { uniqBy } from 'lodash-es'
 import { mapWithConcurrency } from '@/utils/async'
 import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import {
   type RecordDeleteDependency,
   type MasterDataDeleteDependencyDetail
@@ -146,30 +148,36 @@ function parseRecognitionItem(value: unknown): AccessoryProcessingItem | null {
   }
 }
 
-export async function fetchAccessoryRecognitions(
-  tenantId: string | null,
-  includeTenantRecords = false
-): Promise<AccessoryRecognitionRecord[]> {
-  if (includeTenantRecords && !tenantId) return []
+export async function fetchAccessoryRecognitionPage(query: {
+  tenantId: string | null
+  includeTenantRecords: boolean
+  current: number
+  size: number
+}): Promise<{ data: AccessoryRecognitionRecord[]; total: number }> {
+  const { tenantId, includeTenantRecords, current, size } = query
+  const { from, to } = buildSupabasePageRange({ current, size })
+  if (size > 100) throw new Error('单页最多读取 100 条，请调整后重试')
   const { data: authData, error: authError } = await supabase.auth.getUser()
   if (authError || !authData.user)
     throw new Error('登录状态已失效，请重新登录', { cause: authError })
-  let query = supabase
+  let request = supabase
     .from('ai_artifact_review')
     .select(
-      'id,tenantId:tenant_id,createTime:create_time,proposedPayload:proposed_payload,metadata,confidence,warnings'
+      'id,tenantId:tenant_id,createTime:create_time,proposedPayload:proposed_payload,metadata,confidence,warnings',
+      { count: 'exact' }
     )
     .eq('feature', 'accessory_processing_ocr')
     .order('create_time', { ascending: false })
-    .limit(50)
-  if (!includeTenantRecords) query = query.eq('auth_user_id', authData.user.id)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<RecognitionRow[]>(() => query, {
+    .order('id')
+    .range(from, to)
+  if (!includeTenantRecords) request = request.eq('auth_user_id', authData.user.id)
+  if (tenantId) request = request.eq('tenant_id', tenantId)
+  const { data, total } = await responseHandle<RecognitionRow[]>(() => request, {
     breakReturn: true,
     showErrorMessage: false,
     errorMessage: '识别记录加载失败，请重试'
   })
-  return (data ?? []).map((row) => {
+  const records = (data ?? []).map((row) => {
     const payload = isRecord(row.proposedPayload) ? row.proposedPayload : {}
     const metadata = isRecord(row.metadata) ? row.metadata : {}
     return {
@@ -192,6 +200,10 @@ export async function fetchAccessoryRecognitions(
         : []
     }
   })
+  if (typeof total !== 'number' || !Number.isSafeInteger(total) || total < 0) {
+    throw new Error('识别记录总数无效，请刷新后重试')
+  }
+  return { data: records, total }
 }
 
 export async function restoreAccessoryRecognitionFiles(
@@ -305,20 +317,31 @@ export async function fetchAccessoryLists(
   tenantId: string | null,
   listId?: string
 ): Promise<AccessoryProcessingList[]> {
-  let query = supabase
-    .from('mdm_accessory_processing_list')
-    .select(
-      'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,drawingName:drawing_name,projectName:project_name,projectId:project_id,bomId:bom_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,project:mdm_project(projectName:project_name),items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,imageUrls:image_urls,materialId:material_id,materialCode:material_code,specificationModel:specification_model,baseUnitId:base_unit_id,materialTypeId:material_type_id,materialSource:material_source,categoryId:category_id,codeRuleId:code_rule_id,baseUnit:mdm_unit_of_measure!accessory_item_unit_tenant_fk(unitName:unit_name),materialType:mdm_material_type!accessory_item_type_tenant_fk(typeName:type_name),category:mdm_material_category!accessory_item_category_tenant_fk(categoryName:category_name),codeRule:mdm_material_code_rule!accessory_item_code_rule_tenant_fk(ruleName:rule_name),material:mdm_material!mdm_accessory_processing_item_material_id_tenant_id_fkey(materialCode:material_code,description,imageUrls:image_urls,codeRuleId:code_rule_id),workOrders:mes_work_order!mes_work_order_accessory_item_tenant_fk(id,workOrderNo:work_order_no,deletedAt:deleted_at)))'
-    )
-    .order('create_time', { ascending: false })
-    .limit(100)
-  if (listId) query = query.eq('id', listId)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<AccessoryProcessingList[]>(() => query, {
-    breakReturn: true,
-    showErrorMessage: false,
-    errorMessage: '配件加工清单加载失败，请重试'
-  })
+  const data = await loadAllDocumentPages<AccessoryProcessingList, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<AccessoryProcessingList[]>(
+        () => {
+          let query = supabase
+            .from('mdm_accessory_processing_list')
+            .select(
+              'id,tenantId:tenant_id,sourcePath:source_path,sourceName:source_name,drawingName:drawing_name,projectName:project_name,projectId:project_id,bomId:bom_id,customerId:customer_id,categoryId:category_id,status,confidence,warnings,createTime:create_time,project:mdm_project(projectName:project_name),items:mdm_accessory_processing_item(id,lineNo:line_no,rowNo:row_no,name,widthMm:width_mm,lengthM:length_m,quantity,materialColor:material_color,remark,sketch:sketch_bounds,sketchPath:sketch_path,imageUrls:image_urls,materialId:material_id,materialCode:material_code,specificationModel:specification_model,baseUnitId:base_unit_id,materialTypeId:material_type_id,materialSource:material_source,categoryId:category_id,codeRuleId:code_rule_id,baseUnit:mdm_unit_of_measure!accessory_item_unit_tenant_fk(unitName:unit_name),materialType:mdm_material_type!accessory_item_type_tenant_fk(typeName:type_name),category:mdm_material_category!accessory_item_category_tenant_fk(categoryName:category_name),codeRule:mdm_material_code_rule!accessory_item_code_rule_tenant_fk(ruleName:rule_name),material:mdm_material!mdm_accessory_processing_item_material_id_tenant_id_fkey(materialCode:material_code,description,imageUrls:image_urls,codeRuleId:code_rule_id),workOrders:mes_work_order!mes_work_order_accessory_item_tenant_fk(id,workOrderNo:work_order_no,deletedAt:deleted_at)))',
+              { count: 'exact' }
+            )
+            .order('create_time', { ascending: false })
+            .order('id')
+            .range(from, to)
+          if (listId) query = query.eq('id', listId)
+          if (tenantId) query = query.eq('tenant_id', tenantId)
+          return query
+        },
+        {
+          breakReturn: true,
+          showErrorMessage: false,
+          errorMessage: '配件加工清单加载失败，请重试'
+        }
+      ),
+    {}
+  )
   return (data ?? []).map((list) => ({
     ...list,
     items: [...(list.items ?? [])]
@@ -331,36 +354,45 @@ export async function fetchAccessoryLists(
 }
 
 export async function fetchAccessoryProjects(tenantId: string): Promise<AccessoryProjectOption[]> {
-  const { data } = await responseHandle<AccessoryProjectOption[]>(
-    () =>
-      supabase
-        .from('mdm_project')
-        .select(
-          'id,tenantId:tenant_id,projectName:project_name,projectCode:project_code,customerId:customer_id'
-        )
-        .eq('tenant_id', tenantId)
-        .order('project_name')
-        .limit(300),
-    { breakReturn: true, showErrorMessage: false, errorMessage: '项目列表加载失败，请重试' }
+  return loadAllDocumentPages<AccessoryProjectOption, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<AccessoryProjectOption[]>(
+        () =>
+          supabase
+            .from('mdm_project')
+            .select(
+              'id,tenantId:tenant_id,projectName:project_name,projectCode:project_code,customerId:customer_id',
+              { count: 'exact' }
+            )
+            .eq('tenant_id', tenantId)
+            .order('project_name')
+            .order('id')
+            .range(from, to),
+        { breakReturn: true, showErrorMessage: false, errorMessage: '项目列表加载失败，请重试' }
+      ),
+    {}
   )
-  return data ?? []
 }
 
 export async function fetchAccessoryCustomers(
   tenantId: string
 ): Promise<AccessoryCustomerOption[]> {
-  const { data } = await responseHandle<AccessoryCustomerOption[]>(
-    () =>
-      supabase
-        .from('mdm_customer')
-        .select('id,customerName:customer_name')
-        .eq('tenant_id', tenantId)
-        .eq('enabled', true)
-        .order('customer_name')
-        .limit(300),
-    { breakReturn: true, showErrorMessage: false, errorMessage: '客户列表加载失败，请重试' }
+  return loadAllDocumentPages<AccessoryCustomerOption, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<AccessoryCustomerOption[]>(
+        () =>
+          supabase
+            .from('mdm_customer')
+            .select('id,customerName:customer_name', { count: 'exact' })
+            .eq('tenant_id', tenantId)
+            .eq('enabled', true)
+            .order('customer_name')
+            .order('id')
+            .range(from, to),
+        { breakReturn: true, showErrorMessage: false, errorMessage: '客户列表加载失败，请重试' }
+      ),
+    {}
   )
-  return data ?? []
 }
 
 export async function saveAccessoryDraft(payload: {

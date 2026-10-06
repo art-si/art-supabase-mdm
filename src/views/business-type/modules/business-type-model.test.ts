@@ -11,6 +11,7 @@ const source: BusinessTypeRecord = {
   id: 'source-id',
   tenantId: 'tenant-id',
   documentTypeId: 'document-type-id',
+  documentTypeIds: ['document-type-id'],
   menuIds: ['menu-id'],
   businessTypeCode: 'OUTSOURCE_RETURN',
   businessTypeName: '委外入库退回',
@@ -41,6 +42,8 @@ test('copy model keeps business rules but clears unique code and default state',
   assert.equal(copy.sourceId, source.id)
   assert.equal(copy.menuId, 'menu-id')
   assert.deepEqual(copy.menuIds, ['menu-id'])
+  assert.deepEqual(copy.documentTypeIds, source.documentTypeIds)
+  assert.notEqual(copy.documentTypeIds, source.documentTypeIds)
   assert.equal(copy.stockMovement, 'inbound')
   assert.equal(copy.businessTypeCode, '')
   assert.equal(copy.businessTypeName, '委外入库退回（副本）')
@@ -52,6 +55,7 @@ test('write payload normalizes nullable and non-nullable fields', () => {
   const model = createBusinessTypeFormModel({
     tenantId: 'tenant-id',
     documentTypeId: 'document-type-id',
+    documentTypeIds: ['document-type-id', 'second-document-id', 'document-type-id'],
     menuIds: ['menu-id', 'second-menu-id'],
     stockMovement: 'transfer',
     businessTypeCode: '  sale_return  ',
@@ -64,6 +68,8 @@ test('write payload normalizes nullable and non-nullable fields', () => {
   })
   const payload = buildBusinessTypeInput(model, true)
   assert.equal(payload.businessTypeCode, 'SALE_RETURN')
+  assert.deepEqual(payload.documentTypeIds, ['document-type-id', 'second-document-id'])
+  assert.equal(payload.documentTypeId, 'document-type-id')
   assert.deepEqual(payload.menuIds, ['menu-id', 'second-menu-id'])
   assert.equal(payload.stockMovement, 'transfer')
   assert.equal(payload.businessTypeName, '销售退货')

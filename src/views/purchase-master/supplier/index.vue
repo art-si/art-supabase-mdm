@@ -31,7 +31,8 @@
         />
         <ArtTableQuery
           ref="tableRef"
-          v-model="search"
+          :model-value="search"
+          @update:model-value="replaceReactiveModel(search, $event)"
           :api-fn="fetchRows"
           :search-items="searchItems"
           :columns-factory="columnsFactory"
@@ -54,14 +55,18 @@
       <SupplierDialog ref="supplierDialogRef" @success="refreshAfterSave" />
       <SupplierDetail ref="detailRef" :groups="groups" @changed="refreshAfterSave('edit')" />
       <GroupDialog ref="groupDialogRef" @success="refreshAfterGroupSave" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import dayjs from 'dayjs'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useSupplierDelete } from '@/hooks/core/useSupplierDelete'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -75,14 +80,12 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
-    ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
   import {
     deleteMasterGroup,
-    deletePurchaseSuppliers,
     fetchMasterGroups,
     fetchPurchaseSuppliers,
     type MasterGroup,
@@ -98,6 +101,9 @@
 
   defineOptions({ name: 'MdmPurchaseSupplier' })
   const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteBusy, removeSuppliers } = useSupplierDelete(
+    'MdmPurchaseSupplier:Delete'
+  )
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const tenantScopeStore = useTenantScopeStore()
@@ -244,12 +250,10 @@
     {
       permission: 'MdmPurchaseSupplier:Delete',
       type: 'delete',
-      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 家供应商吗？`,
-      onClick: async ({ selectedRows, api }) => {
-        await deletePurchaseSuppliers(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
-      }
+      confirm: false,
+      disabled: deleteBusy.value,
+      onClick: ({ selectedRows, api }) =>
+        removeSuppliers(selectedRows as PurchaseSupplier[], () => api.refreshRemove())
     }
   ])
 
@@ -371,9 +375,7 @@
     await refreshAfterGroupSave()
   }
   async function removeSupplier(row: PurchaseSupplier): Promise<void> {
-    await confirmDelete(`确定删除供应商“${row.supplierName}”吗？`)
-    await deletePurchaseSuppliers([row.id])
-    await tableRef.value?.refreshRemove()
+    await removeSuppliers([row], () => tableRef.value?.refreshRemove())
   }
   function refreshAfterSave(mode: 'add' | 'edit'): void {
     void (mode === 'add' ? tableRef.value?.refreshCreate() : tableRef.value?.refreshUpdate())

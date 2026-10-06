@@ -91,7 +91,7 @@ export async function fetchMaterialReferences<T extends MaterialReferenceRecord>
   let query = supabase
     .from(table)
     .select(kind === 'attribute-group' ? attributeGroupSelect : '*', { count: 'exact' })
-    .eq('tenant_id', params.tenantId)
+    .match(params.tenantId ? { tenant_id: params.tenantId } : {})
     .order('sort')
     .order(
       kind === 'unit-of-measure'
@@ -121,7 +121,7 @@ export async function fetchMaterialReferences<T extends MaterialReferenceRecord>
 
 export async function fetchMaterialReferenceOptions<T extends MaterialReferenceRecord>(
   kind: MaterialReferenceKind,
-  tenantId: string
+  tenantId?: string | null
 ) {
   const table = referenceTables[kind]
   const { data } = await responseHandle<Array<T | MaterialAttributeGroupRow>>(
@@ -129,7 +129,7 @@ export async function fetchMaterialReferenceOptions<T extends MaterialReferenceR
       supabase
         .from(table)
         .select(kind === 'attribute-group' ? attributeGroupSelect : '*')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('status', 'enabled')
         .order('sort'),
     readOptions
@@ -215,13 +215,15 @@ export async function setMaterialReferencesEnabled(
   )
 }
 
-export async function fetchMaterialCategories(tenantId: string): Promise<MaterialCategory[]> {
+export async function fetchMaterialCategories(
+  tenantId?: string | null
+): Promise<MaterialCategory[]> {
   const { data } = await responseHandle<MaterialCategory[]>(
     () =>
       supabase
         .from('mdm_material_category')
         .select('*,materialType:mdm_material_type(id,type_code,type_name)')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .order('sort')
         .order('category_name'),
     readOptions
@@ -271,12 +273,14 @@ export async function setMaterialCategoriesEnabled(ids: string[], enabled: boole
 export interface MaterialArchiveQuery {
   current: number
   size: number
-  tenantId: string
+  tenantId?: string | null
   keyword?: string
   categoryId?: string
   categoryIds?: string[]
   status?: 'enabled' | 'disabled'
   materialTypeId?: string
+  ids?: string[]
+  supplierId?: string
 }
 
 export async function fetchMaterialArchives(
@@ -289,7 +293,7 @@ export async function fetchMaterialArchives(
       '*,category:mdm_material_category(id,category_code,category_name),materialTypeRef:mdm_material_type(id,type_code,type_name),baseUnit:mdm_unit_of_measure!mdm_material_base_unit_fkey(id,unit_code,unit_name,symbol),productionUnit:mdm_unit_of_measure!mdm_material_production_unit_id_fkey(id,unit_code,unit_name,symbol),auxiliaryUnit:mdm_unit_of_measure!mdm_material_aux_unit_fkey(id,unit_code,unit_name,symbol),auxiliaryUnit2:mdm_unit_of_measure!mdm_material_aux_unit_2_fkey(id,unit_code,unit_name,symbol),attributeGroup:mdm_material_attribute_group!mdm_material_attribute_group_fkey(id,group_code,group_name),materialGroup:mdm_master_group!mdm_material_group_fkey(id,groupCode:code,groupName:name),defaultWarehouse:mdm_warehouse!mdm_material_default_warehouse_fkey(id,warehouse_code,warehouse_name)',
       { count: 'exact' }
     )
-    .eq('tenant_id', params.tenantId)
+    .match(params.tenantId ? { tenant_id: params.tenantId } : {})
     .order('sort')
     .order('material_code')
   if (params.keyword)
@@ -302,6 +306,8 @@ export async function fetchMaterialArchives(
   if (params.categoryIds?.length) query = query.in('category_id', params.categoryIds)
   else if (params.categoryId) query = query.eq('category_id', params.categoryId)
   if (params.materialTypeId) query = query.eq('material_type_id', params.materialTypeId)
+  if (params.ids?.length) query = query.in('id', params.ids)
+  if (params.supplierId) query = query.eq('supplier_id', params.supplierId)
   if (params.status) query = query.eq('status', params.status)
   query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
   const { data, total } = await responseHandle<MaterialArchive[]>(
@@ -374,7 +380,7 @@ export interface MaterialContextOption {
   businessScopes?: string[]
 }
 
-export async function fetchMaterialGroupOptions(tenantId: string) {
+export async function fetchMaterialGroupOptions(tenantId?: string | null) {
   const { data } = await responseHandle<
     Array<{ id: string; tenantId: string; code: string; name: string }>
   >(
@@ -382,7 +388,7 @@ export async function fetchMaterialGroupOptions(tenantId: string) {
       supabase
         .from('mdm_master_group')
         .select('id,tenant_id,code,name')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('domain', 'material')
         .eq('enabled', true)
         .order('sort')
@@ -392,7 +398,7 @@ export async function fetchMaterialGroupOptions(tenantId: string) {
   return (data ?? []).map((item) => ({ ...item }))
 }
 
-export async function fetchMaterialSupplierOptions(tenantId: string) {
+export async function fetchMaterialSupplierOptions(tenantId?: string | null) {
   const { data } = await responseHandle<
     Array<{ id: string; tenantId: string; supplierCode: string; supplierName: string }>
   >(
@@ -400,7 +406,7 @@ export async function fetchMaterialSupplierOptions(tenantId: string) {
       supabase
         .from('mdm_supplier')
         .select('id,tenant_id,supplier_code,supplier_name')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .order('supplier_code'),
     readOptions
   )
@@ -412,7 +418,7 @@ export async function fetchMaterialSupplierOptions(tenantId: string) {
   }))
 }
 
-export async function fetchMaterialWarehouseOptions(tenantId: string) {
+export async function fetchMaterialWarehouseOptions(tenantId?: string | null) {
   const { data } = await responseHandle<
     Array<{
       id: string
@@ -427,7 +433,7 @@ export async function fetchMaterialWarehouseOptions(tenantId: string) {
       supabase
         .from('mdm_warehouse')
         .select('id,tenant_id,warehouse_code,warehouse_name,warehouse_type,business_scopes')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('status', 'enabled')
         .order('warehouse_code'),
     readOptions
@@ -442,7 +448,7 @@ export async function fetchMaterialWarehouseOptions(tenantId: string) {
   }))
 }
 
-export async function fetchMaterialOutboundRuleOptions(tenantId: string) {
+export async function fetchMaterialOutboundRuleOptions(tenantId?: string | null) {
   const { data } = await responseHandle<
     Array<{ id: string; tenantId: string; ruleCode: string; ruleName: string }>
   >(
@@ -450,7 +456,7 @@ export async function fetchMaterialOutboundRuleOptions(tenantId: string) {
       supabase
         .from('mdm_outbound_rule')
         .select('id,tenant_id,rule_code,rule_name')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('status', 'enabled')
         .order('rule_code'),
     readOptions
@@ -463,7 +469,7 @@ export async function fetchMaterialOutboundRuleOptions(tenantId: string) {
   }))
 }
 
-export async function fetchMaterialSupplyRuleOptions(tenantId: string) {
+export async function fetchMaterialSupplyRuleOptions(tenantId?: string | null) {
   const { data } = await responseHandle<
     Array<{
       id: string
@@ -478,7 +484,7 @@ export async function fetchMaterialSupplyRuleOptions(tenantId: string) {
       supabase
         .from('mdm_supply_chain_code_rule')
         .select('id,tenant_id,rule_code,rule_name,apply_batch,apply_serial')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('status', 'enabled')
         .order('rule_code'),
     readOptions
@@ -493,13 +499,15 @@ export async function fetchMaterialSupplyRuleOptions(tenantId: string) {
   }))
 }
 
-export async function fetchMaterialSiteOptions(tenantId: string): Promise<MaterialContextOption[]> {
+export async function fetchMaterialSiteOptions(
+  tenantId?: string | null
+): Promise<MaterialContextOption[]> {
   const { data } = await responseHandle<Array<{ id: string; tenantId: string; siteName: string }>>(
     () =>
       supabase
         .from('mdm_site')
         .select('id,tenant_id,site_name')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .order('sort'),
     readOptions
   )
@@ -511,7 +519,7 @@ export async function fetchMaterialSiteOptions(tenantId: string): Promise<Materi
 }
 
 export async function fetchMaterialStorageOptions(
-  tenantId: string
+  tenantId?: string | null
 ): Promise<MaterialContextOption[]> {
   const { data } = await responseHandle<
     Array<{ id: string; tenantId: string; locationCode: string; locationName: string }>
@@ -520,7 +528,7 @@ export async function fetchMaterialStorageOptions(
       supabase
         .from('mdm_storage_location')
         .select('id,tenant_id,location_code,location_name')
-        .eq('tenant_id', tenantId)
+        .match(tenantId ? { tenant_id: tenantId } : {})
         .eq('status', 'enabled')
         .order('location_code'),
     readOptions

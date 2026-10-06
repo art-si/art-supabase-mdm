@@ -124,16 +124,6 @@ export async function savePurchaseSupplier(input: PurchaseSupplierInput) {
   return data
 }
 
-export async function deletePurchaseSuppliers(ids: string[]) {
-  await responseHandle<number>(() => supabase.rpc('smis_delete_suppliers_secure', { p_ids: ids }), {
-    breakReturn: true,
-    showErrorMessage: true,
-    showMessage: true,
-    message: '供应商已删除',
-    errorMessage: '供应商删除失败，请检查业务引用'
-  })
-}
-
 export async function fetchSupplierBanks(supplierId: string) {
   const { data } = await responseHandle<SupplierBank[]>(
     () =>

@@ -16,7 +16,8 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        v-model="search"
+        :model-value="search"
+        @update:model-value="replaceReactiveModel(search, $event)"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -37,6 +38,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import dayjs from 'dayjs'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'

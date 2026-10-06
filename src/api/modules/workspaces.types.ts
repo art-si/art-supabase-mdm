@@ -26,6 +26,7 @@ export interface OperationTask {
   choices: string[]
 }
 export interface OperationTemplateInput {
+  tenantId: string
   name: string
   items: OperationTask[]
   sort: number

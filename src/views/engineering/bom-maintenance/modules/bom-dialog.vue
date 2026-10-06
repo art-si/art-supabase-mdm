@@ -12,6 +12,16 @@
         </template>
       </ArtEntitySummary>
 
+      <ArtAsyncState
+        v-if="referenceLoading || referenceError"
+        :loading="referenceLoading"
+        :error="referenceError"
+        error-title="BOM 选项加载失败"
+        size="compact"
+        :skeleton-rows="2"
+        retryable
+        @retry="loadReferences"
+      />
       <ArtForm
         ref="formRef"
         v-model="form"
@@ -39,8 +49,18 @@
         </template>
       </ArtForm>
 
+      <ArtAsyncState
+        v-if="routeLoading || stepLoading || processLoadError"
+        :loading="routeLoading || stepLoading"
+        :error="processLoadError"
+        error-title="工艺数据加载失败"
+        size="compact"
+        :skeleton-rows="2"
+        retryable
+        @retry="retryProcessData"
+      />
       <ElAlert
-        v-if="form.materialId && !routeLoading && !processRoutes.length"
+        v-if="form.materialId && !routeLoading && !processLoadError && !processRoutes.length"
         type="warning"
         :closable="false"
         show-icon
@@ -160,6 +180,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -224,6 +245,29 @@
   const componentTypes = ref<ComponentTypeRecord[]>([])
   const routeLoading = ref(false)
   const stepLoading = ref(false)
+  const processLoadError = shallowRef<Error | null>(null)
+  const referenceLoading = ref(false)
+  const referenceError = shallowRef<Error | null>(null)
+  let referenceVersion = 0
+  let loadUnits: BomDialogOpenData['loadUnits']
+  let routeRequestVersion = 0
+  let stepRequestVersion = 0
+  let formRevision = 0
+  let initializing = false
+  let retryForceFirst = false
+  const invalidateProcessReads = (): void => {
+    formRevision += 1
+    referenceVersion += 1
+    referenceLoading.value = false
+    referenceError.value = null
+    routeRequestVersion += 1
+    stepRequestVersion += 1
+    routeLoading.value = false
+    stepLoading.value = false
+    processLoadError.value = null
+  }
+  const route = useRoute()
+  watch(() => route.fullPath, invalidateProcessReads)
   const selectedParent = ref<MaterialArchive[]>([])
   const selectedComponents = ref<MaterialArchive[]>([])
   const pickerSelectedComponents = ref<MaterialArchive[]>([])
@@ -406,15 +450,36 @@
       categoryId: String(params.filters.categoryId || '') || undefined,
       status: 'enabled'
     })
-  let materialCategoryRequestVersion = 0
-  const loadMaterialCategories = async (): Promise<void> => {
-    const requestVersion = ++materialCategoryRequestVersion
-    if (!form.value.tenantId) {
-      materialCategories.value = []
-      return
+  const loadReferences = async (): Promise<void> => {
+    const version = ++referenceVersion
+    const revision = formRevision
+    const tenantId = form.value.tenantId
+    referenceLoading.value = true
+    referenceError.value = null
+    try {
+      if (!tenantId) throw new Error('请先确定 BOM 所属租户')
+      const [loadedUnits, categories, types] = await Promise.all([
+        loadUnits ? loadUnits() : Promise.resolve(units.value),
+        fetchMaterialCategories(tenantId),
+        fetchComponentTypeOptions(tenantId)
+      ])
+      if (
+        version !== referenceVersion ||
+        revision !== formRevision ||
+        tenantId !== form.value.tenantId
+      )
+        return
+      units.value = loadedUnits
+      materialCategories.value = categories
+      componentTypes.value = types
+    } catch (cause) {
+      if (version !== referenceVersion || revision !== formRevision) return
+      referenceError.value = new Error('BOM 选项加载失败，请重新加载；已填写的信息会保留', {
+        cause
+      })
+    } finally {
+      if (version === referenceVersion) referenceLoading.value = false
     }
-    const categories = await fetchMaterialCategories(form.value.tenantId)
-    if (requestVersion === materialCategoryRequestVersion) materialCategories.value = categories
   }
   const sequenceTypeLabel = (value?: string | null): string =>
     getDictMap.value.mdmProcessRouteSequenceType?.find((item) => item.value === value)?.label ||
@@ -488,14 +553,25 @@
     })
   }
   const loadProcessSteps = async (routeId?: string | null, forceFirst = false): Promise<void> => {
+    const version = ++stepRequestVersion
+    const tenantId = form.value.tenantId
+    retryForceFirst = forceFirst
+    processLoadError.value = null
     processSteps.value = []
+    stepLoading.value = false
     if (!routeId || !form.value.tenantId) {
       normalizeComponentAssignments(forceFirst)
       return
     }
     stepLoading.value = true
     try {
-      const rows = await fetchBomProcessRouteSteps(form.value.tenantId, routeId)
+      const rows = await fetchBomProcessRouteSteps(tenantId, routeId)
+      if (
+        version !== stepRequestVersion ||
+        tenantId !== form.value.tenantId ||
+        routeId !== form.value.processRouteId
+      )
+        return
       processSteps.value = [...rows].sort(
         (left, right) =>
           (left.sequence?.sequenceNo ?? 0) - (right.sequence?.sequenceNo ?? 0) ||
@@ -503,14 +579,25 @@
           left.code.localeCompare(right.code)
       )
       normalizeComponentAssignments(forceFirst)
+    } catch (cause) {
+      if (version !== stepRequestVersion) return
+      processLoadError.value = new Error('工序加载失败，请重新加载；已填写的组件信息会保留', {
+        cause
+      })
     } finally {
-      stepLoading.value = false
+      if (version === stepRequestVersion) stepLoading.value = false
     }
   }
   const loadProcessRoutes = async (
     materialId?: string,
     preferredRouteId?: string | null
   ): Promise<void> => {
+    const version = ++routeRequestVersion
+    stepRequestVersion += 1
+    const tenantId = form.value.tenantId
+    processLoadError.value = null
+    stepLoading.value = false
+    routeLoading.value = false
     processRoutes.value = []
     processSteps.value = []
     if (!materialId || !form.value.tenantId) {
@@ -519,14 +606,30 @@
     }
     routeLoading.value = true
     try {
-      processRoutes.value = await fetchBomProcessRoutes(form.value.tenantId, materialId)
+      const rows = await fetchBomProcessRoutes(tenantId, materialId)
+      if (
+        version !== routeRequestVersion ||
+        tenantId !== form.value.tenantId ||
+        materialId !== form.value.materialId
+      )
+        return
+      processRoutes.value = rows
       const preferred = processRoutes.value.find((route) => route.id === preferredRouteId)
       form.value.processRouteId = preferred?.id ?? processRoutes.value[0]?.id ?? null
       await loadProcessSteps(form.value.processRouteId)
+    } catch (cause) {
+      if (version !== routeRequestVersion) return
+      processLoadError.value = new Error('工艺路线加载失败，请重新加载；已填写的组件信息会保留', {
+        cause
+      })
     } finally {
-      routeLoading.value = false
+      if (version === routeRequestVersion) routeLoading.value = false
     }
   }
+  const retryProcessData = (): Promise<void> =>
+    processRoutes.value.length
+      ? loadProcessSteps(form.value.processRouteId, retryForceFirst)
+      : loadProcessRoutes(form.value.materialId, form.value.processRouteId)
   const handleProcessRouteChange = async (value: string): Promise<void> => {
     form.value.processRouteId = value || null
     await loadProcessSteps(form.value.processRouteId, true)
@@ -857,10 +960,18 @@
     }
   ])
   const handleParentChange = async (_value: unknown, rows: DataSelectRecord[]) => {
+    const revision = formRevision
+    const tenantId = form.value.tenantId
     const row = rows[0] as MaterialArchive | undefined
     selectedParent.value = row ? [row] : []
     form.value.baseUnitId = row?.productionUnitId || row?.baseUnitId || ''
     await loadProcessRoutes(row?.id)
+    if (
+      revision !== formRevision ||
+      tenantId !== form.value.tenantId ||
+      form.value.materialId !== (row?.id || '')
+    )
+      return
     if (row && !form.value.baseUnitId) {
       ElMessage.warning('该父项物料未维护生产单位，请在“生产单位”字段补充后保存')
     }
@@ -919,44 +1030,82 @@
     }
     row.quantity = converted
   }
-  const validateComponents = async (): Promise<boolean> => {
-    const result = await componentTableRef.value?.validate()
-    if (result?.valid !== false) return true
-    ElMessage.warning(
-      `${result.firstError?.message || '组件明细填写不完整'}，请完善红色标记项后再保存`
-    )
-    return false
-  }
   const handleSubmit = async (): Promise<boolean> => {
+    const revision = formRevision
+    const tenantId = form.value.tenantId
+    const recordId = form.value.id
+    const stepVersion = stepRequestVersion
+    const routeVersion = routeRequestVersion
+    const referencesVersion = referenceVersion
+    const isCurrent = () =>
+      revision === formRevision && tenantId === form.value.tenantId && recordId === form.value.id
+    const processReady = () =>
+      !referenceLoading.value &&
+      !referenceError.value &&
+      referencesVersion === referenceVersion &&
+      !routeLoading.value &&
+      !stepLoading.value &&
+      !processLoadError.value &&
+      stepVersion === stepRequestVersion &&
+      routeVersion === routeRequestVersion
+    if (referenceLoading.value || referenceError.value) {
+      ElMessage.warning('请先等待 BOM 选项加载成功后再保存')
+      return false
+    }
+    if (routeLoading.value || stepLoading.value || processLoadError.value) {
+      ElMessage.warning('请先等待工艺数据加载成功后再保存')
+      return false
+    }
     try {
-      if (!(await validateArtFormForSubmit(formRef.value))) {
+      const valid = await validateArtFormForSubmit(formRef.value)
+      if (!isCurrent()) return false
+      if (!valid) {
         ElMessage.warning('请先完善 BOM 基本信息中的必填项')
         dialogRef.value?.scrollTo({ top: 0 })
         return false
       }
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, 'BOM 基本信息校验未完成，请稍后重试', 'warning')
       dialogRef.value?.scrollTo({ top: 0 })
       return false
     }
 
     try {
-      if (!(await validateComponents())) return false
+      const result = await componentTableRef.value?.validate()
+      if (!isCurrent()) return false
+      if (result?.valid === false) {
+        ElMessage.warning(
+          `${result.firstError?.message || '组件明细填写不完整'}，请完善红色标记项后再保存`
+        )
+        return false
+      }
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, 'BOM 组件校验未完成，请稍后重试', 'warning')
       return false
     }
 
     try {
-      await saveBom(form.value)
+      if (!processReady()) {
+        ElMessage.warning('工艺数据已变化，请加载完成后重新保存')
+        return false
+      }
+      await saveBom(cloneDeep(form.value))
+      if (!isCurrent()) return false
+      ElMessage.success('BOM 保存成功')
       emit('success')
       return true
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, 'BOM 保存失败，请检查物料和用量后重试')
       return false
     }
   }
   const handleOpen = async (data: BomDialogOpenData): Promise<void> => {
+    invalidateProcessReads()
+    initializing = true
+    loadUnits = data.loadUnits
     Object.assign(form.value, initialForm())
     tenantOptions.value = data.tenantOptions
     units.value = data.units
@@ -982,6 +1131,8 @@
       form.value.version = ''
       form.value.status = 'design'
     }
+    await nextTick()
+    initializing = false
     await dialogRef.value?.handleOpen(data, {
       title: data.copy ? '复制 BOM' : data.row ? '编辑 BOM' : '新增 BOM',
       subtitle: '版本化维护父项与组件的工程关系',
@@ -989,23 +1140,20 @@
       contentMaxHeight: '76vh',
       loading: true,
       onConfirm: handleSubmit,
+      onClose: invalidateProcessReads,
       onOpen: async (_openData, api) => {
+        const revision = formRevision
         try {
           await Promise.all([
-            data.loadUnits?.().then((rows) => {
-              units.value = rows
-            }),
-            loadProcessRoutes(form.value.materialId, data.row?.processRouteId),
-            loadMaterialCategories(),
-            fetchComponentTypeOptions(form.value.tenantId).then((rows) => {
-              componentTypes.value = rows
-            })
+            loadReferences(),
+            loadProcessRoutes(form.value.materialId, data.row?.processRouteId)
           ])
+          if (revision !== formRevision) return
           formRef.value?.clearValidate()
           componentTableRef.value?.clearValidate()
           componentTableRef.value?.elTableRef?.clearSelection()
         } finally {
-          api.setLoading(false)
+          if (revision === formRevision) api.setLoading(false)
         }
       }
     })
@@ -1013,7 +1161,8 @@
   watch(
     () => form.value.tenantId,
     (value, previous) => {
-      if (value === previous || !previous) return
+      if (initializing || value === previous || !previous) return
+      invalidateProcessReads()
       form.value.materialId = ''
       form.value.processRouteId = null
       form.value.baseUnitId = ''
@@ -1025,7 +1174,7 @@
       selectedComponents.value = []
       selectedComponentIds.value = []
       pickerSelectedComponents.value = []
-      void loadMaterialCategories()
+      void loadReferences()
     }
   )
   defineExpose({ handleOpen })

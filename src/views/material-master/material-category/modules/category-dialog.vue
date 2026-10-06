@@ -10,7 +10,8 @@
       </div>
       <ArtForm
         ref="formRef"
-        v-model="formModel"
+        :model-value="formModel"
+        @update:model-value="replaceReactiveModel(formModel, $event)"
         :items="formItems"
         :rules="formRules"
         :span="12"
@@ -33,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -116,6 +118,7 @@
     sort: 10
   })
   const formModel = reactive<MaterialCategory>(initialForm())
+  let initializingForm = false
   const tenantId = computed(() => formModel.tenantId)
   const categoryOptions = computed<CategoryTreeOption[]>(() => {
     const scoped = sourceCategories.value.filter((item) => item.tenantId === formModel.tenantId)
@@ -312,22 +315,32 @@
     }
   }
   const handleOpen = async (data: CategoryDialogOpenData): Promise<void> => {
-    Object.assign(formModel, initialForm())
-    tenantOptions.value = data.tenantOptions
-    sourceCategories.value = data.categories
-    sourceMaterialTypes.value = data.materialTypes
-    sourceSites.value = data.sites
-    if (data.row) Object.assign(formModel, cloneDeep(data.row))
-    formModel.tenantId = data.row?.tenantId || data.tenantId
-    if (!data.row && data.parentId) formModel.parentId = data.parentId
-    if (data.copy) {
-      const originalCode = formModel.categoryCode
-      formModel.id = ''
-      formModel.categoryCode = `${formModel.categoryCode}-COPY`
-      if (formModel.codePrefix === originalCode) formModel.codePrefix = formModel.categoryCode
-      formModel.categoryName = `${formModel.categoryName}（副本）`
+    initializingForm = true
+    try {
+      Object.assign(formModel, initialForm())
+      tenantOptions.value = data.tenantOptions
+      sourceCategories.value = data.categories
+      sourceMaterialTypes.value = data.materialTypes
+      sourceSites.value = data.sites
+      if (data.row) Object.assign(formModel, cloneDeep(data.row))
+      formModel.tenantId = data.row?.tenantId || data.tenantId
+      if (!data.row && data.parentId)
+        formModel.parentId =
+          sourceCategories.value.find(
+            (category) => category.id === data.parentId && category.tenantId === formModel.tenantId
+          )?.id ?? null
+      if (data.copy) {
+        const originalCode = formModel.categoryCode
+        formModel.id = ''
+        formModel.categoryCode = `${formModel.categoryCode}-COPY`
+        if (formModel.codePrefix === originalCode) formModel.codePrefix = formModel.categoryCode
+        formModel.categoryName = `${formModel.categoryName}（副本）`
+      }
+      syncTenantOptions()
+    } finally {
+      await nextTick()
+      initializingForm = false
     }
-    syncTenantOptions()
     await dialogRef.value?.handleOpen(data, {
       title: `${data.copy ? '复制' : data.row ? '编辑' : '新增'}物料分类`,
       subtitle: '统一维护分类语义、采购收货容差与批次计价默认策略',
@@ -348,7 +361,7 @@
   watch(
     () => formModel.tenantId,
     (value, previous) => {
-      if (value === previous) return
+      if (initializingForm || value === previous) return
       syncTenantOptions()
       if (!previous) return
       if (

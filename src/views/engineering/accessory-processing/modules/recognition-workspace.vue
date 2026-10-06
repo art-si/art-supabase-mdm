@@ -418,11 +418,17 @@
       </ArtSectionCard>
 
       <ArtSectionCard
-        :title="isPlatformSuper ? '当前租户识别记录' : '我的识别记录'"
+        :title="
+          isPlatformSuper
+            ? effectiveTenantId
+              ? '当前租户识别记录'
+              : '全部租户识别记录'
+            : '我的识别记录'
+        "
         subtitle="识别结果可继续校对；点击保存后才会成为下方业务清单。"
-        :loading="workspace.recognitionsLoading"
-        :error="workspace.recognitionsError"
-        :empty="!workspace.recognitions.length"
+        :loading="recognitionsLoading"
+        :error="recognitionsError"
+        :empty="!recognitions.length"
         empty-title="暂无识别记录"
         empty-description="上传清单并完成一次识别后，这里会保留预览记录。"
         @retry="loadRecognitions"
@@ -435,7 +441,7 @@
         </template>
         <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
           <button
-            v-for="record in workspace.recognitions"
+            v-for="record in recognitions"
             :key="record.id"
             type="button"
             class="art-card-xs min-w-0 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-color)]"
@@ -467,13 +473,24 @@
             >
           </button>
         </div>
+        <div v-if="recognitionTotal > recognitionPageSize" class="flex justify-center pt-4">
+          <ElPagination
+            :current-page="recognitionPage"
+            :page-size="recognitionPageSize"
+            :total="recognitionTotal"
+            :disabled="recognitionsLoading"
+            layout="prev, pager, next"
+            :pager-count="5"
+            @current-change="changeRecognitionPage"
+          />
+        </div>
       </ArtSectionCard>
 
       <ArtSectionCard
         title="配件加工清单数据列表"
         :subtitle="`逐件展示已保存的加工件，共 ${savedRows.length} 件；同名不同长度分别占一行。`"
-        :loading="workspace.loading"
-        :error="workspace.error"
+        :loading="listsLoading"
+        :error="listsError"
         :empty="!savedRows.length && !listKeyword"
         empty-title="暂无配件加工清单"
         empty-description="完成识别校对后，点击“确认并保存清单”。"
@@ -492,7 +509,7 @@
               icon="ri:refresh-line"
               label="刷新配件加工清单"
               class="shrink-0"
-              :loading="workspace.loading"
+              :loading="listsLoading"
               @click="loadLists"
             />
           </div>
@@ -502,7 +519,7 @@
             :data="visibleSavedRows"
             :columns="savedColumns"
             :pagination="{ current: listPage, size: listPageSize, total: filteredSavedRows.length }"
-            :loading="workspace.loading"
+            :loading="listsLoading"
             empty-text="没有匹配的加工件"
             @pagination:current-change="listPage = $event"
             @pagination:size-change="onListPageSizeChange"
@@ -540,7 +557,7 @@
 
 <script setup lang="ts">
   import { getScrollBehavior } from '@/utils/ui/scroll'
-  import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { ElCollapse, ElCollapseItem, ElMessage } from 'element-plus'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -553,6 +570,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type { ColumnOption } from '@/types/component'
   import { useUserStore } from '@/store/modules/user'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
@@ -560,7 +578,7 @@
   import {
     fetchAccessoryCustomers,
     fetchAccessoryLists,
-    fetchAccessoryRecognitions,
+    fetchAccessoryRecognitionPage,
     fetchAccessoryProjects,
     fetchMaterialCategories,
     fetchMaterialReferenceOptions,
@@ -598,22 +616,16 @@
     groupId: string
     pages: DocumentPage[]
     sketchUrls: string[]
-    lists: AccessoryProcessingList[]
-    recognitions: AccessoryRecognitionRecord[]
     projects: AccessoryProjectOption[]
     customers: AccessoryCustomerOption[]
     categories: MaterialCategory[]
     types: MaterialType[]
     units: UnitOfMeasure[]
-    loading: boolean
-    recognitionsLoading: boolean
-    recognitionsError: string
     openingRecognitionId: string
     projectsLoading: boolean
     recognizing: boolean
     recognitionError: string
     saving: boolean
-    error: string
   }
   interface DraftState {
     id?: string
@@ -635,22 +647,16 @@
     groupId: crypto.randomUUID(),
     pages: [],
     sketchUrls: [],
-    lists: [],
-    recognitions: [],
     projects: [],
     customers: [],
     categories: [],
     types: [],
     units: [],
-    loading: false,
-    recognitionsLoading: false,
-    recognitionsError: '',
     openingRecognitionId: '',
     projectsLoading: false,
     recognizing: false,
     recognitionError: '',
-    saving: false,
-    error: ''
+    saving: false
   })
   const draft = reactive<DraftState>({
     id: undefined,
@@ -806,7 +812,7 @@
     categoryName: string
   }
   const savedRows = computed<AccessorySavedRow[]>(() =>
-    workspace.lists.flatMap((list) =>
+    savedLists.value.flatMap((list) =>
       list.items.map((item) => ({
         ...item,
         list,
@@ -1068,6 +1074,7 @@
       })
       workspace.sketchUrls = sketchUrls
       editingIndex.value = null
+      recognitionPage.value = 1
       await loadRecognitions()
       ElMessage.success(`已识别 ${items.length} 个独立加工件，识别记录已留存`)
       await nextTick()
@@ -1175,7 +1182,7 @@
         items: draft.items
       })
       await loadLists()
-      const saved = workspace.lists.find((list) => list.id === draft.id)
+      const saved = savedLists.value.find((list) => list.id === draft.id)
       if (saved) draft.items = saved.items
       if (notify) ElMessage.success('配件加工清单已保存，可在主列表逐件查看')
       emit('saved')
@@ -1203,7 +1210,7 @@
         projectName: draft.projectName.trim()
       })
       await loadLists()
-      const saved = workspace.lists.find((list) => list.id === draft.id)
+      const saved = savedLists.value.find((list) => list.id === draft.id)
       if (saved) {
         draft.projectName = saved.projectName
         draft.projectId = saved.projectId
@@ -1219,38 +1226,58 @@
     }
   }
 
-  async function loadLists(): Promise<void> {
-    workspace.loading = true
-    workspace.error = ''
-    try {
-      workspace.lists = (await fetchAccessoryLists(effectiveTenantId.value)).filter((list) =>
+  const recognitionPage = ref(1)
+  const recognitionPageSize = 12
+  const {
+    detail: recognitionResult,
+    loading: recognitionsLoading,
+    loadError: recognitionsError,
+    loadDetail: readRecognitions,
+    openDetail: resetRecognitions
+  } = useDetailRecord<Awaited<ReturnType<typeof fetchAccessoryRecognitionPage>>>(
+    async () => ({
+      data: await fetchAccessoryRecognitionPage({
+        tenantId: effectiveTenantId.value,
+        includeTenantRecords: isPlatformSuper.value,
+        current: recognitionPage.value,
+        size: recognitionPageSize
+      })
+    }),
+    '识别记录加载失败，请重试'
+  )
+  const recognitions = computed(() => recognitionResult.value?.data ?? [])
+  const recognitionTotal = computed(() => recognitionResult.value?.total ?? 0)
+  const {
+    detail: listResult,
+    loading: listsLoading,
+    loadError: listsError,
+    loadDetail: readLists,
+    openDetail: resetLists
+  } = useDetailRecord<AccessoryProcessingList[]>(
+    async () => ({
+      data: (await fetchAccessoryLists(effectiveTenantId.value)).filter((list) =>
         Boolean(list.sourcePath)
       )
-    } catch (error) {
-      workspace.error = getFriendlySupabaseErrorMessage(error, '清单加载失败，请重试')
-    } finally {
-      workspace.loading = false
-    }
+    }),
+    '清单加载失败，请重试'
+  )
+  const savedLists = computed(() => listResult.value ?? [])
+  function loadLists(): Promise<void> {
+    return readLists('lists')
   }
-
-  async function loadRecognitions(): Promise<void> {
-    workspace.recognitionsLoading = true
-    workspace.recognitionsError = ''
-    const tenantId = effectiveTenantId.value
-    const includeTenantRecords = isPlatformSuper.value
-    try {
-      const records = await fetchAccessoryRecognitions(tenantId, includeTenantRecords)
-      if (tenantId === effectiveTenantId.value && includeTenantRecords === isPlatformSuper.value)
-        workspace.recognitions = records
-    } catch (error) {
-      workspace.recognitionsError = getFriendlySupabaseErrorMessage(
-        error,
-        '识别记录加载失败，请重试'
-      )
-    } finally {
-      workspace.recognitionsLoading = false
-    }
+  function loadRecognitions(): Promise<void> {
+    return readRecognitions('recognitions')
   }
+  function changeRecognitionPage(current: number): void {
+    recognitionPage.value = current
+    void loadRecognitions()
+  }
+  function resetRecognitionScope(): void {
+    recognitionPage.value = 1
+    resetRecognitions('')
+    resetLists('')
+  }
+  onUnmounted(resetRecognitionScope)
 
   async function openRecognition(record: AccessoryRecognitionRecord): Promise<void> {
     if (workspace.openingRecognitionId) return
@@ -1387,10 +1414,12 @@
   watch(effectiveTenantId, (tenantId) => {
     workspace.tenantId = tenantId ?? userStore.getUserInfo.tenantId ?? ''
     resetUpload()
+    resetRecognitionScope()
     void Promise.all([loadLists(), loadRecognitions()])
   })
   watch(isPlatformSuper, () => {
-    void Promise.all([loadProjects(), loadRecognitions()])
+    resetRecognitionScope()
+    void Promise.all([loadLists(), loadProjects(), loadRecognitions()])
   })
   watch(
     () => draft.items,

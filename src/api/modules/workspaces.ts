@@ -1,8 +1,9 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
-import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'
 import { mapWithConcurrency } from '@/utils/async'
+import { loadAllDocumentPages, loadAllLinePages } from '@/utils/business/document-detail-list'
 import { keyBy, uniq } from 'lodash-es'
 import type {
   EmployeeSelectorContractParams,
@@ -94,6 +95,7 @@ export async function fetchOperationTemplates(
   p: WorkspaceQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(p)
   let q = supabase
     .from('mdm_operation_template')
     .select('*', { count: 'exact' })
@@ -102,7 +104,7 @@ export async function fetchOperationTemplates(
     .order('create_time', { ascending: false })
   if (p.keyword) q = q.or(buildOrIlikeFilter(['name'], p.keyword))
   if (typeof p.enabled === 'boolean') q = q.eq('enabled', p.enabled)
-  q = q.range((p.current - 1) * p.size, p.current * p.size - 1)
+  q = q.order('id').range(pageRange.from, pageRange.to)
   const { data, total } = await responseHandle<OperationTemplate[]>(
     () => (options?.signal ? q.abortSignal(options.signal) : q),
     read
@@ -117,7 +119,12 @@ export async function saveOperationTemplate(input: OperationTemplateInput, id?: 
       id
         ? supabase.from('mdm_operation_template').update(payload).eq('id', id).select('id')
         : supabase.from('mdm_operation_template').insert(payload).select('id'),
-    write
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      errorMessage: '作业模板保存失败，请检查任务项和网络后重试'
+    }
   )
 }
 export async function deleteOperationTemplates(ids: string[]) {
@@ -133,6 +140,7 @@ export async function setOperationTemplatesEnabled(ids: string[], enabled: boole
   )
 }
 export async function fetchWorkCenters(p: WorkspaceQuery, options?: { signal?: AbortSignal }) {
+  const pageRange = buildSupabasePageRange(p)
   let q = supabase
     .from('mdm_work_center')
     .select(
@@ -144,7 +152,7 @@ export async function fetchWorkCenters(p: WorkspaceQuery, options?: { signal?: A
   if (p.tenantId) q = q.eq('tenant_id', p.tenantId)
   if (p.keyword) q = q.or(buildOrIlikeFilter(['code', 'name'], p.keyword))
   if (p.departmentIds) q = q.in('department_id', p.departmentIds)
-  q = q.range((p.current - 1) * p.size, p.current * p.size - 1)
+  q = q.order('id').range(pageRange.from, pageRange.to)
   const { data, total } = await responseHandle<WorkCenterRow[]>(
     () => (options?.signal ? q.abortSignal(options.signal) : q),
     read
@@ -231,14 +239,15 @@ export async function fetchWorkCenterReferenceOptions(
   size: number,
   centerId?: string
 ) {
+  const pageRange = buildSupabasePageRange({ current, size })
   const { data } = await responseHandle<{ records: WorkCenterReference[]; total: number }>(
     () =>
       supabase.rpc('mdm_work_center_reference_options', {
         p_kind: kind,
         p_tenant_id: tenantId || null,
         p_keyword: keyword,
-        p_from: (current - 1) * size,
-        p_to: current * size - 1,
+        p_from: pageRange.from,
+        p_to: pageRange.to,
         p_center_id: centerId || null
       }),
     read
@@ -251,6 +260,7 @@ export async function fetchAvailableMainCenters(
   size: number,
   centerId?: string
 ) {
+  const pageRange = buildSupabasePageRange({ current, size })
   const { data } = await responseHandle<{
     records: Pick<WorkCenter, 'id' | 'code' | 'name'>[]
     total: number
@@ -259,8 +269,8 @@ export async function fetchAvailableMainCenters(
       supabase.rpc('mdm_available_main_centers', {
         p_center_id: centerId ?? null,
         p_keyword: keyword,
-        p_from: (current - 1) * size,
-        p_to: current * size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     read
   )
@@ -334,6 +344,7 @@ export async function fetchWorkstations(
   params: WorkstationQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(params)
   const { current, size, tenantId, workCenterId, keyword, enabled } = params
   if (!workCenterId) return { data: [], total: 0, current, size }
 
@@ -348,7 +359,8 @@ export async function fetchWorkstations(
     )
     .eq('work_center_id', workCenterId)
     .order('workstation_code')
-    .range((current - 1) * size, current * size - 1)
+    .order('id')
+    .range(pageRange.from, pageRange.to)
 
   if (tenantId) query = query.eq('tenant_id', tenantId)
   if (typeof enabled === 'boolean') query = query.eq('enabled', enabled)
@@ -494,13 +506,14 @@ export async function fetchPersonnelWorkCenterConfigs(
   params: PersonnelWorkCenterQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(params)
   const { current, size, keyword, departmentIds, onlyUnconfigured } = params
   const query = supabase.rpc('mdm_list_personnel_common_work_centers', {
     p_department_ids: departmentIds?.length ? departmentIds : null,
     p_keyword: normalizeNullableText(keyword),
     p_only_unconfigured: onlyUnconfigured ?? false,
-    p_from: (current - 1) * size,
-    p_to: current * size - 1
+    p_from: pageRange.from,
+    p_to: pageRange.to
   })
   const { data } = await responseHandle<{
     records: PersonnelWorkCenterConfig[]
@@ -575,13 +588,14 @@ export async function fetchProductionReferences(
   current: number,
   size: number
 ) {
+  const pageRange = buildSupabasePageRange({ current, size })
   const { data } = await responseHandle<{ records: Record<string, unknown>[]; total: number }>(
     () =>
       supabase.rpc('mdm_production_reference_options', {
         p_kind: kind,
         p_keyword: keyword,
-        p_from: (current - 1) * size,
-        p_to: current * size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     read
   )
@@ -595,6 +609,7 @@ export async function fetchProcessRouteMaterialOptions(params: {
   current: number
   size: number
 }) {
+  const pageRange = buildSupabasePageRange(params)
   const { data } = await responseHandle<{
     records: ProcessRouteMaterialOption[]
     total: number
@@ -604,8 +619,8 @@ export async function fetchProcessRouteMaterialOptions(params: {
         p_tenant_id: normalizeNullableText(params.tenantId),
         p_keyword: params.keyword,
         p_category_id: normalizeNullableText(params.categoryId),
-        p_from: (params.current - 1) * params.size,
-        p_to: params.current * params.size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     read
   )
@@ -613,6 +628,7 @@ export async function fetchProcessRouteMaterialOptions(params: {
 }
 
 export async function fetchProcessRoutes(p: WorkspaceQuery, options?: { signal?: AbortSignal }) {
+  const pageRange = buildSupabasePageRange(p)
   let query = supabase
     .from('mdm_process_route')
     .select(
@@ -621,7 +637,8 @@ export async function fetchProcessRoutes(p: WorkspaceQuery, options?: { signal?:
     )
     .order('is_default', { ascending: false })
     .order('update_time', { ascending: false })
-    .range((p.current - 1) * p.size, p.current * p.size - 1)
+    .order('id')
+    .range(pageRange.from, pageRange.to)
   if (p.tenantId) query = query.eq('tenant_id', p.tenantId)
   if (p.groupIds?.length) query = query.in('group_id', p.groupIds)
   else if (p.groupId) query = query.eq('group_id', p.groupId)
@@ -636,16 +653,22 @@ export async function fetchProcessRoutes(p: WorkspaceQuery, options?: { signal?:
 }
 
 export async function fetchProcessRoutePath(routeId: string, tenantId?: string) {
-  let query = supabase
-    .from('mdm_process_route_step')
-    .select('name')
-    .eq('route_id', routeId)
-    .order('sort')
-    .order('code')
-    .limit(1000)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<Array<{ name: string }>>(() => query, read)
-  return (data ?? [])
+  const data = await loadAllDocumentPages<{ name: string }, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) => {
+      let query = supabase
+        .from('mdm_process_route_step')
+        .select('name', { count: 'exact' })
+        .eq('route_id', routeId)
+        .order('sort')
+        .order('code')
+        .order('id')
+        .range(from, to)
+      if (tenantId) query = query.eq('tenant_id', tenantId)
+      return responseHandle<Array<{ name: string }>>(() => query, read)
+    },
+    {}
+  )
+  return data
     .map((step) => step.name.trim())
     .filter(Boolean)
     .join('→')
@@ -735,9 +758,11 @@ export async function fetchProcessSteps(
     sequenceId?: string
     workCenterId?: string
     bound?: boolean
+    includeComponentAssignmentCounts?: boolean
   },
   options?: { signal?: AbortSignal }
 ) {
+  const pageRange = buildSupabasePageRange(p)
   let query = supabase
     .from('mdm_process_route_step')
     .select(
@@ -746,7 +771,8 @@ export async function fetchProcessSteps(
     )
     .order('sort')
     .order('code')
-    .range((p.current - 1) * p.size, p.current * p.size - 1)
+    .order('id')
+    .range(pageRange.from, pageRange.to)
   if (p.tenantId) query = query.eq('tenant_id', p.tenantId)
   if (p.routeId) query = query.eq('route_id', p.routeId)
   if (p.sequenceId) query = query.eq('sequence_id', p.sequenceId)
@@ -759,7 +785,8 @@ export async function fetchProcessSteps(
     read
   )
   const rows = data ?? []
-  if (!rows.length) return { data: rows, total: total ?? 0, current: p.current, size: p.size }
+  if (!rows.length || p.includeComponentAssignmentCounts === false)
+    return { data: rows, total: total ?? 0, current: p.current, size: p.size }
   const assignmentCounts = new Map(
     await mapWithConcurrency(rows, 3, async (row) => {
       const countQuery = supabase
@@ -783,6 +810,20 @@ export async function fetchProcessSteps(
     current: p.current,
     size: p.size
   }
+}
+
+/** Load the complete parent route for sequence relationships without unused BOM counts. */
+export async function fetchAllProcessRouteSteps(
+  tenantId: string,
+  routeId: string
+): Promise<ProcessStep[]> {
+  return loadAllLinePages(fetchProcessSteps, {
+    tenantId,
+    routeId,
+    current: 1,
+    size: 500,
+    includeComponentAssignmentCounts: false
+  })
 }
 
 export async function saveProcessStep(input: ProcessStepInput, id?: string) {

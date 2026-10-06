@@ -10,7 +10,8 @@
       />
       <ArtForm
         ref="formRef"
-        v-model="model"
+        :model-value="model"
+        @update:model-value="replaceReactiveModel(model, $event)"
         :items="items"
         :rules="rules"
         :span="12"
@@ -23,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'

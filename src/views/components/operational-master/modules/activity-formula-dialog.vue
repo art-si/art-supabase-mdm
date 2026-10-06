@@ -32,7 +32,8 @@
         :show-submit="false"
         v-else
         ref="formRef"
-        v-model="model"
+        :model-value="model"
+        @update:model-value="replaceReactiveModel(model, $event)"
         :rules="rules"
         label-position="top"
       >
@@ -471,6 +472,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtForm from '@/components/core/forms/art-form/index.vue'

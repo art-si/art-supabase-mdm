@@ -1,0 +1,1 @@
+import{kr as e,mi as t,vr as n}from"./supabase-BcFWQa3e.js";import{t as r}from"./inventory-configuration-CQkyKY1c.js";var i=e({name:`MdmOutboundRule`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

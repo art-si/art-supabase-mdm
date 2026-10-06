@@ -119,4 +119,7 @@ test('material archive edit payload excludes read-only joined and audit fields',
   assert.equal(payload.backflushMethod, null)
   assert.equal(payload.overIssueControlMethod, null)
   assert.equal(payload.valuationMethod, null)
+  assert.equal(archiveModel.auxiliaryUnitId, '')
+  assert.equal(archiveModel.auxiliaryUnit2Id, '   ')
+  assert.equal(archiveModel.batchPolicy, ' ')
 })

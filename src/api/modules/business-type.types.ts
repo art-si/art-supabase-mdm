@@ -28,6 +28,7 @@ export interface BusinessTypeRecord {
   id: string
   tenantId: string
   documentTypeId: string
+  documentTypeIds: string[]
   menuIds: string[]
   businessTypeCode: string
   businessTypeName: string
@@ -48,12 +49,14 @@ export interface BusinessTypeRecord {
   updateTime?: string
   tenant?: BusinessTypeTenantReference | null
   documentType?: BusinessTypeDocumentReference | null
+  documentTypes?: BusinessTypeDocumentReference[]
   sourceBusinessType?: BusinessTypeSourceReference | null
 }
 
 export interface BusinessTypeWriteInput {
   tenantId?: string
   documentTypeId: string
+  documentTypeIds: string[]
   menuIds: string[]
   businessTypeCode: string
   businessTypeName: string

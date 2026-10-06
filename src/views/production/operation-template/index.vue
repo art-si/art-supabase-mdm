@@ -225,7 +225,10 @@
   const fetchTemplates = (p: WorkspaceQuery, o?: { signal?: AbortSignal }) =>
     fetchOperationTemplates({ ...p, tenantId: user.info.tenantId || '' }, o)
   const fetchBindings = (p: WorkspaceQuery & { bound?: boolean }, o?: { signal?: AbortSignal }) =>
-    fetchProcessSteps({ ...p, tenantId: user.info.tenantId || '' }, o)
+    fetchProcessSteps(
+      { ...p, tenantId: user.info.tenantId || '', includeComponentAssignmentCounts: false },
+      o
+    )
   const refresh = () => activeTable.value?.refreshData()
   const handleTemplateSuccess: ArtTableQueryProps['onSuccess'] = (rows, response) => {
     overview.templateRows = rows as OperationTemplate[]

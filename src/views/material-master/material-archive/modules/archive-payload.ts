@@ -1,4 +1,5 @@
 import { omit } from 'lodash-es'
+import { normalizeNullableText } from '@/utils/form/normalize'
 import type {
   MaterialArchive,
   MaterialArchiveInput,
@@ -81,12 +82,11 @@ const nullableMaterialArchiveStringFields = [
 ] as const satisfies readonly NullableMaterialArchiveStringField[]
 
 function normalizeBlankMaterialFields(payload: MaterialArchiveInput): MaterialArchiveInput {
-  return nullableMaterialArchiveStringFields.reduce<MaterialArchiveInput>((normalized, field) => {
-    const value = normalized[field]
-    return typeof value === 'string' && !value.trim()
-      ? { ...normalized, [field]: null }
-      : normalized
-  }, payload)
+  for (const field of nullableMaterialArchiveStringFields) {
+    const value = payload[field]
+    if (typeof value === 'string' && normalizeNullableText(value) === null) payload[field] = null
+  }
+  return payload
 }
 
 /** Keep relation and audit fields returned by archive reads out of the secure write payload. */

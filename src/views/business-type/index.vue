@@ -454,11 +454,15 @@
       minWidth: 190,
       formatter: (row) => (
         <div class="business-type-menu-cell">
-          <strong title={row.documentType?.documentTypeName}>
-            {row.documentType?.documentTypeName || '--'}
+          <strong title={row.documentTypes?.map((item) => item.documentTypeName).join('、')}>
+            {row.documentTypes?.map((item) => item.documentTypeName).join('、') ||
+              row.documentType?.documentTypeName ||
+              '--'}
           </strong>
-          <small title={row.documentType?.documentTypeCode}>
-            {row.documentType?.documentTypeCode || '--'}
+          <small title={row.documentTypes?.map((item) => item.documentTypeCode).join('、')}>
+            {row.documentTypes?.map((item) => item.documentTypeCode).join('、') ||
+              row.documentType?.documentTypeCode ||
+              '--'}
           </small>
         </div>
       )

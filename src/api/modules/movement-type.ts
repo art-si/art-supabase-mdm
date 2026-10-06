@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import { uniq } from 'lodash-es'
 import type {
   MovementTypeInput,
@@ -70,17 +71,21 @@ export async function fetchMovementTypePage(
 
 export async function fetchMovementTypeOptions(tenantId: string): Promise<MovementTypeOption[]> {
   if (!tenantId) return []
-  const { data } = await responseHandle<MovementTypeOption[]>(
-    () =>
-      supabase
-        .from('mdm_stock_movement_type')
-        .select('id,tenant_id,movement_code,movement_name,direction,status')
-        .eq('tenant_id', tenantId)
-        .order('movement_code')
-        .limit(1000),
-    readOptions
+  return loadAllDocumentPages<MovementTypeOption, { from?: number; to?: number }>(
+    ({ from = 0, to = 499 }) =>
+      responseHandle<MovementTypeOption[]>(
+        () =>
+          supabase
+            .from('mdm_stock_movement_type')
+            .select('id,tenant_id,movement_code,movement_name,direction,status', { count: 'exact' })
+            .eq('tenant_id', tenantId)
+            .order('movement_code')
+            .order('id')
+            .range(from, to),
+        readOptions
+      ),
+    {}
   )
-  return data ?? []
 }
 
 export async function exportMovementTypes(

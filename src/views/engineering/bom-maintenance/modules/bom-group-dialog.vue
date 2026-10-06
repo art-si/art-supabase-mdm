@@ -36,6 +36,8 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
+  import { ElMessage } from 'element-plus'
+  import { useRoute } from 'vue-router'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -165,9 +167,22 @@
 
   void userStore.ensureDictLoaded('commonBoolean')
 
+  let formRevision = 0
+  const invalidateForm = () => {
+    formRevision += 1
+  }
+  const route = useRoute()
+  watch(() => route.fullPath, invalidateForm)
+
   const submit = async (): Promise<boolean> => {
+    const revision = formRevision
+    const recordId = form.model.id
+    const tenantId = form.model.tenantId
+    const isCurrent = () =>
+      revision === formRevision && recordId === form.model.id && tenantId === form.model.tenantId
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (!isCurrent()) return false
       const mode = form.model.id ? 'edit' : 'add'
       const id = await saveBomGroup({
         ...form.model,
@@ -177,15 +192,19 @@
         sort: Number(form.model.sort),
         remark: normalizeNullableText(form.model.remark)
       })
-      emit('success', id || form.model.id || '', mode)
+      if (!isCurrent()) return false
+      ElMessage.success('BOM 分组已保存')
+      emit('success', id || recordId || '', mode)
       return true
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, 'BOM 分组保存失败，请检查填写内容和网络后重试')
       return false
     }
   }
 
   const handleOpen = async (data: BomGroupDialogOpenData): Promise<void> => {
+    invalidateForm()
     form.groups = cloneDeep(data.groups)
     form.tenantOptions = data.tenantOptions
     form.model = data.row
@@ -207,6 +226,7 @@
       confirmText: data.row ? '保存更改' : '创建分组',
       contentMaxHeight: 'min(70vh, calc(100vh - 190px))',
       onOpen: () => formRef.value?.clearValidate(),
+      onClose: invalidateForm,
       onConfirm: submit
     })
   }

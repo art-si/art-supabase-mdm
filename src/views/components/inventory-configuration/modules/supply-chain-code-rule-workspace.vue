@@ -18,7 +18,8 @@
 
       <ArtTableQuery
         ref="tableRef"
-        v-model="search"
+        :model-value="search"
+        @update:model-value="replaceReactiveModel(search, $event)"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -40,6 +41,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import dayjs from 'dayjs'
   import { cloneDeep } from 'lodash-es'

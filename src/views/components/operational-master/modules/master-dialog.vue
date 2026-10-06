@@ -98,7 +98,6 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { h, nextTick } from 'vue'
-  import { cloneDeep } from 'lodash-es'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -131,6 +130,7 @@
   } from './master-config'
   import MasterDetail from './master-detail.vue'
   import { buildOperationalMasterWriteInput } from './master-payload'
+  import { createOperationalMasterModel } from './master-model'
 
   export interface MasterDialogOpenData {
     config: OperationalMasterConfig
@@ -440,33 +440,6 @@
     return rules
   })
 
-  function createModel(data: MasterDialogOpenData): OperationalMasterRecord {
-    const model: OperationalMasterRecord = {
-      id: '',
-      tenantId: data.row?.tenantId || data.tenantId,
-      enabled: true,
-      remark: ''
-    }
-    for (const field of data.config.fields) {
-      if (field.multiple) model[field.key] = [] as never
-      else if (field.key === 'isDefault' || field.key === 'participatesScheduling') {
-        model[field.key] = false as never
-      } else if (field.key === 'price') model[field.key] = 0 as never
-      else if (!(field.key in model)) model[field.key] = null as never
-    }
-    if (data.row) Object.assign(model, cloneDeep(data.row))
-    else if (data.config.kind === 'operation' && data.initialGroupId) {
-      model.groupId = data.initialGroupId
-    }
-    if (data.copy) {
-      model.id = ''
-      for (const field of data.config.fields.filter((item) => item.systemGenerated)) {
-        model[field.key] = null as never
-      }
-    }
-    return model
-  }
-
   async function reloadReferences(): Promise<void> {
     form.references = await fetchOperationalMasterReferences(form.model.tenantId)
     if (form.model.groupId && !form.groups.some((group) => group.id === form.model.groupId)) {
@@ -496,7 +469,7 @@
     form.tenantOptions = data.tenantOptions
     form.readonly = !!data.readonly
     form.copy = !!data.copy
-    form.model = createModel(data)
+    form.model = createOperationalMasterModel(data)
     addressRegionPath.value = String(form.model.region || '')
       .split('/')
       .filter(Boolean)

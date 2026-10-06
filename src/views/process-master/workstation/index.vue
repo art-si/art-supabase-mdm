@@ -76,6 +76,7 @@
       </div>
 
       <WorkstationDialog ref="dialogRef" @success="handleSaved" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -98,7 +99,12 @@
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
+  import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { exportExcel } from '@/utils/file'
@@ -125,6 +131,12 @@
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const { getDictMap } = storeToRefs(userStore)
   const { confirmDelete } = useArtFeedback()
+  const { hasAuth } = useAuth()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'mdm_workstation',
+    '工位'
+  )
+  const deleteBusy = ref(false)
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof WorkstationDialog>>()
 
@@ -348,7 +360,9 @@
                 auth: 'MdmWorkstation:Delete'
               }
             ]}
-            onClick={(item) => (item.key === 'copy' ? openDialog(row, true) : void removeRow(row))}
+            onClick={(item) =>
+              item.key === 'copy' ? openDialog(row, true) : void removeRows([row])
+            }
           />
         </BusinessTableRowActions>
       )
@@ -383,14 +397,16 @@
 
   const selectionActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
-      type: 'delete',
+      key: 'delete',
+      label: '删除',
+      icon: 'ri:delete-bin-6-line',
+      buttonProps: { type: 'danger' },
+      confirm: false,
       permission: 'MdmWorkstation:Delete',
-      content: (context: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${context.selectedCount} 个工位吗？`,
-      onClick: async (context: ArtTableQueryHeaderActionContext) => {
-        await deleteWorkstations(context.selectedRows.map((row) => String(row.id)))
-        await context.api.refreshRemove()
-      }
+      selectionRequired: true,
+      disabled: () => deleteBusy.value,
+      onClick: ({ selectedRows }: ArtTableQueryHeaderActionContext) =>
+        removeRows(selectedRows as Workstation[])
     }
   ])
 
@@ -413,10 +429,39 @@
     })
   }
 
-  async function removeRow(row: Workstation): Promise<void> {
-    await confirmDelete(`确定删除工位“${row.workstationName}”吗？`)
-    await deleteWorkstations([row.id])
-    await tableRef.value?.refreshRemove()
+  async function removeRows(rows: Workstation[]): Promise<void> {
+    if (deleteBusy.value || !rows.length) return
+    if (!hasAuth('MdmWorkstation:Delete') || rows.some((row) => !row.id)) {
+      ElMessage.error('当前账号无权删除所选工位，或记录已变化，请刷新后重试')
+      return
+    }
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${row.workstationName} · ${row.workstationCode}`
+    }))
+    deleteBusy.value = true
+    try {
+      if (await inspectDeleteReferences(resources)) return
+      await confirmDelete(
+        rows.length === 1
+          ? `确定删除工位“${rows[0].workstationName}”吗？`
+          : `确定删除选中的 ${rows.length} 个工位吗？`
+      )
+      try {
+        await deleteWorkstations(resources.map((row) => row.id))
+      } catch (error) {
+        if (error instanceof DeleteReferenceBlockedError) return
+        if (await inspectDeleteReferences(resources)) return
+        throw error
+      }
+      tableRef.value?.clearSelection()
+      await tableRef.value?.refreshRemove()
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close')
+        notifyFriendlyError(error, '工位删除失败，请检查网络后重试')
+    } finally {
+      deleteBusy.value = false
+    }
   }
 
   async function handleSaved(mode: 'add' | 'edit'): Promise<void> {
@@ -438,25 +483,28 @@
   }
 
   async function exportRows(): Promise<void> {
-    if (!selectedWorkCenter.value) {
+    const workCenter = selectedWorkCenter.value
+    if (!workCenter) {
       ElMessage.info('请先选择需要导出的工作中心')
       return
     }
     try {
-      const rows: Workstation[] = []
-      for (let current = 1; current <= 10; current += 1) {
-        const response = await fetchWorkstations({
-          tenantId: selectedWorkCenter.value.tenantId,
-          workCenterId: selectedWorkCenter.value.id,
+      const rows = await loadAllLinePages<Workstation, WorkstationQuery>(
+        async (query) => {
+          const response = await fetchWorkstations(query)
+          if (response.total > 10000)
+            throw new Error('导出数据不能超过 10000 行，请缩小筛选范围后重试')
+          return response
+        },
+        {
+          tenantId: workCenter.tenantId,
+          workCenterId: workCenter.id,
           keyword: table.search.keyword,
           enabled: table.search.enabled,
-          current,
-          size: 1000
-        })
-        if (response.total > 10000) throw new Error('export-limit')
-        rows.push(...response.data)
-        if (rows.length >= response.total) break
-      }
+          current: 1,
+          size: 500
+        }
+      )
       if (!rows.length) {
         ElMessage.info('当前筛选范围没有可导出的工位')
         return
@@ -482,10 +530,10 @@
           { key: 'andonSimNo', title: '安灯盒子 SIM 编号' },
           { key: 'enabled', title: '启用状态' }
         ],
-        filename: `工位配置-${selectedWorkCenter.value.code}`
+        filename: `工位配置-${workCenter.code}`
       })
-    } catch {
-      ElMessage.error('导出失败，请缩小筛选范围后重试')
+    } catch (error) {
+      notifyFriendlyError(error, '工位导出失败，请检查网络后重试')
     }
   }
 

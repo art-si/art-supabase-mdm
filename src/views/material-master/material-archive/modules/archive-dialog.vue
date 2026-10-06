@@ -28,7 +28,8 @@
 
         <ArtForm
           ref="formRef"
-          v-model="formModel"
+          :model-value="formModel"
+          @update:model-value="replaceReactiveModel(formModel, $event)"
           :items="formItems"
           :rules="formRules"
           :span="12"
@@ -215,6 +216,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
@@ -498,6 +500,7 @@
     sort: 10
   })
   const formModel = reactive<ArchiveFormModel>(initialForm())
+  let initializingForm = false
   const tenantId = computed(() => formModel.tenantId)
   const scopedCategories = computed(() =>
     categories.value.filter((item) => item.tenantId === formModel.tenantId)
@@ -1433,31 +1436,39 @@
     }
   }
   const handleOpen = async (data: ArchiveDialogOpenData): Promise<void> => {
-    Object.assign(formModel, initialForm())
-    resetEmployeeSelections()
-    activeTab.value = 'base'
-    tenantOptions.value = data.tenantOptions
-    categories.value = data.categories
-    materialTypes.value = data.materialTypes
-    units.value = data.units
-    attributeGroups.value = data.attributeGroups
-    codeRules.value = data.codeRules
-    storageOptions.value = data.storageOptions
-    materialGroupOptions.value = data.materialGroupOptions
-    supplierOptions.value = data.supplierOptions
-    warehouseOptions.value = data.warehouseOptions
-    outboundRuleOptions.value = data.outboundRuleOptions
-    supplyRuleOptions.value = data.supplyRuleOptions
-    if (data.row) Object.assign(formModel, cloneDeep(data.row))
-    formModel.tenantId = data.row?.tenantId || data.tenantId
-    if (!data.row && data.presetCategoryId) formModel.categoryId = data.presetCategoryId
-    if (data.copy) {
-      formModel.id = undefined
-      formModel.materialCode = ''
-      formModel.materialName = `${formModel.materialName}（副本）`
+    initializingForm = true
+    try {
+      Object.assign(formModel, initialForm())
+      resetEmployeeSelections()
+      activeTab.value = 'base'
+      tenantOptions.value = data.tenantOptions
+      categories.value = data.categories
+      materialTypes.value = data.materialTypes
+      units.value = data.units
+      attributeGroups.value = data.attributeGroups
+      codeRules.value = data.codeRules
+      storageOptions.value = data.storageOptions
+      materialGroupOptions.value = data.materialGroupOptions
+      supplierOptions.value = data.supplierOptions
+      warehouseOptions.value = data.warehouseOptions
+      outboundRuleOptions.value = data.outboundRuleOptions
+      supplyRuleOptions.value = data.supplyRuleOptions
+      if (data.row) Object.assign(formModel, cloneDeep(data.row))
+      formModel.tenantId = data.row?.tenantId || data.tenantId
+      if (!data.row && data.presetCategoryId)
+        formModel.categoryId =
+          scopedCategories.value.find((category) => category.id === data.presetCategoryId)?.id ?? ''
+      if (data.copy) {
+        formModel.id = undefined
+        formModel.materialCode = ''
+        formModel.materialName = `${formModel.materialName}（副本）`
+      }
+      if (!formModel.id && !formModel.codeRuleId)
+        formModel.codeRuleId = scopedCodeRules.value[0]?.id ?? null
+    } finally {
+      await nextTick()
+      initializingForm = false
     }
-    if (!formModel.id && !formModel.codeRuleId)
-      formModel.codeRuleId = scopedCodeRules.value[0]?.id ?? null
     await dialogRef.value?.handleOpen(data, {
       title: `${data.copy ? '复制' : data.row ? '编辑' : '新增'}物料编码`,
       subtitle: '统一物料身份与各业务域默认视图',
@@ -1485,7 +1496,7 @@
   watch(
     () => formModel.tenantId,
     (value, previous) => {
-      if (value === previous || !previous) return
+      if (initializingForm || value === previous || !previous) return
       formModel.categoryId = ''
       formModel.materialTypeId = null
       formModel.baseUnitId = null

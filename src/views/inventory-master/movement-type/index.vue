@@ -20,7 +20,8 @@
       </ElAlert>
       <ArtTableQuery
         ref="tableRef"
-        v-model="search"
+        :model-value="search"
+        @update:model-value="replaceReactiveModel(search, $event)"
         :api-fn="fetchRows"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -42,6 +43,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import dayjs from 'dayjs'
   import { ElButton, ElTag } from 'element-plus'
   import { storeToRefs } from 'pinia'

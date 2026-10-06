@@ -135,7 +135,8 @@
 
         <ArtTableQuery
           ref="tableRef"
-          v-model="search"
+          :model-value="search"
+          @update:model-value="replaceReactiveModel(search, $event)"
           class="route-maintenance__steps"
           :api-fn="fetchRows"
           :columns-factory="columns"
@@ -210,7 +211,8 @@
 
       <ArtForm
         ref="sequenceFormRef"
-        v-model="sequenceForm"
+        :model-value="sequenceForm"
+        @update:model-value="replaceReactiveModel(sequenceForm, $event)"
         :items="sequenceItems"
         :rules="sequenceRules"
         :span="24"
@@ -318,7 +320,8 @@
           <ArtForm
             v-else
             ref="formRef"
-            v-model="stepForm"
+            :model-value="stepForm"
+            @update:model-value="replaceReactiveModel(stepForm, $event)"
             :items="stepItems"
             :rules="stepRules"
             :span="12"
@@ -371,7 +374,8 @@
           />
           <ArtForm
             v-else
-            v-model="unitForm"
+            :model-value="unitForm"
+            @update:model-value="replaceReactiveModel(unitForm, $event)"
             :items="unitItems"
             :span="12"
             :gutter="24"
@@ -583,7 +587,8 @@
           />
           <ArtForm
             v-else
-            v-model="outsourcingForm"
+            :model-value="outsourcingForm"
+            @update:model-value="replaceReactiveModel(outsourcingForm, $event)"
             :items="outsourcingItems"
             :span="24"
             label-position="top"
@@ -604,7 +609,8 @@
           />
           <ArtForm
             v-else
-            v-model="inspectionForm"
+            :model-value="inspectionForm"
+            @update:model-value="replaceReactiveModel(inspectionForm, $event)"
             :items="inspectionItems"
             :span="12"
             :gutter="24"
@@ -626,7 +632,8 @@
           />
           <ArtForm
             v-else
-            v-model="sopForm"
+            :model-value="sopForm"
+            @update:model-value="replaceReactiveModel(sopForm, $event)"
             :items="sopItems"
             :span="24"
             label-position="top"
@@ -652,6 +659,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { cloneDeep, groupBy } from 'lodash-es'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -691,6 +699,7 @@
     fetchProcessRouteReferences,
     fetchProcessSequences,
     fetchProcessSteps,
+    fetchAllProcessRouteSteps,
     fetchWorkCenterActivities,
     saveProcessSequence,
     saveProcessStep,
@@ -1899,15 +1908,10 @@
     try {
       const [sequences, steps] = await Promise.all([
         fetchProcessSequences(route.value.id),
-        fetchProcessSteps({
-          tenantId: route.value.tenantId,
-          routeId: route.value.id,
-          current: 1,
-          size: 1000
-        })
+        fetchAllProcessRouteSteps(route.value.tenantId, route.value.id)
       ])
       sequenceState.rows = sequences
-      sequenceStepRows.value = steps.data
+      sequenceStepRows.value = steps
       if (!sequenceState.rows.some((item) => item.id === sequenceState.selectedId))
         sequenceState.selectedId = sequenceState.rows[0]?.id || ''
       const mainSequenceId = sequenceState.rows.find((item) => item.sequenceType === 'main')?.id

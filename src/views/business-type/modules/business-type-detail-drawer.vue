@@ -109,6 +109,7 @@
       id: '',
       tenantId: '',
       documentTypeId: '',
+      documentTypeIds: [],
       menuIds: [],
       businessTypeCode: '',
       businessTypeName: '',
@@ -136,9 +137,13 @@
       key: 'documentType',
       label: '所属单据类型',
       value: (data: BusinessTypeDetailData) =>
-        data.record.documentType
-          ? `${data.record.documentType.documentTypeName} · ${data.record.documentType.documentTypeCode}`
-          : '--',
+        data.record.documentTypes?.length
+          ? data.record.documentTypes
+              .map((item) => `${item.documentTypeName} · ${item.documentTypeCode}`)
+              .join('、')
+          : data.record.documentType
+            ? `${data.record.documentType.documentTypeName} · ${data.record.documentType.documentTypeCode}`
+            : '--',
       span: 2
     },
     {

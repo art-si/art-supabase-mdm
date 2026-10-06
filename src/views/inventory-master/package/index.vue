@@ -16,7 +16,8 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        v-model="search"
+        :model-value="search"
+        @update:model-value="replaceReactiveModel(search, $event)"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -36,6 +37,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'

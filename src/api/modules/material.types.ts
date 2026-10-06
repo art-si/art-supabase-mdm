@@ -77,7 +77,7 @@ export type MaterialReferenceKind =
 export interface MaterialReferenceQuery {
   current: number
   size: number
-  tenantId: string
+  tenantId?: string | null
   keyword?: string
   status?: MdmMaterialStatus
 }

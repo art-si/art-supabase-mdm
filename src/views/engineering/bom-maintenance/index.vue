@@ -33,7 +33,8 @@
         />
         <ArtTableQuery
           ref="tableRef"
-          v-model="search"
+          :model-value="search"
+          @update:model-value="replaceReactiveModel(search, $event)"
           :api-fn="fetchData"
           :search-items="searchItems"
           :columns-factory="columnsFactory"
@@ -60,6 +61,10 @@
 </template>
 
 <script setup lang="tsx">
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
+  import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
+  import { replaceReactiveModel } from '@/utils/form/model'
   import dayjs from 'dayjs'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
@@ -121,6 +126,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
+  const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   const route = useRoute()
   const targetBomId = computed(() =>
     route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
@@ -134,9 +140,17 @@
   const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
   const deleteBusy = ref(false)
   const units = ref<UnitOfMeasure[]>([])
-  const groups = ref<BomGroup[]>([])
-  const groupLoading = ref(false)
-  const groupError = ref<Error | null>(null)
+  const {
+    detail: loadedGroups,
+    loading: groupLoading,
+    loadError: groupError,
+    loadDetail: fetchGroups,
+    openDetail: resetGroups
+  } = useDetailRecord<BomGroup[]>(
+    async (scope) => ({ data: await fetchBomGroups(scope) }),
+    'BOM 分组加载失败，请重试'
+  )
+  const groups = computed(() => loadedGroups.value ?? [])
   const selectedGroupId = ref('')
   const groupTreeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId' })
   const groupTree = computed(() => groupTreeUtils.listToTree(groups.value) as BomGroup[])
@@ -195,27 +209,33 @@
       props: { clearable: true, options: getDictMap.value.mdmBomStatus ?? [] }
     }
   ])
-  const ensureOptions = async () => {
-    if (!units.value.length)
-      units.value = await fetchMaterialReferenceOptions<UnitOfMeasure>(
-        'unit-of-measure',
-        tenantId.value
-      )
-  }
-  const loadGroups = async () => {
-    groupLoading.value = true
-    groupError.value = null
+  let loadedUnitScope: string | undefined
+  let pendingUnits: { scope: string; promise: Promise<void> } | undefined
+  const ensureOptions = async (): Promise<void> => {
+    const scope = tenantId.value
+    if (loadedUnitScope === scope) return
+    if (pendingUnits?.scope === scope) return pendingUnits.promise
+    const assertScope = createTenantScopeReadGuard()
+    const promise = (async () => {
+      const rows = await fetchMaterialReferenceOptions<UnitOfMeasure>('unit-of-measure', scope)
+      assertScope()
+      units.value = rows
+      loadedUnitScope = scope
+    })()
+    pendingUnits = { scope, promise }
     try {
-      groups.value = await fetchBomGroups(tenantId.value)
-    } catch (error) {
-      groups.value = []
-      groupError.value = error instanceof Error ? error : new Error('BOM 分组加载失败')
+      await promise
     } finally {
-      groupLoading.value = false
+      if (pendingUnits?.promise === promise) pendingUnits = undefined
     }
   }
+  const loadGroups = async () => {
+    const scope = tenantId.value
+    resetGroups(scope)
+    await fetchGroups(scope)
+  }
   const groupDialogData = (options: { row?: BomGroup; parent?: BomGroup } = {}) => ({
-    tenantId: options.row?.tenantId || options.parent?.tenantId || tenantId.value,
+    tenantId: options.row?.tenantId || options.parent?.tenantId || defaultWriteTenantId.value || '',
     tenantOptions: tenantOptions.value.map((tenant) => ({
       label: tenant.tenantName || tenant.tenantCode,
       value: tenant.id
@@ -250,7 +270,7 @@
   const openDialog = async (row?: BomRecord, options?: { copy?: boolean }) => {
     const data: BomDialogOpenData = {
       row,
-      tenantId: row?.tenantId || tenantId.value,
+      tenantId: row?.tenantId || defaultWriteTenantId.value || '',
       tenantOptions: tenantOptions.value.map((tenant) => ({
         label: tenant.tenantName || tenant.tenantCode,
         value: tenant.id
@@ -607,7 +627,16 @@
     userStore.ensureDictLoaded('mdmBomPurpose'),
     userStore.ensureDictLoaded('mdmBomStatus')
   ])
-  watch(tenantId, () => void loadGroups(), { immediate: true })
+  watch(
+    tenantId,
+    () => {
+      units.value = []
+      loadedUnitScope = undefined
+      selectedGroupId.value = ''
+      void loadGroups()
+    },
+    { immediate: true }
+  )
   watch(targetBomId, () => {
     selectedGroupId.value = ''
     Object.assign(search, { keyword: '', purpose: undefined, status: undefined })

@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import type {
   MdmChangeRequest,
   MdmChangeRequestInput,
@@ -295,16 +296,23 @@ export interface MdmGovernanceUserOption {
 }
 
 export async function fetchMdmGovernanceUsers(keyword = ''): Promise<MdmGovernanceUserOption[]> {
-  let request = supabase
-    .from('sys_user')
-    .select('id,user_name,user_email')
-    .eq('status', '1')
-    .is('deleted_at', null)
-    .order('user_name')
-    .limit(100)
-  if (keyword) {
-    request = request.or(buildOrIlikeFilter(['user_name', 'user_email'], keyword))
-  }
-  const { data } = await responseHandle<MdmGovernanceUserOption[]>(() => request, readOptions)
-  return data ?? []
+  return loadAllDocumentPages<
+    MdmGovernanceUserOption,
+    { keyword: string; from?: number; to?: number }
+  >(
+    ({ keyword: search, from = 0, to = 499 }) =>
+      responseHandle<MdmGovernanceUserOption[]>(() => {
+        let request = supabase
+          .from('sys_user')
+          .select('id,user_name,user_email', { count: 'exact' })
+          .eq('status', '1')
+          .is('deleted_at', null)
+          .order('user_name')
+          .order('id')
+          .range(from, to)
+        if (search) request = request.or(buildOrIlikeFilter(['user_name', 'user_email'], search))
+        return request
+      }, readOptions),
+    { keyword }
+  )
 }

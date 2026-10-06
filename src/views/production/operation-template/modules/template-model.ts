@@ -13,7 +13,8 @@ export const templateScore = (items: OperationTask[]): number =>
     sumBy(items, (item) => Number(item.score) || 0),
     2
   )
-export const createTemplate = (): OperationTemplateInput => ({
+export const createTemplate = (tenantId = ''): OperationTemplateInput => ({
+  tenantId,
   name: '',
   items: [createTask()],
   sort: 0,
@@ -23,7 +24,9 @@ export const createTemplate = (): OperationTemplateInput => ({
 })
 export function templatePayload(row: OperationTemplateInput): OperationTemplateInput {
   return {
-    ...cloneDeep(pick(row, ['name', 'items', 'sort', 'textColor', 'tagType', 'enabled'])),
+    ...cloneDeep(
+      pick(row, ['tenantId', 'name', 'items', 'sort', 'textColor', 'tagType', 'enabled'])
+    ),
     name: row.name.trim(),
     textColor: row.textColor || ''
   }

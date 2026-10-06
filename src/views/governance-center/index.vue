@@ -84,7 +84,8 @@
           <ArtTableQuery
             ref="qualityTableRef"
             focusable
-            v-model="qualityQuery"
+            :model-value="qualityQuery"
+            @update:model-value="replaceReactiveModel(qualityQuery, $event)"
             :search-items="qualitySearchItems"
             :api-fn="fetchMdmQualityIssues"
             :columns-factory="qualityColumns"
@@ -102,7 +103,8 @@
           <ArtTableQuery
             ref="changeTableRef"
             focusable
-            v-model="changeQuery"
+            :model-value="changeQuery"
+            @update:model-value="replaceReactiveModel(changeQuery, $event)"
             :search-items="changeSearchItems"
             :api-fn="fetchMdmChangeRequests"
             :columns-factory="changeColumns"
@@ -120,7 +122,8 @@
           <ArtTableQuery
             ref="matchTableRef"
             focusable
-            v-model="matchQuery"
+            :model-value="matchQuery"
+            @update:model-value="replaceReactiveModel(matchQuery, $event)"
             :search-items="matchSearchItems"
             :api-fn="fetchMdmMatchCandidates"
             :columns-factory="matchColumns"
@@ -145,7 +148,8 @@
           <ArtTableQuery
             ref="outboxTableRef"
             focusable
-            v-model="outboxQuery"
+            :model-value="outboxQuery"
+            @update:model-value="replaceReactiveModel(outboxQuery, $event)"
             :search-items="outboxSearchItems"
             :api-fn="fetchMdmOutboxDeliveries"
             :columns-factory="outboxColumns"
@@ -163,6 +167,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'

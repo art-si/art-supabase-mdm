@@ -40,7 +40,8 @@
           <div class="warehouse-page__table-pane">
             <ArtTableQuery
               ref="tableRef"
-              v-model="search"
+              :model-value="search"
+              @update:model-value="replaceReactiveModel(search, $event)"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -68,6 +69,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import dayjs from 'dayjs'

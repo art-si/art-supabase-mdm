@@ -26,9 +26,11 @@
           @refresh="loadOptions"
         />
         <div class="material-archive-page__table">
+          <MasterDeleteProcessingNotice :location-ready="deleteLocationReady" />
           <ArtTableQuery
             ref="tableRef"
-            v-model="search"
+            :model-value="search"
+            @update:model-value="replaceReactiveModel(search, $event)"
             :api-fn="fetchData"
             :search-items="searchItems"
             :columns-factory="columnsFactory"
@@ -38,10 +40,13 @@
             :table-props="{
               rowKey: 'id',
               tableLayout: 'fixed',
-              emptyText: '暂无物料编码',
-              emptyDescription: '点击新增物料，建立第一条受治理的物料编码。'
+              emptyText: deleteProcessing.active ? '未找到关联物料' : '暂无物料编码',
+              emptyDescription: deleteProcessing.active
+                ? '请核对租户范围和查看权限，或返回来源页面重新检查关联。'
+                : '点击新增物料，建立第一条受治理的物料编码。'
             }"
             focusable
+            focus-scope-selector=".material-archive-page__workspace"
           />
         </div>
       </div>
@@ -231,8 +236,12 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
@@ -297,7 +306,14 @@
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
-  const tenantId = computed(() => effectiveTenantId.value ?? '')
+  const { defaultWriteTenantId } = useTenantScopeFormPolicy()
+  const deleteProcessing = useMasterDataDeleteProcessingContext()
+  const route = useRoute()
+  const deleteLocationReady = computed(
+    () =>
+      Boolean(deleteProcessing.value.recordId) &&
+      (route.query.resourceType !== 'mdm_supplier' || Boolean(deleteProcessing.value.resourceId))
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const detailDrawerRef = ref<ArtDrawerExpose<MaterialArchive>>()
@@ -317,6 +333,7 @@
   const selectedCategoryId = ref('')
   const optionsLoading = ref(false)
   const optionsError = ref('')
+  const optionsLoaded = ref(false)
   const overview = reactive({ total: 0, enabled: 0, purchase: 0 })
   const search = reactive({
     keyword: '',
@@ -379,7 +396,7 @@
     row,
     copy,
     presetCategoryId: !row ? selectedCategoryId.value || undefined : undefined,
-    tenantId: row?.tenantId || tenantId.value,
+    tenantId: row?.tenantId || defaultWriteTenantId.value || '',
     tenantOptions: tenantOptions.value.map((tenant) => ({
       label: tenant.tenantName || tenant.tenantCode,
       value: tenant.id
@@ -397,6 +414,11 @@
     supplyRuleOptions: supplyRuleOptions.value
   })
   const openDialog = async (row?: MaterialArchive, copy = false): Promise<void> => {
+    if (!optionsLoaded.value) await loadOptions()
+    if (optionsError.value) {
+      ElMessage.error(optionsError.value)
+      return
+    }
     await dialogRef.value?.handleOpen(dialogData(row, copy))
   }
   const isMaterialArchiveRecord = (
@@ -846,51 +868,105 @@
     selectedCategoryId.value = id
     await tableRef.value?.getData()
   }
-  const loadOptions = async (): Promise<void> => {
+  let optionsRequest: { tenantId: string | null; promise: Promise<void> } | undefined
+  let optionsRevision = 0
+  const loadOptions = (): Promise<void> => {
+    const scope = effectiveTenantId.value
+    if (optionsRequest?.tenantId === scope) return optionsRequest.promise
+    const revision = ++optionsRevision
     optionsLoading.value = true
+    optionsLoaded.value = false
     optionsError.value = ''
-    try {
-      const [categoryRows, typeRows, unitRows, groupRows, ruleRows] = await Promise.all([
-        fetchMaterialCategories(tenantId.value),
-        fetchMaterialReferenceOptions<MaterialType>('material-type', tenantId.value),
-        fetchMaterialReferenceOptions<UnitOfMeasure>('unit-of-measure', tenantId.value),
-        fetchMaterialReferenceOptions<MaterialAttributeGroup>('attribute-group', tenantId.value),
-        fetchMaterialReferenceOptions<MaterialCodeRule>('code-rule', tenantId.value)
-      ])
-      const [locationRows, masterGroupRows, supplierRows, warehouseRows, outboundRows, supplyRows] =
-        await Promise.all([
-          fetchMaterialStorageOptions(tenantId.value).catch(() => []),
-          fetchMaterialGroupOptions(tenantId.value).catch(() => []),
-          fetchMaterialSupplierOptions(tenantId.value).catch(() => []),
-          fetchMaterialWarehouseOptions(tenantId.value).catch(() => []),
-          fetchMaterialOutboundRuleOptions(tenantId.value).catch(() => []),
-          fetchMaterialSupplyRuleOptions(tenantId.value).catch(() => [])
+    const promise = (async () => {
+      try {
+        const [
+          categoryRows,
+          typeRows,
+          unitRows,
+          groupRows,
+          ruleRows,
+          locationRows,
+          masterGroupRows,
+          supplierRows,
+          warehouseRows,
+          outboundRows,
+          supplyRows
+        ] = await Promise.all([
+          fetchMaterialCategories(scope),
+          fetchMaterialReferenceOptions<MaterialType>('material-type', scope),
+          fetchMaterialReferenceOptions<UnitOfMeasure>('unit-of-measure', scope),
+          fetchMaterialReferenceOptions<MaterialAttributeGroup>('attribute-group', scope),
+          fetchMaterialReferenceOptions<MaterialCodeRule>('code-rule', scope),
+          fetchMaterialStorageOptions(scope),
+          fetchMaterialGroupOptions(scope),
+          fetchMaterialSupplierOptions(scope),
+          fetchMaterialWarehouseOptions(scope),
+          fetchMaterialOutboundRuleOptions(scope),
+          fetchMaterialSupplyRuleOptions(scope)
         ])
-      categories.value = categoryRows
-      materialTypes.value = typeRows
-      units.value = unitRows
-      attributeGroups.value = groupRows
-      codeRules.value = ruleRows
-      storageOptions.value = locationRows
-      materialGroupOptions.value = masterGroupRows
-      supplierOptions.value = supplierRows
-      warehouseOptions.value = warehouseRows
-      outboundRuleOptions.value = outboundRows
-      supplyRuleOptions.value = supplyRows
-    } catch (error) {
-      optionsError.value = getFriendlySupabaseErrorMessage(error, '物料选项加载失败')
-    } finally {
-      optionsLoading.value = false
-    }
+        if (revision !== optionsRevision) return
+        categories.value = categoryRows
+        materialTypes.value = typeRows
+        units.value = unitRows
+        attributeGroups.value = groupRows
+        codeRules.value = ruleRows
+        storageOptions.value = locationRows
+        materialGroupOptions.value = masterGroupRows
+        supplierOptions.value = supplierRows
+        warehouseOptions.value = warehouseRows
+        outboundRuleOptions.value = outboundRows
+        supplyRuleOptions.value = supplyRows
+        optionsLoaded.value = true
+      } catch (error) {
+        if (revision !== optionsRevision) return
+        optionsError.value = getFriendlySupabaseErrorMessage(error, '物料选项加载失败，请重试')
+      } finally {
+        if (revision === optionsRevision) {
+          optionsLoading.value = false
+          optionsRequest = undefined
+        }
+      }
+    })()
+    optionsRequest = { tenantId: scope, promise }
+    return promise
   }
+  watch(effectiveTenantId, () => {
+    ++optionsRevision
+    optionsRequest = undefined
+    optionsLoaded.value = false
+    selectedCategoryId.value = ''
+    categories.value = []
+    materialTypes.value = []
+    units.value = []
+    attributeGroups.value = []
+    codeRules.value = []
+    storageOptions.value = []
+    materialGroupOptions.value = []
+    supplierOptions.value = []
+    warehouseOptions.value = []
+    outboundRuleOptions.value = []
+    supplyRuleOptions.value = []
+    void loadOptions()
+  })
   const fetchData = async (params: QueryParams) => {
-    if (!categories.value.length && tenantId.value) await loadOptions()
+    const context = deleteProcessing.value
+    if (context.active && !deleteLocationReady.value) {
+      replaceReactiveModel(overview, { total: 0, enabled: 0, purchase: 0 })
+      return { records: [], total: 0 }
+    }
+    if (!optionsLoaded.value) await loadOptions()
     const result = await fetchMaterialArchives({
       ...params,
-      tenantId: tenantId.value,
-      categoryIds: selectedCategoryId.value
-        ? descendantCategoryIds(selectedCategoryId.value)
-        : undefined
+      tenantId: effectiveTenantId.value,
+      ids: context.active ? [context.recordId] : undefined,
+      supplierId:
+        context.active && route.query.resourceType === 'mdm_supplier'
+          ? context.resourceId
+          : undefined,
+      categoryIds:
+        !context.active && selectedCategoryId.value
+          ? descendantCategoryIds(selectedCategoryId.value)
+          : undefined
     })
     const records = result.data.map((item) => {
       const category = categories.value.find((entry) => entry.id === item.categoryId)
@@ -913,6 +989,19 @@
   const refresh = async (): Promise<void> => {
     await tableRef.value?.getData()
   }
+  watch(
+    () => [
+      deleteProcessing.value.active,
+      deleteProcessing.value.recordId,
+      deleteProcessing.value.resourceId,
+      route.query.resourceType
+    ],
+    () => {
+      selectedCategoryId.value = ''
+      replaceReactiveModel(search, { keyword: '', materialTypeId: undefined, status: undefined })
+      void tableRef.value?.refreshContext()
+    }
+  )
 </script>
 
 <style scoped lang="scss">
@@ -1259,15 +1348,29 @@
     color: var(--el-text-color-secondary);
   }
 
-  @media (width <= 620px) {
+  @media (width <= 760px) {
     .material-archive-page__workspace {
-      grid-template-columns: 1fr;
+      grid-template-rows: minmax(220px, auto) auto;
+      grid-template-columns: minmax(0, 1fr);
+      overflow: auto;
     }
 
     .material-archive-page__workspace > :first-child {
       max-height: 300px;
     }
 
+    .material-archive-page__table {
+      overflow: visible;
+    }
+
+    .material-archive-page__table > :deep(.art-table-query) {
+      flex: 0 0 auto;
+      height: auto;
+      min-height: 680px;
+    }
+  }
+
+  @media (width <= 620px) {
     .material-detail__hero {
       grid-template-columns: auto minmax(0, 1fr);
     }

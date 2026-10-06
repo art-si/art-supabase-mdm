@@ -10,7 +10,8 @@
       </div>
       <ArtForm
         ref="formRef"
-        v-model="form"
+        :model-value="form"
+        @update:model-value="replaceReactiveModel(form, $event)"
         :items="formItems"
         :rules="formRules"
         :span="12"
@@ -24,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -39,7 +41,6 @@
     saveMdmDataSteward,
     saveMdmOutboxConsumer,
     type MdmGovernanceDomain,
-    type MdmGovernanceUserOption,
     type MdmSeverity
   } from '@mdm/api'
 
@@ -79,7 +80,8 @@
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const kind = ref<ConfigKind>('steward')
-  const users = ref<MdmGovernanceUserOption[]>([])
+  const dialogActive = ref(false)
+  const contextVersion = ref(0)
   const form = reactive<ConfigForm>({
     domainKey: 'organization',
     sourceType: '',
@@ -140,12 +142,13 @@
       .filter((source) => source.kind === 'master')
       .map((source) => ({ label: source.label, value: source.type }))
   )
-  const userOptions = computed(() =>
-    users.value.map((user) => ({
+  const fetchUserChoices = async () =>
+    (await fetchMdmGovernanceUsers()).map((user) => ({
       label: `${user.userName || user.userEmail} · ${user.userEmail}`,
-      value: user.id
+      value: user.id,
+      userName: user.userName,
+      userEmail: user.userEmail
     }))
-  )
 
   const formItems = computed<FormItem[]>(() => {
     if (kind.value === 'steward') {
@@ -161,15 +164,19 @@
         {
           label: '数据责任人',
           key: 'stewardUserId',
-          type: 'select',
-          options: userOptions.value,
+          type: 'userSelect',
+          api: fetchUserChoices,
+          params: { active: dialogActive.value, contextVersion: contextVersion.value },
+          shouldFetch: (params) => Boolean(params?.active),
           props: { filterable: true }
         },
         {
           label: '升级责任人（选填）',
           key: 'escalationUserId',
-          type: 'select',
-          options: userOptions.value,
+          type: 'userSelect',
+          api: fetchUserChoices,
+          params: { active: dialogActive.value, contextVersion: contextVersion.value },
+          shouldFetch: (params) => Boolean(params?.active),
           props: { filterable: true, clearable: true }
         },
         {
@@ -342,23 +349,16 @@
 
   async function handleOpen(nextKind: ConfigKind): Promise<void> {
     kind.value = nextKind
-    users.value = []
+    contextVersion.value += 1
+    dialogActive.value = true
     await dialogRef.value?.handleOpen(undefined, {
       title: { steward: '配置数据责任人', rule: '发布质量规则新版本', consumer: '配置下游消费者' }[
         nextKind
       ],
       confirmText: '保存配置',
-      loading: nextKind === 'steward',
-      loadingText: '正在加载责任人…',
-      onOpen: async (_openData, api) => {
-        if (nextKind !== 'steward') return
-        try {
-          users.value = await fetchMdmGovernanceUsers()
-        } catch {
-          ElMessage.warning('责任人加载失败，请关闭弹窗后重试')
-        } finally {
-          api.setLoading(false)
-        }
+      onClose: () => {
+        dialogActive.value = false
+        contextVersion.value += 1
       },
       onConfirm: submit
     })

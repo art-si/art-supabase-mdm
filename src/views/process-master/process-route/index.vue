@@ -35,7 +35,8 @@
         <div class="process-route-page__main">
           <ArtTableQuery
             ref="tableRef"
-            v-model="search"
+            :model-value="search"
+            @update:model-value="replaceReactiveModel(search, $event)"
             :api-fn="fetchRows"
             :columns-factory="columns"
             :header-actions="actions"
@@ -78,6 +79,7 @@
   </div>
 </template>
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { computed, ref, reactive } from 'vue'
   import dayjs from 'dayjs'
@@ -95,7 +97,8 @@
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { BusinessWorkspaceMetric } from '@/components/business/business-workspace-header/index.vue'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { exportExcel } from '@/utils/file'
@@ -408,28 +411,45 @@
     else void remove(row)
   }
   async function exportRows() {
-    const rows: ProcessRoute[] = []
-    for (let current = 1; current <= 10; current++) {
-      const r = await fetchRows({ ...search, tenantId: '', current, size: 1000 })
-      if (r.total > 10000) throw new Error('请缩小筛选范围')
-      rows.push(...r.data)
-      if (rows.length >= r.total) break
+    try {
+      const rows = await loadAllLinePages<ProcessRoute, WorkspaceQuery>(
+        async (query) => {
+          const response = await fetchProcessRoutes(query)
+          if (response.total > 10000)
+            throw new Error('导出数据不能超过 10000 行，请缩小筛选范围后重试')
+          return response
+        },
+        {
+          ...search,
+          tenantId: effectiveTenantId.value || '',
+          groupId: groupState.selectedId || undefined,
+          groupIds: selectedGroupIds.value,
+          current: 1,
+          size: 500
+        }
+      )
+      if (!rows.length) {
+        ElMessage.info('当前筛选范围没有可导出的工艺路线')
+        return
+      }
+      await exportExcel({
+        data: rows.map((r) => ({
+          code: r.material?.materialCode,
+          product: r.material?.materialName,
+          spec: r.material?.specificationModel,
+          name: r.name
+        })),
+        columns: [
+          { key: 'code', title: '产品编码' },
+          { key: 'product', title: '产品名称' },
+          { key: 'spec', title: '规格型号' },
+          { key: 'name', title: '路线名称' }
+        ],
+        filename: '工艺路线'
+      })
+    } catch (error) {
+      notifyFriendlyError(error, '工艺路线导出失败，请检查网络后重试')
     }
-    await exportExcel({
-      data: rows.map((r) => ({
-        code: r.material?.materialCode,
-        product: r.material?.materialName,
-        spec: r.material?.specificationModel,
-        name: r.name
-      })),
-      columns: [
-        { key: 'code', title: '产品编码' },
-        { key: 'product', title: '产品名称' },
-        { key: 'spec', title: '规格型号' },
-        { key: 'name', title: '路线名称' }
-      ],
-      filename: '工艺路线'
-    })
   }
   const actions: ArtTableQueryHeaderAction[] = [
     {

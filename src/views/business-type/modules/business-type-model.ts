@@ -30,7 +30,12 @@ export const createBusinessTypeFormModel = (
   textColor: '',
   tagStyle: 'primary',
   enabled: true,
-  ...patch
+  ...patch,
+  documentTypeIds: patch.documentTypeIds?.length
+    ? [...patch.documentTypeIds]
+    : patch.documentTypeId
+      ? [patch.documentTypeId]
+      : []
 })
 
 export const createBusinessTypeCopyModel = (source: BusinessTypeRecord): BusinessTypeFormModel =>
@@ -42,6 +47,9 @@ export const createBusinessTypeCopyModel = (source: BusinessTypeRecord): Busines
       ...(source.menuIds?.length ? source.menuIds : [source.documentType?.menuId ?? ''])
     ].filter(Boolean),
     documentTypeId: source.documentTypeId,
+    documentTypeIds: [
+      ...(source.documentTypeIds?.length ? source.documentTypeIds : [source.documentTypeId])
+    ],
     businessTypeCode: '',
     businessTypeName: `${source.businessTypeName}（副本）`,
     isDefault: false,
@@ -64,6 +72,7 @@ export const buildBusinessTypeInput = (
   const payload = pick(model, [
     'tenantId',
     'documentTypeId',
+    'documentTypeIds',
     'menuIds',
     'businessTypeCode',
     'businessTypeName',
@@ -81,6 +90,10 @@ export const buildBusinessTypeInput = (
   ]) as BusinessTypeWriteInput
 
   payload.businessTypeCode = normalizeNonNullableText(payload.businessTypeCode).toUpperCase()
+  payload.documentTypeIds = uniq(
+    payload.documentTypeIds.length ? payload.documentTypeIds : [payload.documentTypeId]
+  ).filter(Boolean)
+  payload.documentTypeId = payload.documentTypeIds[0] ?? ''
   payload.menuIds = uniq(payload.menuIds)
   payload.businessTypeName = normalizeNonNullableText(payload.businessTypeName)
   payload.sourceBusinessTypeId = normalizeNullableText(payload.sourceBusinessTypeId)

@@ -170,15 +170,14 @@
         { label: '归属与类型标识', key: 'identitySection', type: 'divider', span: 24 },
         {
           label: '所属单据类型',
-          key: 'documentTypeId',
+          key: 'documentTypeIds',
           type: 'select',
           span: 12,
           api: (params) => fetchBusinessTypeDocumentOptions(normalizeOptionQuery(params)),
           immediate: false,
           beforeFetch: () => ({
             tenantId: form.data.tenantId,
-            menuIds: form.selectedMenuIds,
-            enabled: form.mode === 'edit' ? undefined : true
+            enabled: form.mode === 'add' ? true : undefined
           }),
           resultField: 'data',
           labelField: 'documentTypeName',
@@ -191,13 +190,16 @@
             return result
           },
           props: {
+            multiple: true,
+            collapseTags: true,
+            collapseTagsTooltip: true,
             clearable: true,
             filterable: true,
             disabled: !form.data.tenantId,
-            placeholder: '请选择单据类型',
+            placeholder: '请选择一个或多个单据类型',
             onChange: handleDocumentTypeChange
           },
-          description: '仅显示当前功能范围和租户内可用的单据类型。'
+          description: '可选择当前租户的多个单据类型；第一个作为兼容旧单据的主类型。'
         },
         {
           label: '所属菜单功能',
@@ -208,9 +210,10 @@
             ...menu,
             disabled:
               menu.type !== 'menu' ||
-              !form.documentTypes
-                .find((item) => item.id === form.data.documentTypeId)
-                ?.menuIds.includes(menu.id)
+              !form.documentTypes.some(
+                (item) =>
+                  form.data.documentTypeIds.includes(item.id) && item.menuIds.includes(menu.id)
+              )
           })),
           props: {
             multiple: true,
@@ -225,7 +228,7 @@
               value: 'id'
             }
           },
-          description: '从左侧菜单功能层级选择，可关联所选单据类型下的多个功能页面。'
+          description: '从左侧菜单功能层级选择，可关联所选单据类型覆盖的功能页面。'
         },
         {
           label: '业务类型编号',
@@ -254,7 +257,7 @@
           span: 8,
           options: booleanOptions.value,
           props: { onChange: handleDefaultChange },
-          description: '同一单据类型只能设置一个默认项。'
+          description: '同一单据类型及菜单功能只能设置一个默认项。'
         },
         {
           label: '源业务类型',
@@ -369,7 +372,9 @@
       tenantId: [
         { required: shouldExposeTenantField.value, message: '请选择所属租户', trigger: 'change' }
       ],
-      documentTypeId: [{ required: true, message: '请选择所属单据类型', trigger: 'change' }],
+      documentTypeIds: [
+        { required: true, type: 'array', min: 1, message: '请选择所属单据类型', trigger: 'change' }
+      ],
       menuIds: [
         { required: true, type: 'array', min: 1, message: '请选择所属菜单功能', trigger: 'change' }
       ],
@@ -394,13 +399,13 @@
   })
 
   const summaryTitle = computed(() => form.data.businessTypeName || '新业务类型')
-  const selectedDocumentType = computed(() =>
-    form.documentTypes.find((item) => item.id === form.data.documentTypeId)
+  const selectedDocumentTypes = computed(() =>
+    form.documentTypes.filter((item) => form.data.documentTypeIds.includes(item.id))
   )
   const summaryDescription = computed(() => {
     const code = form.data.businessTypeCode || '编号待填写'
-    return selectedDocumentType.value
-      ? `${code} · ${selectedDocumentType.value.documentTypeName}`
+    return selectedDocumentTypes.value.length
+      ? `${code} · ${selectedDocumentTypes.value.map((item) => item.documentTypeName).join('、')}`
       : code
   })
   const modeIcon = computed(() =>
@@ -440,7 +445,7 @@
   const reloadReferenceOptions = async (): Promise<void> => {
     if (!form.data.tenantId) return
     await Promise.all([
-      formRef.value?.reloadOptions('documentTypeId'),
+      formRef.value?.reloadOptions('documentTypeIds'),
       formRef.value?.reloadOptions('sourceBusinessTypeId')
     ])
   }
@@ -448,6 +453,7 @@
   const handleTenantChange = (): void => {
     Object.assign(form.data, {
       documentTypeId: '',
+      documentTypeIds: [],
       menuId: '',
       menuIds: [],
       sourceBusinessTypeId: null,
@@ -457,16 +463,16 @@
     void reloadReferenceOptions()
   }
 
-  const handleDocumentTypeChange = (documentTypeId?: string): void => {
-    const selected = form.documentTypes.find((item) => item.id === documentTypeId)
+  const handleDocumentTypeChange = (documentTypeIds: string[] = []): void => {
+    const selected = form.documentTypes.filter((item) => documentTypeIds.includes(item.id))
+    const allowedMenuIds = new Set(selected.flatMap((item) => item.menuIds))
     Object.assign(form.data, {
-      documentTypeId: documentTypeId ?? '',
-      menuId: selected?.menuId ?? '',
-      menuIds: selected?.menuIds?.length
-        ? [...selected.menuIds]
-        : selected
-          ? [selected.menuId]
-          : [],
+      documentTypeId: documentTypeIds[0] ?? '',
+      documentTypeIds,
+      menuId: selected[0]?.menuId ?? '',
+      menuIds: form.data.menuIds.length
+        ? form.data.menuIds.filter((id) => allowedMenuIds.has(id))
+        : (form.selectedMenuIds ?? []).filter((id) => allowedMenuIds.has(id)),
       sourceBusinessTypeId: null
     })
     void refreshSuggestedSort()
@@ -487,7 +493,8 @@
     form.menuTree = buildMenuTree(data.menuTree)
     form.selectedMenuIds = data.selectedMenuIds
     form.tenantOptions = data.tenantOptions
-    form.documentTypes = data.record?.documentType ? [data.record.documentType] : []
+    form.documentTypes =
+      data.record?.documentTypes ?? (data.record?.documentType ? [data.record.documentType] : [])
 
     if (data.mode === 'edit' && data.record) {
       form.data = createBusinessTypeFormModel({
@@ -559,13 +566,11 @@
             userStore.ensureDictLoaded('mdmBusinessOwnerType')
           ])
           await reloadReferenceOptions()
-          const documentType = form.documentTypes.find(
-            (item) => item.id === form.data.documentTypeId
+          const documentTypes = form.documentTypes.filter((item) =>
+            form.data.documentTypeIds.includes(item.id)
           )
-          if (documentType && !form.data.menuIds.length)
-            form.data.menuIds = documentType.menuIds?.length
-              ? [...documentType.menuIds]
-              : [documentType.menuId]
+          if (documentTypes.length && !form.data.menuIds.length)
+            form.data.menuIds = [...new Set(documentTypes.flatMap((item) => item.menuIds))]
           await refreshSuggestedSort()
           await nextTick()
           formRef.value?.clearValidate()

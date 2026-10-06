@@ -1,1 +1,0 @@
-import{kr as e,mi as t,vr as n}from"./supabase-E2-FAsPZ.js";import{t as r}from"./material-reference-BKlP7cs6.js";var i=e({name:`MdmMaterialCodeRule`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

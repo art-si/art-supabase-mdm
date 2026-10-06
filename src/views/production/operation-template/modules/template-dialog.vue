@@ -61,7 +61,8 @@
 <script setup lang="tsx">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
-  import { ref, reactive, computed } from 'vue'
+  import { ref, reactive, computed, watch } from 'vue'
+  import { useRoute } from 'vue-router'
   import { cloneDeep } from 'lodash-es'
   import { ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -70,6 +71,7 @@
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { saveOperationTemplate, type OperationTemplate, type OperationTask } from '@mdm/api'
   import { createTemplate, createTask, templatePayload, templateScore } from './template-model'
   interface OpenData {
@@ -81,6 +83,13 @@
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const taskTableRef = ref<ArtTableExpose>()
   const user = useUserStore()
+  const { defaultWriteTenantId, effectiveTenantId } = useTenantScopeFormPolicy()
+  const route = useRoute()
+  let openRevision = 0
+  watch([effectiveTenantId, () => route.fullPath], () => {
+    openRevision += 1
+    void dialogRef.value?.handleClose()
+  })
   const form = reactive({ model: createTemplate(), readonly: false, error: '' })
   const total = computed(() => templateScore(form.model.items))
   const inputOptions = computed(() => user.getDictMap.mdmCenter_inputMode ?? [])
@@ -256,8 +265,11 @@
       form.model.items.splice(index + 1, 0, cloneDeep(form.model.items[index]))
   }
   async function handleOpen(data: OpenData) {
+    const revision = ++openRevision
     Object.assign(form, {
-      model: data.row ? templatePayload(data.row) : createTemplate(),
+      model: data.row
+        ? templatePayload(data.row)
+        : createTemplate(defaultWriteTenantId.value ?? ''),
       readonly: data.mode === 'view',
       error: ''
     })
@@ -285,12 +297,20 @@
         try {
           await user.ensureDictLoaded('mdmCenter_inputMode')
         } catch {
-          ElMessage.warning('填写方式加载失败，请关闭弹窗后重试')
+          if (revision === openRevision) ElMessage.warning('填写方式加载失败，请关闭弹窗后重试')
         } finally {
           api.setLoading(false)
         }
       },
+      onClose: () => {
+        openRevision += 1
+      },
       onConfirm: async () => {
+        if (revision !== openRevision) return false
+        if (!form.model.tenantId) {
+          ElMessage.warning('无法确定模板所属租户，请刷新后重试')
+          return false
+        }
         form.error =
           !form.model.items.length || form.model.items.length > 200
             ? '请添加 1 至 200 个任务项'
@@ -304,17 +324,23 @@
           }
           if (!(await validateArtFormForSubmit(formRef.value))) return false
         } catch (error) {
-          notifyFriendlyError(error, '作业模板校验未完成，请稍后重试', 'warning')
+          if (revision === openRevision)
+            notifyFriendlyError(error, '作业模板校验未完成，请稍后重试', 'warning')
           return false
         }
+        if (revision !== openRevision) return false
         try {
           await saveOperationTemplate(
             templatePayload(form.model),
             data.mode === 'edit' ? data.row?.id : undefined
           )
+          if (revision !== openRevision) return false
+          ElMessage.success('作业模板已保存')
           emit('success')
+          return true
         } catch (error) {
-          notifyFriendlyError(error, '作业模板保存失败，请检查任务项和网络后重试')
+          if (revision === openRevision)
+            notifyFriendlyError(error, '作业模板保存失败，请检查任务项和网络后重试')
           return false
         }
       }
