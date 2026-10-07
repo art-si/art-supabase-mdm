@@ -1,6 +1,7 @@
 import { omit } from 'lodash-es'
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {
   ProductionEquipmentInput,
   ProductionEquipmentPage,
@@ -27,12 +28,12 @@ const emptyReferences = (): ProductionEquipmentPage['references'] => ({
 })
 
 export async function fetchProductionEquipment(params: ProductionEquipmentQuery) {
-  const from = (params.current - 1) * params.size
+  const pageRange = buildSupabasePageRange(params)
   const { data } = await responseHandle<EquipmentRpcPayload>(
     () =>
       supabase.rpc('mdm_list_production_equipment_v2_secure', {
-        p_from: from,
-        p_to: from + params.size - 1,
+        p_from: pageRange.from,
+        p_to: pageRange.to,
         p_keyword: normalizeNullableText(params.keyword),
         p_category_id: params.categoryId || null,
         p_department_id: params.departmentId || null,

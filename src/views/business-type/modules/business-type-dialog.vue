@@ -49,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -169,6 +170,30 @@
         ...tenantItems,
         { label: '归属与类型标识', key: 'identitySection', type: 'divider', span: 24 },
         {
+          label: '所属菜单功能',
+          key: 'menuIds',
+          type: 'treeSelect',
+          span: 12,
+          options: treeUtils.mapTree(form.menuTree, (menu) => ({
+            ...menu,
+            disabled: menu.type !== 'menu'
+          })),
+          props: {
+            multiple: true,
+            collapseTags: true,
+            collapseTagsTooltip: true,
+            filterable: true,
+            checkStrictly: true,
+            onChange: handleMenuChange,
+            placeholder: '选择一个或多个菜单功能',
+            props: {
+              label: (node: SelectableMenuNode) => resolveMenuLabel(node),
+              value: 'id'
+            }
+          },
+          description: '先选择业务功能，再选择该功能配置的单据类型。'
+        },
+        {
           label: '所属单据类型',
           key: 'documentTypeIds',
           type: 'select',
@@ -177,6 +202,7 @@
           immediate: false,
           beforeFetch: () => ({
             tenantId: form.data.tenantId,
+            menuIds: form.data.menuIds,
             enabled: form.mode === 'add' ? true : undefined
           }),
           resultField: 'data',
@@ -195,40 +221,11 @@
             collapseTagsTooltip: true,
             clearable: true,
             filterable: true,
-            disabled: !form.data.tenantId,
-            placeholder: '请选择一个或多个单据类型',
+            disabled: !form.data.tenantId || !form.data.menuIds.length,
+            placeholder: '先选择菜单功能，再选择单据类型',
             onChange: handleDocumentTypeChange
           },
-          description: '可选择当前租户的多个单据类型；第一个作为兼容旧单据的主类型。'
-        },
-        {
-          label: '所属菜单功能',
-          key: 'menuIds',
-          type: 'treeSelect',
-          span: 12,
-          options: treeUtils.mapTree(form.menuTree, (menu) => ({
-            ...menu,
-            disabled:
-              menu.type !== 'menu' ||
-              !form.documentTypes.some(
-                (item) =>
-                  form.data.documentTypeIds.includes(item.id) && item.menuIds.includes(menu.id)
-              )
-          })),
-          props: {
-            multiple: true,
-            collapseTags: true,
-            collapseTagsTooltip: true,
-            filterable: true,
-            checkStrictly: true,
-            placeholder: '选择一个或多个菜单功能',
-            props: {
-              label: (node: SelectableMenuNode) =>
-                String(node.meta?.title || node.name || '未命名菜单'),
-              value: 'id'
-            }
-          },
-          description: '从左侧菜单功能层级选择，可关联所选单据类型覆盖的功能页面。'
+          description: '仅显示所选菜单配置的单据类型；第一个作为主类型。'
         },
         {
           label: '业务类型编号',
@@ -295,9 +292,10 @@
         {
           label: '出入库标志',
           key: 'stockMovement',
-          type: 'segment',
+          type: 'select',
           span: 16,
           options: getDictMap.value.mdmStockMovementDirection ?? [],
+          props: { clearable: true, placeholder: '可选，默认为空' },
           description: '用于标识该业务类型的库存流转方向。'
         },
         {
@@ -464,18 +462,23 @@
   }
 
   const handleDocumentTypeChange = (documentTypeIds: string[] = []): void => {
-    const selected = form.documentTypes.filter((item) => documentTypeIds.includes(item.id))
-    const allowedMenuIds = new Set(selected.flatMap((item) => item.menuIds))
     Object.assign(form.data, {
       documentTypeId: documentTypeIds[0] ?? '',
       documentTypeIds,
-      menuId: selected[0]?.menuId ?? '',
-      menuIds: form.data.menuIds.length
-        ? form.data.menuIds.filter((id) => allowedMenuIds.has(id))
-        : (form.selectedMenuIds ?? []).filter((id) => allowedMenuIds.has(id)),
       sourceBusinessTypeId: null
     })
     void refreshSuggestedSort()
+  }
+
+  const handleMenuChange = (): void => {
+    form.data.menuId = form.data.menuIds[0] ?? ''
+    form.data.documentTypeId = ''
+    form.data.documentTypeIds = []
+    form.data.sourceBusinessTypeId = null
+    form.documentTypes = []
+    void reloadReferenceOptions().catch((error: unknown) =>
+      notifyFriendlyError(error, '单据类型加载失败，请重新选择菜单后重试')
+    )
   }
 
   const handleDefaultChange = (isDefault: boolean): void => {
@@ -507,7 +510,10 @@
       form.data = createBusinessTypeCopyModel(data.record)
       return
     }
-    form.data = createBusinessTypeFormModel({ tenantId: data.effectiveTenantId ?? undefined })
+    form.data = createBusinessTypeFormModel({
+      tenantId: data.effectiveTenantId ?? undefined,
+      menuIds: data.selectedMenuIds ?? []
+    })
   }
 
   const handleSubmit = async (): Promise<boolean> => {
@@ -603,7 +609,6 @@
       span {
         overflow: hidden;
         text-overflow: ellipsis;
-        font-family: var(--art-font-family-mono, Consolas, monospace);
         color: var(--el-text-color-secondary);
         white-space: nowrap;
       }

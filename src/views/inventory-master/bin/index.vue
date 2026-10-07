@@ -151,6 +151,30 @@
             <template #actions>
               <div class="flex flex-wrap gap-2">
                 <ElButton
+                  v-auth="'MdmWarehouseBin:Delete'"
+                  :disabled="!visibleBins.length || loadingBins || deleteBusy"
+                  @click="selectionMode = !selectionMode"
+                >
+                  <ArtSvgIcon
+                    :icon="selectionMode ? 'ri:close-line' : 'ri:checkbox-multiple-line'"
+                    class="mr-1"
+                    aria-hidden="true"
+                  />
+                  {{ selectionMode ? '退出多选' : '批量删除' }}
+                </ElButton>
+                <ElButton
+                  v-if="selectionMode"
+                  v-auth="'MdmWarehouseBin:Delete'"
+                  type="danger"
+                  plain
+                  :disabled="!selectedBinIds.length || loadingBins"
+                  :loading="deleteBusy"
+                  @click="removeSelectedBins"
+                >
+                  <ArtSvgIcon icon="ri:delete-bin-line" class="mr-1" aria-hidden="true" />
+                  删除选中（{{ selectedBinIds.length }}）
+                </ElButton>
+                <ElButton
                   v-auth="'MdmWarehouseBin:Generate'"
                   :disabled="!canCreate"
                   @click="openShelfGenerator"
@@ -172,6 +196,14 @@
             </template>
 
             <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <ElCheckbox
+                v-if="selectionMode"
+                :model-value="allVisibleSelected"
+                :indeterminate="someVisibleSelected && !allVisibleSelected"
+                :disabled="deleteBusy || loadingBins"
+                @change="toggleVisibleSelection"
+                >全选当前筛选库位</ElCheckbox
+              >
               <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
               <ElCheckboxGroup v-model="selectedTones" size="small">
                 <ElCheckbox
@@ -226,6 +258,11 @@
                   :stock-for="binStat"
                   :stale-days="overview.staleDays"
                   :parent-code-for="parentCodeFor"
+                  :selection-mode="selectionMode"
+                  :selected-bin-ids="selectedBinIds"
+                  :selection-disabled="deleteBusy || loadingBins"
+                  @check="toggleBinSelection"
+                  @check-shelf="toggleShelfSelection(group.code)"
                   @select="selectBin"
                   @detail="openDetail"
                   @edit="openBinDialog"
@@ -249,6 +286,10 @@
                         :stock-for="binStat"
                         :stale-days="overview.staleDays"
                         :parent-code="bin.parentId ? binById[bin.parentId]?.binCode : undefined"
+                        :selection-mode="selectionMode"
+                        :selected-bin-ids="selectedBinIds"
+                        :selection-disabled="deleteBusy || loadingBins"
+                        @check="toggleBinSelection"
                         @select="selectBin"
                         @detail="openDetail"
                         @edit="openBinDialog"
@@ -270,14 +311,19 @@
       <StorageActionDialog ref="actionDialogRef" @choose="openMovement" />
       <InventoryMovementDialog ref="movementDialogRef" @success="loadBins" />
       <InventoryDetailDialog ref="detailDialogRef" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="ts">
-  import { keyBy } from 'lodash-es'
+  import { keyBy, uniq } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { ElMessage } from 'element-plus'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
@@ -285,7 +331,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import {
-    deleteStorageBin,
+    deleteStorageBins,
     fetchStorageBins,
     fetchStorageOverview,
     fetchStorageWarehouses,
@@ -312,6 +358,14 @@
   type BinBranch = StorageBin & { children?: BinBranch[] }
   const treeUtils = new TreeUtils({ parentKey: 'parentId', deepClone: false })
   const { confirmDelete } = useArtFeedback()
+  const { hasAuth } = useAuth()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'mdm_warehouse_bin',
+    '库位'
+  )
+  const deleteBusy = ref(false)
+  const selectionMode = ref(false)
+  const selectedBinIds = ref<string[]>([])
   const router = useRouter()
   const warehouses = ref<StorageWarehouse[]>([])
   const zones = ref<StorageZone[]>([])
@@ -375,6 +429,40 @@
     )
   )
   const binById = computed(() => keyBy(bins.value, 'id'))
+  const allVisibleSelected = computed(
+    () =>
+      visibleBins.value.length > 0 &&
+      visibleBins.value.every((bin) => selectedBinIds.value.includes(bin.id))
+  )
+  const someVisibleSelected = computed(() =>
+    visibleBins.value.some((bin) => selectedBinIds.value.includes(bin.id))
+  )
+  function toggleBinSelection(bin: StorageBin): void {
+    if (deleteBusy.value || loadingBins.value) return
+    selectedBinIds.value = selectedBinIds.value.includes(bin.id)
+      ? selectedBinIds.value.filter((id) => id !== bin.id)
+      : [...selectedBinIds.value, bin.id]
+  }
+  function toggleVisibleSelection(): void {
+    if (deleteBusy.value || loadingBins.value) return
+    selectedBinIds.value = allVisibleSelected.value
+      ? selectedBinIds.value.filter((id) => !visibleBins.value.some((bin) => bin.id === id))
+      : uniq([...selectedBinIds.value, ...visibleBins.value.map((bin) => bin.id)])
+  }
+  function toggleShelfSelection(code: string): void {
+    if (deleteBusy.value || loadingBins.value) return
+    const ids = bins.value
+      .filter(
+        (bin) =>
+          bin.zoneId === (selectedZone.value?.id ?? null) &&
+          bin.binType === 'shelf' &&
+          (bin.shelfCode || '未分组') === code
+      )
+      .map((bin) => bin.id)
+    selectedBinIds.value = ids.every((id) => selectedBinIds.value.includes(id))
+      ? selectedBinIds.value.filter((id) => !ids.includes(id))
+      : uniq([...selectedBinIds.value, ...ids])
+  }
   const visibleBinTree = computed(() => treeUtils.listToTree<BinBranch>(visibleBins.value))
   const shelfGroups = computed(() => {
     const shelfCodes = [
@@ -405,6 +493,8 @@
   const blockBins = computed(() => visibleBinTree.value.filter((bin) => bin.binType !== 'shelf'))
   watch([selectedWarehouseId, selectedZoneId], () => {
     expandedShelfCodes.value = null
+    selectedBinIds.value = []
+    selectionMode.value = false
   })
   function isShelfExpanded(code: string): boolean {
     return expandedShelfCodes.value === null
@@ -454,6 +544,9 @@
       ])
       zones.value = zoneRows
       bins.value = binRows
+      selectedBinIds.value = selectedBinIds.value.filter((id) =>
+        binRows.some((bin) => bin.id === id)
+      )
       overview.value = stats
       if (selectedWarehouse.value?.enableZones) {
         if (!zones.value.some((zone) => zone.id === selectedZoneId.value))
@@ -471,6 +564,10 @@
     void loadBins()
   }
   function selectBin(bin: StorageBin): void {
+    if (selectionMode.value) {
+      toggleBinSelection(bin)
+      return
+    }
     if (!selectedWarehouse.value) return
     void actionDialogRef.value?.handleOpen({
       warehouseId: bin.warehouseId,
@@ -519,9 +616,45 @@
     void loadBins()
   }
   async function removeBin(bin: StorageBin): Promise<void> {
-    await confirmDelete(`确定删除库位“${bin.binName}”吗？存在库存或子单元时无法删除。`)
-    await deleteStorageBin(bin.id)
-    await loadBins()
+    await removeBins([bin])
+  }
+  async function removeSelectedBins(): Promise<void> {
+    await removeBins(bins.value.filter((bin) => selectedBinIds.value.includes(bin.id)))
+  }
+  async function removeBins(rows: StorageBin[]): Promise<void> {
+    if (deleteBusy.value || !rows.length) return
+    if (!hasAuth('MdmWarehouseBin:Delete')) {
+      ElMessage.error('当前账号无权删除库位')
+      return
+    }
+    if (rows.length > 500) {
+      ElMessage.warning('单次最多删除 500 个库位，请减少选择后重试')
+      return
+    }
+    const resources = rows.map((bin) => ({ id: bin.id, label: `${bin.binName} · ${bin.binCode}` }))
+    deleteBusy.value = true
+    try {
+      if (await inspectDeleteReferences(resources)) return
+      await confirmDelete(`确定删除选中的 ${rows.length} 个库位吗？此操作不可恢复。`)
+      if (!hasAuth('MdmWarehouseBin:Delete')) {
+        ElMessage.error('删除权限已变化，请刷新后重试')
+        return
+      }
+      try {
+        await deleteStorageBins(resources.map((item) => item.id))
+      } catch (error) {
+        if (await inspectDeleteReferences(resources)) return
+        throw error
+      }
+      selectedBinIds.value = []
+      ElMessage.success(`已删除 ${rows.length} 个库位`)
+      await loadBins()
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close')
+        notifyFriendlyError(error, '库位删除失败，请刷新核对后重试')
+    } finally {
+      deleteBusy.value = false
+    }
   }
   function openMovement(type: string, context: StorageActionContext): void {
     if (type === 'sales_out' || type === 'production_in') {

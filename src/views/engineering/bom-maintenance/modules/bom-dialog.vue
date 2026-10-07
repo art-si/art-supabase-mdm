@@ -1276,7 +1276,6 @@
 
   :deep(.bom-dialog__material-copy small) {
     margin-top: 2px;
-    font-family: var(--art-font-family-mono, Consolas, monospace);
     font-size: 11px;
     line-height: 16px;
     color: var(--el-text-color-secondary);

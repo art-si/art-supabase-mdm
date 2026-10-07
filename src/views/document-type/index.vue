@@ -83,6 +83,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -312,9 +313,7 @@
     menu.selectedId ? treeUtils.findNode(menu.tree, menu.selectedId) : undefined
   )
   const selectedMenuLabel = computed(() =>
-    selectedMenu.value
-      ? String(selectedMenu.value.meta?.title || selectedMenu.value.name || '未命名菜单')
-      : '全部功能'
+    selectedMenu.value ? resolveMenuLabel(selectedMenu.value) : '全部功能'
   )
   const selectedMenuIds = computed(() =>
     menu.selectedId
@@ -573,7 +572,7 @@
   const resolveMenuPath = (menuId: string): string =>
     treeUtils
       .getAncestors(menu.tree, menuId)
-      .map((item) => String(item.meta?.title || item.name || '未命名菜单'))
+      .map((item) => resolveMenuLabel(item))
       .join(' / ')
   const resolveMenuPaths = (menuIds: string[]): string =>
     menuIds.map(resolveMenuPath).filter(Boolean).join('；')

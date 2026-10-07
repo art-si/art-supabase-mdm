@@ -152,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -310,8 +311,7 @@
               void refreshSuggestedSort()
             },
             props: {
-              label: (node: SelectableMenuNode) =>
-                String(node.meta?.title || node.name || '未命名菜单'),
+              label: (node: SelectableMenuNode) => resolveMenuLabel(node),
               value: 'id',
               disabled: 'disabled'
             }
@@ -508,7 +508,7 @@
     form.data.menuIds.length
       ? treeUtils
           .getAncestors(form.menuTree, form.data.menuIds[0])
-          .map((menu) => String(menu.meta?.title || menu.name || '未命名菜单'))
+          .map((menu) => resolveMenuLabel(menu))
           .join(' / ')
       : ''
   )
@@ -747,7 +747,6 @@
       span {
         overflow: hidden;
         text-overflow: ellipsis;
-        font-family: var(--art-font-family-mono, Consolas, monospace);
         color: var(--el-text-color-secondary);
         white-space: nowrap;
       }

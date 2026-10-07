@@ -345,6 +345,7 @@
             onClick={() => openDialog(row)}
           />
           <ArtButtonMore
+            trigger="click"
             list={[
               {
                 key: 'copy',

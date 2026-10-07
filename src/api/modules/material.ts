@@ -1,6 +1,7 @@
 import { omit } from 'lodash-es'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {
   MaterialArchive,
   MaterialArchiveInput,
@@ -87,6 +88,7 @@ export async function fetchMaterialReferences<T extends MaterialReferenceRecord>
   params: MaterialReferenceQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   const table = referenceTables[kind]
   let query = supabase
     .from(table)
@@ -105,7 +107,7 @@ export async function fetchMaterialReferences<T extends MaterialReferenceRecord>
   if (params.keyword)
     query = query.or(buildOrIlikeFilter(referenceSearchFields[kind], params.keyword))
   if (params.status) query = query.eq('status', params.status)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.order('id').range(from, to)
   const { data, total } = await responseHandle<Array<T | MaterialAttributeGroupRow>>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions
@@ -287,6 +289,7 @@ export async function fetchMaterialArchives(
   params: MaterialArchiveQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_material')
     .select(
@@ -309,7 +312,7 @@ export async function fetchMaterialArchives(
   if (params.ids?.length) query = query.in('id', params.ids)
   if (params.supplierId) query = query.eq('supplier_id', params.supplierId)
   if (params.status) query = query.eq('status', params.status)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.order('id').range(from, to)
   const { data, total } = await responseHandle<MaterialArchive[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions

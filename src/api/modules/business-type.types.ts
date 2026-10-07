@@ -35,7 +35,7 @@ export interface BusinessTypeRecord {
   isDefault: boolean
   sourceBusinessTypeId?: string | null
   inventoryDirection?: string | null
-  stockMovement: 'inbound' | 'outbound' | 'transfer'
+  stockMovement: 'inbound' | 'outbound' | 'transfer' | null
   ownerType?: string | null
   inventoryAccounting: boolean
   remark: string
@@ -63,7 +63,7 @@ export interface BusinessTypeWriteInput {
   isDefault: boolean
   sourceBusinessTypeId: string | null
   inventoryDirection: string | null
-  stockMovement: 'inbound' | 'outbound' | 'transfer'
+  stockMovement: 'inbound' | 'outbound' | 'transfer' | null
   ownerType: string | null
   inventoryAccounting: boolean
   remark: string

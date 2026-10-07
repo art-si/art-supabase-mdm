@@ -338,15 +338,27 @@ export async function copyBusinessType(sourceId: string, input: BusinessTypeUpda
   )
 }
 
-export async function deleteBusinessTypes(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from('mdm_business_type').delete({ count: 'exact' }).in('id', ids).select('id'),
+export async function deleteBusinessTypes(ids: string[]): Promise<void> {
+  const targets = uniq(ids)
+  if (!targets.length || targets.some((id) => !id.trim()))
+    throw new Error('所选业务类型记录已变化，请刷新后重试')
+  const { data } = await responseHandle<number>(
+    () =>
+      supabase
+        .from('mdm_business_type')
+        .delete({ count: 'exact' })
+        .in('id', targets)
+        .then((result) => ({ ...result, data: result.count })),
     {
       ...writeOptions,
-      message: ids.length > 1 ? `已删除 ${ids.length} 条业务类型` : '业务类型已删除',
+      showMessage: false,
+      showErrorMessage: false,
+      noAffectedMessage: '所选业务类型未删除，请刷新列表核对权限和记录状态后重试',
       errorMessage: '删除失败，请先解除源业务类型或业务单据引用'
     }
   )
+  if (data !== targets.length)
+    throw new Error('删除结果与所选记录不一致，请刷新列表核对权限和记录状态后重试')
 }
 
 export async function exportBusinessTypes(
@@ -394,7 +406,7 @@ export async function exportBusinessTypes(
   const enriched = rows.map((row) => ({
     ...row,
     menuIds: assignmentById.get(row.id)?.menuIds ?? (row.menuId ? [row.menuId] : []),
-    stockMovement: assignmentById.get(row.id)?.stockMovement ?? 'inbound',
+    stockMovement: assignmentById.get(row.id)?.stockMovement ?? null,
     documentTypeIds: assignmentById.get(row.id)?.documentTypeIds ?? [row.documentTypeId]
   }))
   const withDocuments = await attachDocumentTypes(enriched)

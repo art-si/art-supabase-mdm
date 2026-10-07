@@ -79,3 +79,10 @@ test('write payload normalizes nullable and non-nullable fields', () => {
   assert.equal(payload.remark, '客户退货')
   assert.equal(payload.textColor, '#409EFF')
 })
+
+test('empty stock movement stays empty for create, copy and write', () => {
+  const empty = createBusinessTypeFormModel()
+  assert.equal(empty.stockMovement, null)
+  assert.equal(buildBusinessTypeInput(empty, true).stockMovement, null)
+  assert.equal(createBusinessTypeCopyModel({ ...source, stockMovement: null }).stockMovement, null)
+})

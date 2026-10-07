@@ -769,7 +769,6 @@
 
     &__tree-identity small {
       margin-top: 1px;
-      font-family: var(--art-font-family-mono, Consolas, monospace);
       font-size: 11px;
       line-height: 17px;
       color: var(--el-text-color-secondary);

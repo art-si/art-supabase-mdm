@@ -12,7 +12,8 @@
       :show-submit="false"
     />
     <p class="mt-3 text-xs text-[var(--el-text-color-secondary)]">
-      将一次生成 {{ form.levels * form.columns }} 个货架单元，编码按“仓库-库区-货架-层-列”组成。
+      将一次生成 {{ form.levels * form.columns }} 个货架单元，库位编码按“系统管理 →
+      编号规则”中的“库位编码”规则自动生成。
     </p>
   </ArtDialog>
 </template>
@@ -20,16 +21,10 @@
 <script setup lang="ts">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
-  import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import {
-    createShelfBins,
-    type StorageBinInput,
-    type StorageWarehouse,
-    type StorageZone
-  } from '@mdm/api'
+  import { createShelfBins, type StorageWarehouse, type StorageZone } from '@mdm/api'
 
   export interface ShelfGeneratorContext {
     warehouse: StorageWarehouse
@@ -106,38 +101,14 @@
       if (!context.value) return false
       const { warehouse, zone } = context.value
       const shelfCode = form.value.shelfCode.trim().toUpperCase()
-      const prefix = [warehouse.warehouseCode, zone?.zoneCode, shelfCode].filter(Boolean).join('-')
-      const bins: StorageBinInput[] = []
-      for (let level = 1; level <= form.value.levels; level++) {
-        for (let column = 1; column <= form.value.columns; column++) {
-          const code = `${prefix}-L${level}-C${column}`
-          if (code.length > 60) {
-            ElMessage.warning('生成编码超过 60 个字符，请缩短货架编码')
-            return false
-          }
-          bins.push({
-            warehouseId: warehouse.id,
-            zoneId: zone?.id ?? null,
-            parentId: null,
-            binCode: code,
-            binName: `${shelfCode} · ${level} 层 ${column} 列`,
-            binType: 'shelf',
-            shelfCode,
-            levelNo: level,
-            columnNo: column,
-            maxQuantity: form.value.maxQuantity,
-            maxWeightKg: null,
-            maxAreaSqm: null,
-            fixedMaterialId: null,
-            allowMix: true,
-            supportsSerial: false,
-            status: 'available',
-            sort: (form.value.levels - level) * 100 + column,
-            remark: null
-          })
-        }
-      }
-      await createShelfBins(warehouse.tenantId, bins)
+      await createShelfBins({
+        warehouseId: warehouse.id,
+        zoneId: zone?.id ?? null,
+        shelfCode,
+        levels: form.value.levels,
+        columns: form.value.columns,
+        maxQuantity: form.value.maxQuantity
+      })
       emit('success')
       return true
     } catch (error) {

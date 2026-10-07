@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import { uniq } from 'lodash-es'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { normalizeNullableText } from '@/utils/form/normalize'
@@ -13,6 +14,7 @@ import type {
   StorageBinInput,
   StorageMaterial,
   StorageOverview,
+  StorageShelfGenerate,
   StorageShelfUpdate,
   StorageWarehouse,
   StorageWorkOrder,
@@ -218,14 +220,18 @@ export async function saveStorageBin(
   )
 }
 
-export async function createShelfBins(tenantId: string, bins: StorageBinInput[]): Promise<void> {
+export async function createShelfBins(payload: StorageShelfGenerate): Promise<void> {
   await responseHandle(
     () =>
-      supabase
-        .from('mdm_warehouse_bin')
-        .insert(bins.map((bin) => ({ ...keysToSnakeDeep(bin), tenant_id: tenantId })))
-        .select('id'),
-    { ...writeOptions, message: '货架库位已生成' }
+      supabase.rpc('mdm_generate_warehouse_shelf_secure', {
+        p_warehouse_id: payload.warehouseId,
+        p_zone_id: payload.zoneId,
+        p_shelf_code: payload.shelfCode,
+        p_levels: payload.levels,
+        p_columns: payload.columns,
+        p_max_quantity: payload.maxQuantity
+      }),
+    { ...writeOptions, requireAffected: false, message: '货架库位已生成' }
   )
 }
 
@@ -248,10 +254,24 @@ export async function updateStorageShelf(payload: StorageShelfUpdate): Promise<v
 }
 
 export async function deleteStorageBin(id: string): Promise<void> {
-  await responseHandle(
-    () => supabase.from('mdm_warehouse_bin').delete().eq('id', id).select('id'),
-    { ...writeOptions, message: '库位已删除' }
+  await deleteStorageBins([id])
+}
+
+export async function deleteStorageBins(ids: string[]): Promise<void> {
+  const targets = uniq(ids)
+  if (!targets.length || targets.length > 500 || targets.some((id) => !id.trim()))
+    throw new Error('请选择 1 至 500 个有效库位后重试')
+  const { data } = await responseHandle<number>(
+    () => supabase.rpc('mdm_delete_warehouse_bins_secure', { p_ids: targets }),
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      noAffectedMessage: '库位未删除，请刷新核对权限和记录状态后重试'
+    }
   )
+  if (data !== targets.length)
+    throw new Error('删除结果与所选库位不一致，请刷新核对权限和记录状态后重试')
 }
 
 export interface InventoryBatchQuery {
@@ -266,6 +286,7 @@ export interface InventoryBatchQuery {
 }
 
 export async function fetchInventoryBatches(params: InventoryBatchQuery) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('wms_inventory_batch')
     .select(
@@ -284,7 +305,7 @@ export async function fetchInventoryBatches(params: InventoryBatchQuery) {
   if (params.positiveOnly) query = query.gt('quantity', 0)
   if (params.keyword?.trim())
     query = query.or(buildOrIlikeFilter(['batch_no', 'remark'], params.keyword))
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.order('id').range(from, to)
   const { data, total } = await responseHandle<InventoryBatch[]>(() => query, readOptions)
   return { data: data ?? [], total: total ?? 0, current: params.current, size: params.size }
 }
@@ -303,14 +324,14 @@ export async function fetchInventoryReservations(params: {
   current: number
   size: number
 }) {
-  const from = (params.current - 1) * params.size
+  const pageRange = buildSupabasePageRange(params)
   const { data } = await responseHandle<{ data: InventoryReservation[]; total: number }>(
     () =>
       supabase.rpc('wms_list_reservations_secure', {
         p_warehouse_id: params.warehouseId || null,
         p_status: params.status || null,
-        p_from: from,
-        p_to: from + params.size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     readOptions
   )
@@ -355,14 +376,14 @@ export async function fetchInventoryPackages(params: {
   current: number
   size: number
 }) {
-  const from = (params.current - 1) * params.size
+  const pageRange = buildSupabasePageRange(params)
   const { data } = await responseHandle<{ data: InventoryPackage[]; total: number }>(
     () =>
       supabase.rpc('wms_list_packages_secure', {
         p_warehouse_id: params.warehouseId,
         p_keyword: normalizeNullableText(params.keyword),
-        p_from: from,
-        p_to: from + params.size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     readOptions
   )
@@ -415,15 +436,15 @@ export async function fetchInventorySerials(params: {
   current: number
   size: number
 }) {
-  const from = (params.current - 1) * params.size
+  const pageRange = buildSupabasePageRange(params)
   const { data } = await responseHandle<{ data: InventorySerial[]; total: number }>(
     () =>
       supabase.rpc('wms_list_serials_secure', {
         p_warehouse_id: params.warehouseId || null,
         p_status: params.status || null,
         p_keyword: normalizeNullableText(params.keyword),
-        p_from: from,
-        p_to: from + params.size - 1
+        p_from: pageRange.from,
+        p_to: pageRange.to
       }),
     readOptions
   )

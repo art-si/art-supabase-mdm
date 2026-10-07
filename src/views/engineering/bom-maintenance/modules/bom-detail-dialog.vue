@@ -454,7 +454,6 @@
 
       p {
         margin-top: var(--art-space-1);
-        font-family: var(--art-font-family-mono, Consolas, monospace);
         font-size: var(--art-font-size-caption);
         color: var(--el-text-color-secondary);
       }
@@ -493,7 +492,6 @@
 
       small {
         margin-top: var(--art-space-1);
-        font-family: var(--art-font-family-mono, Consolas, monospace);
         font-size: var(--art-font-size-caption);
         color: var(--el-text-color-secondary);
       }

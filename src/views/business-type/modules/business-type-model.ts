@@ -22,7 +22,7 @@ export const createBusinessTypeFormModel = (
   isDefault: false,
   sourceBusinessTypeId: null,
   inventoryDirection: null,
-  stockMovement: 'inbound',
+  stockMovement: null,
   ownerType: null,
   inventoryAccounting: false,
   remark: '',
@@ -55,7 +55,7 @@ export const createBusinessTypeCopyModel = (source: BusinessTypeRecord): Busines
     isDefault: false,
     sourceBusinessTypeId: source.sourceBusinessTypeId ?? null,
     inventoryDirection: source.inventoryDirection ?? null,
-    stockMovement: source.stockMovement ?? 'inbound',
+    stockMovement: source.stockMovement ?? null,
     ownerType: source.ownerType ?? null,
     inventoryAccounting: source.inventoryAccounting,
     remark: source.remark,
@@ -98,6 +98,9 @@ export const buildBusinessTypeInput = (
   payload.businessTypeName = normalizeNonNullableText(payload.businessTypeName)
   payload.sourceBusinessTypeId = normalizeNullableText(payload.sourceBusinessTypeId)
   payload.inventoryDirection = normalizeNullableText(payload.inventoryDirection)
+  const movement = normalizeNullableText(payload.stockMovement)
+  payload.stockMovement =
+    movement === 'inbound' || movement === 'outbound' || movement === 'transfer' ? movement : null
   payload.ownerType = normalizeNullableText(payload.ownerType)
   payload.remark = normalizeNonNullableText(payload.remark)
   payload.textColor = normalizeNonNullableText(payload.textColor).toUpperCase()

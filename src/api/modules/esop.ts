@@ -2,6 +2,7 @@ import { toDateStartTimestamp, toDateEndTimestamp } from '@/utils/time/date-boun
 import { omit } from 'lodash-es'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {
   EsopCategory,
   EsopCategoryInput,
@@ -42,6 +43,7 @@ export async function fetchEsopDocuments(
   params: EsopDocumentQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_esop_document')
     .select(
@@ -49,6 +51,7 @@ export async function fetchEsopDocuments(
       { count: 'exact' }
     )
     .order('upload_time', { ascending: false })
+    .order('id')
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.keyword)
     query = query.or(
@@ -60,7 +63,7 @@ export async function fetchEsopDocuments(
     query = query.gte('upload_time', toDateStartTimestamp(params.uploadDateRange[0]))
   if (params.uploadDateRange?.[1])
     query = query.lte('upload_time', toDateEndTimestamp(params.uploadDateRange[1]))
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.range(from, to)
   const { data, total } = await responseHandle<EsopDocument[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions

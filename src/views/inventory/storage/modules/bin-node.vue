@@ -8,6 +8,15 @@
       子单元 · 上级 {{ parentCode }}
     </p>
     <div class="bin-node__tile relative">
+      <ElCheckbox
+        v-if="selectionMode"
+        class="absolute! right-2 bottom-1 z-10 m-0! h-6!"
+        :aria-label="`选择库位 ${bin.binCode}`"
+        :title="`选择库位 ${bin.binCode}`"
+        :model-value="selectedBinIds.includes(bin.id)"
+        :disabled="selectionDisabled"
+        @change="emit('check', bin)"
+      />
       <StorageTile
         :code="bin.binCode"
         :name="bin.binName"
@@ -15,6 +24,7 @@
         :stock="stockFor(bin.id)"
         :stale-days="staleDays"
         :fixed="Boolean(bin.fixedMaterialId)"
+        :selected="selectionMode && selectedBinIds.includes(bin.id)"
         :compact="compact || depth > 0"
         with-actions
         @select="emit('select', bin)"
@@ -43,6 +53,10 @@
         :stock-for="stockFor"
         :stale-days="staleDays"
         :depth="depth + 1"
+        :selection-mode="selectionMode"
+        :selected-bin-ids="selectedBinIds"
+        :selection-disabled="selectionDisabled"
+        @check="emit('check', $event)"
         compact
         @select="emit('select', $event)"
         @detail="emit('detail', $event)"
@@ -74,8 +88,18 @@
       depth?: number
       compact?: boolean
       parentCode?: string
+      selectionMode?: boolean
+      selectedBinIds?: string[]
+      selectionDisabled?: boolean
     }>(),
-    { depth: 0, compact: false, parentCode: '' }
+    {
+      depth: 0,
+      compact: false,
+      parentCode: '',
+      selectionMode: false,
+      selectedBinIds: () => [],
+      selectionDisabled: false
+    }
   )
   const emit = defineEmits<{
     select: [bin: StorageBin]
@@ -83,6 +107,7 @@
     edit: [bin: StorageBin]
     child: [bin: StorageBin]
     remove: [bin: StorageBin]
+    check: [bin: StorageBin]
   }>()
 </script>
 

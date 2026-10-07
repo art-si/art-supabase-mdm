@@ -168,7 +168,9 @@
       key: 'stockMovement',
       label: '出入库标志',
       value: (data: BusinessTypeDetailData) =>
-        ({ inbound: '入库', outbound: '出库', transfer: '库存转移' })[data.record.stockMovement]
+        data.record.stockMovement
+          ? { inbound: '入库', outbound: '出库', transfer: '库存转移' }[data.record.stockMovement]
+          : '—'
     },
     { key: 'ownerType', label: '货主类型', field: 'record.ownerType' },
     {

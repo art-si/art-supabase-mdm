@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {
   ComponentIndustryGroup,
   ComponentIndustryGroupInput,
@@ -61,6 +62,7 @@ export async function fetchComponentTypes(
   params: ComponentTypeQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_component_type')
     .select('*,group:mdm_master_group!mdm_component_type_group_fk(id,code,name)', {
@@ -68,6 +70,7 @@ export async function fetchComponentTypes(
     })
     .order('sort_order')
     .order('component_type_code')
+    .order('id')
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.keyword?.trim())
     query = query.or(
@@ -79,7 +82,7 @@ export async function fetchComponentTypes(
   if (params.groupIds?.length) query = query.in('group_id', params.groupIds)
   if (params.enabled === true || params.enabled === false)
     query = query.eq('enabled', params.enabled)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.range(from, to)
   const { data, total } = await responseHandle<ComponentTypeRecord[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions

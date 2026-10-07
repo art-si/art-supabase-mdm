@@ -695,13 +695,11 @@
   :deep(.bom-maintenance-page__identity small),
   :deep(.bom-maintenance-page__code small) {
     margin-top: 2px;
-    font-family: var(--art-font-family-mono, Consolas, monospace);
     font-size: 11px;
     color: var(--el-text-color-secondary);
   }
 
   :deep(.bom-maintenance-page__code strong) {
-    font-family: var(--art-font-family-mono, Consolas, monospace);
     color: var(--theme-color);
   }
 

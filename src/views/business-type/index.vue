@@ -66,6 +66,7 @@
 
       <BusinessTypeDialog ref="dialogRef" @success="handleSaved" />
       <BusinessTypeDetailDrawer ref="detailDrawerRef" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
       <ArtDrawer ref="menuDrawerRef">
         <BusinessTypeMenuFilter
           class="business-type-page__drawer-filter"
@@ -82,8 +83,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import dayjs from 'dayjs'
-  import { ElTag } from 'element-plus'
+  import { ElMessage, ElTag } from 'element-plus'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -95,6 +97,9 @@
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
@@ -109,7 +114,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
@@ -199,6 +204,11 @@
     storeToRefs(tenantScopeStore)
   const { hasAuth, hasAnyAuth } = useAuth()
   const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'mdm_business_type',
+    '业务类型'
+  )
+  const deleteBusy = ref(false)
   const canManage = computed(() =>
     hasAnyAuth([
       'MdmBusinessType:Add',
@@ -276,9 +286,7 @@
     menu.selectedId ? treeUtils.findNode(menu.tree, menu.selectedId) : undefined
   )
   const selectedMenuLabel = computed(() =>
-    selectedMenu.value
-      ? String(selectedMenu.value.meta?.title || selectedMenu.value.name || '未命名菜单')
-      : '全部功能'
+    selectedMenu.value ? resolveMenuLabel(selectedMenu.value) : '全部功能'
   )
   const selectedMenuIds = computed(() =>
     menu.selectedId
@@ -376,9 +384,9 @@
           return rows.map<ExportRow>((row) => ({
             ...row,
             menuPath: resolveMenuPaths(row.menuIds),
-            stockMovementLabel: { inbound: '入库', outbound: '出库', transfer: '库存转移' }[
-              row.stockMovement
-            ],
+            stockMovementLabel: row.stockMovement
+              ? { inbound: '入库', outbound: '出库', transfer: '库存转移' }[row.stockMovement]
+              : '—',
             statusLabel: row.enabled ? '启用' : '禁用'
           }))
         }
@@ -386,14 +394,16 @@
     ]),
     selectionActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
-        type: 'delete',
+        key: 'delete',
+        label: '批量删除',
+        icon: 'ri:delete-bin-line',
+        buttonProps: { type: 'danger', plain: true },
+        selectionRequired: true,
         permission: 'MdmBusinessType:Delete',
-        content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-          `确定删除选中的 ${selectedCount} 条业务类型吗？已被业务单据引用的类型不会被删除。`,
-        onClick: async ({ selectedRows, api }) => {
-          await deleteBusinessTypes(selectedRows.map((row) => String(row.id)))
-          await Promise.all([api.refreshRemove(), loadStats()])
-        }
+        confirm: false,
+        disabled: () => deleteBusy.value,
+        onClick: ({ selectedRows }: ArtTableQueryHeaderActionContext) =>
+          removeRows(selectedRows as BusinessTypeRecord[])
       }
     ])
   })
@@ -480,7 +490,9 @@
       label: '出入库标志',
       width: 110,
       formatter: (row) =>
-        ({ inbound: '入库', outbound: '出库', transfer: '库存转移' })[row.stockMovement]
+        row.stockMovement
+          ? { inbound: '入库', outbound: '出库', transfer: '库存转移' }[row.stockMovement]
+          : '—'
     },
     {
       prop: 'inventoryDirection',
@@ -626,7 +638,7 @@
   const resolveMenuPath = (menuId: string): string =>
     treeUtils
       .getAncestors(menu.tree, menuId)
-      .map((item) => String(item.meta?.title || item.name || '未命名菜单'))
+      .map((item) => resolveMenuLabel(item))
       .join(' / ')
   const resolveMenuPaths = (menuIds: string[]): string =>
     menuIds.map(resolveMenuPath).filter(Boolean).join('；')
@@ -653,9 +665,43 @@
   }
 
   const removeRow = async (row: BusinessTypeRecord): Promise<void> => {
-    await confirmDelete(`确定删除业务类型“${row.businessTypeName}”吗？`)
-    await deleteBusinessTypes([row.id])
-    await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
+    await removeRows([row])
+  }
+
+  const removeRows = async (rows: BusinessTypeRecord[]): Promise<void> => {
+    if (deleteBusy.value || !rows.length) return
+    if (!hasAuth('MdmBusinessType:Delete') || rows.some((row) => !row.id)) {
+      ElMessage.error('当前账号无权删除所选业务类型，或记录已变化，请刷新后重试')
+      return
+    }
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${row.businessTypeName} · ${row.businessTypeCode}`
+    }))
+    deleteBusy.value = true
+    try {
+      if (await inspectDeleteReferences(resources)) return
+      await confirmDelete(
+        rows.length === 1
+          ? `确定删除业务类型“${resources[0].label}”吗？`
+          : `确定删除选中的 ${rows.length} 条业务类型吗？`
+      )
+      try {
+        await deleteBusinessTypes(resources.map((row) => row.id))
+      } catch (error) {
+        if (error instanceof DeleteReferenceBlockedError) return
+        if (await inspectDeleteReferences(resources)) return
+        throw error
+      }
+      ElMessage.success(`已删除 ${rows.length} 条业务类型`)
+      tableRef.value?.clearSelection()
+      await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close')
+        notifyFriendlyError(error, '业务类型删除失败，请检查网络后重试')
+    } finally {
+      deleteBusy.value = false
+    }
   }
 
   const loadStats = async (): Promise<void> => {

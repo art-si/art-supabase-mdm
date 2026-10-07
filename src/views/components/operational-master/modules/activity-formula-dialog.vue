@@ -87,6 +87,7 @@
                 v-model="model.activityTypes"
                 multiple
                 collapse-tags
+                collapse-tags-tooltip
                 :disabled="readonly"
                 placeholder="可选择多个活动类型"
               >

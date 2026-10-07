@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { mdmCatalogSourceDefinitions, type MdmCatalogScope } from './catalog-source-definitions'
 export {
   mdmCatalogSourceDefinitions,
@@ -227,17 +228,19 @@ export async function fetchMdmCatalogPage(
   query: MdmCatalogQuery,
   options?: RequestOptions
 ): Promise<MdmCatalogPageResponse> {
-  const current = Math.max(1, Math.trunc(query.current || 1))
-  const size = Math.min(100, Math.max(1, Math.trunc(query.size || 20)))
-  const from = (current - 1) * size
+  const current = query.current ?? 1
+  const size = query.size ?? 20
+  const pageRange = buildSupabasePageRange({ current, size })
+  // The catalog RPC limits each response to 100 rows; reject instead of silently changing pages.
+  if (size > 100) throw new RangeError('主数据目录每页最多 100 条，请调整分页大小')
   const rpcQuery = supabase.rpc('mdm_list_catalog_secure', {
     p_scope: scope,
     p_keyword: normalizeNullableText(query.keyword),
     p_source_type: query.sourceType || null,
     p_state: query.state || null,
     p_quality: query.quality || null,
-    p_from: from,
-    p_to: from + size - 1
+    p_from: pageRange.from,
+    p_to: pageRange.to
   })
   const { data } = await responseHandle<unknown>(
     () => (options?.signal ? rpcQuery.abortSignal(options.signal) : rpcQuery),

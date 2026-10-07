@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import { ElTree, type TreeNodeData } from 'element-plus'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -179,7 +180,7 @@
   const selectedCount = computed(() => selectedNode.value?.totalCount ?? totalCount.value)
 
   function resolveLabel(menu: { meta?: { title?: unknown }; name?: unknown }): string {
-    return String(menu.meta?.title || menu.name || '未命名菜单')
+    return resolveMenuLabel(menu)
   }
 
   const resolveNodeIcon = (menu: DisplayMenuNode): string =>

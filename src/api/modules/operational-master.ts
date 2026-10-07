@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 export { fetchMasterGroups } from '@/api/master-groups'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {
   ActivityFormulaParameter,
   ActivityFormulaParameterInput,
@@ -92,12 +93,14 @@ export async function fetchOperationalMaster(
   params: OperationalMasterQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   const definition = resources[kind]
   let query = supabase
     .from(definition.table)
     .select('*', { count: 'exact' })
     .order('update_time', { ascending: false })
-    .range((params.current - 1) * params.size, params.current * params.size - 1)
+    .order('id')
+    .range(from, to)
 
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.groupIds?.length) query = query.in('group_id', params.groupIds)

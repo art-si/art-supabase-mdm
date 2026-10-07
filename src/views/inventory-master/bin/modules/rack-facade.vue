@@ -1,6 +1,15 @@
 <template>
   <section class="min-w-0" :aria-label="`${code}货架`">
     <header class="mb-3 flex items-center gap-2 border-b border-[var(--el-border-color)] pb-2">
+      <ElCheckbox
+        v-if="selectionMode"
+        :model-value="
+          levels.every((level) => level.bins.every((bin) => selectedBinIds.includes(bin.id)))
+        "
+        :disabled="selectionDisabled"
+        @change="emit('checkShelf')"
+        >选择整架</ElCheckbox
+      >
       <button
         type="button"
         class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
@@ -40,6 +49,15 @@
                 class="rack-cell"
                 :style="{ gridColumn: String(bin.columnNo || index + 1) }"
               >
+                <ElCheckbox
+                  v-if="selectionMode"
+                  class="absolute! right-2 bottom-1 z-10 m-0! h-6!"
+                  :aria-label="`选择库位 ${bin.binCode}`"
+                  :title="`选择库位 ${bin.binCode}`"
+                  :model-value="selectedBinIds.includes(bin.id)"
+                  :disabled="selectionDisabled"
+                  @change="emit('check', bin)"
+                />
                 <StorageTile
                   :code="bin.binCode"
                   :name="bin.binName"
@@ -47,6 +65,7 @@
                   :stock="stockFor(bin.id)"
                   :stale-days="staleDays"
                   :fixed="Boolean(bin.fixedMaterialId)"
+                  :selected="selectionMode && selectedBinIds.includes(bin.id)"
                   :rack-label="String(bin.columnNo || index + 1)"
                   rack
                   @select="emit('select', bin)"
@@ -83,6 +102,10 @@
           :stock-for="stockFor"
           :stale-days="staleDays"
           :parent-code="parentCodeFor(child)"
+          :selection-mode="selectionMode"
+          :selected-bin-ids="selectedBinIds"
+          :selection-disabled="selectionDisabled"
+          @check="emit('check', $event)"
           compact
           @select="emit('select', $event)"
           @detail="emit('detail', $event)"
@@ -115,6 +138,9 @@
     stockFor: (binId: string) => StorageStockStat
     staleDays: number
     parentCodeFor: (bin: StorageBin) => string | undefined
+    selectionMode: boolean
+    selectedBinIds: string[]
+    selectionDisabled: boolean
   }>()
   const emit = defineEmits<{
     select: [bin: StorageBin]
@@ -124,6 +150,8 @@
     remove: [bin: StorageBin]
     toggle: []
     editShelf: []
+    check: [bin: StorageBin]
+    checkShelf: []
   }>()
 
   const columnCount = computed(() =>

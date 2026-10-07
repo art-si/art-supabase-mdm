@@ -1,7 +1,7 @@
 import type { ApiFeedbackOptions } from '@/types/api/request'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
-import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'
 import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import type { MasterDataDeleteDependencyDetail } from '@/api/master-data-delete'
 import { keyBy, uniq } from 'lodash-es'
@@ -36,6 +36,7 @@ const writeOptions = {
 }
 
 export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSignal }) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_bom')
     .select(
@@ -65,7 +66,7 @@ export async function fetchBoms(params: BomQuery, options?: { signal?: AbortSign
   if (params.groupIds?.length) query = query.in('group_id', params.groupIds)
   if (params.purpose) query = query.eq('purpose', params.purpose)
   if (params.status) query = query.eq('status', params.status)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.range(from, to)
   const { data, total } = await responseHandle<BomRecord[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     readOptions

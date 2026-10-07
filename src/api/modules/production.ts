@@ -1,5 +1,8 @@
 import { buildSupabaseRpcRange } from '@/utils/supabase'
-import type { EmployeeSelectorContractParams } from '@/api/integration/employees'
+import type {
+  EmployeeSelectorContractParams,
+  EmployeeSelectorContractResult
+} from '@/api/integration/employees'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { parseProductionShifts } from './production-shifts'
@@ -44,7 +47,12 @@ export async function fetchProductionDepartments(
 ): Promise<ProductionDepartment[]> {
   const { data } = await fetchAllRangePages<ProductionDepartment>(({ from, to }) =>
     responseHandle<ProductionDepartment[]>(() => {
-      let query = supabase.from('mdm_production_department').select('*').order('sort').order('code')
+      let query = supabase
+        .from('mdm_production_department')
+        .select('*')
+        .order('sort')
+        .order('code')
+        .order('id')
       if (tenantId) query = query.eq('tenant_id', tenantId)
       return query.range(from, to)
     }, readOptions)
@@ -188,14 +196,16 @@ export async function setProductionPeopleEnabled(ids: string[], enabled: boolean
 interface ProductionEmployeePayload {
   records: ProductionEmployeeReference[]
   total: number
-  fieldAccess: Record<string, boolean>
+  fieldAccess: { contactDetails: boolean; identityDetails: boolean }
 }
-export async function fetchProductionEmployeeOptions(params: EmployeeSelectorContractParams = {}) {
+export async function fetchProductionEmployeeOptions(
+  params: EmployeeSelectorContractParams = {}
+): Promise<EmployeeSelectorContractResult> {
+  const range = buildSupabaseRpcRange(params.from ?? 0, params.to ?? 9)
   const { data, error } = await responseHandle<ProductionEmployeePayload>(
     () =>
       supabase.rpc('mdm_list_production_employees', {
-        p_from: params.from ?? 0,
-        p_to: params.to ?? 9,
+        ...range,
         p_keyword: params.keyword || null
       }),
     { ...readOptions, showErrorMessage: true }
@@ -203,7 +213,10 @@ export async function fetchProductionEmployeeOptions(params: EmployeeSelectorCon
   return {
     data: data?.records ?? [],
     total: data?.total ?? 0,
-    fieldAccess: data?.fieldAccess ?? {},
+    fieldAccess: {
+      contactDetails: data?.fieldAccess?.contactDetails ? 'read' : 'hidden',
+      identityDetails: data?.fieldAccess?.identityDetails ? 'read' : 'hidden'
+    },
     error
   }
 }

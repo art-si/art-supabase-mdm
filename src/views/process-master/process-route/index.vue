@@ -622,7 +622,6 @@
       min-width: 44px;
       min-height: 24px;
       padding: 2px 8px;
-      font-family: var(--art-font-family-mono, Consolas, monospace);
       font-size: 11px;
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));

@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import type {
   MdmChangeRequest,
@@ -33,11 +34,6 @@ const writeOptions = {
   errorMessage: 'MDM 治理操作失败，请检查权限与数据后重试'
 }
 
-const pageRange = (query: MdmGovernancePageQuery) => ({
-  from: (query.current - 1) * query.size,
-  to: query.current * query.size - 1
-})
-
 const pageResult = <T>(
   data: T[] | null,
   total: number | undefined,
@@ -65,12 +61,13 @@ export async function fetchMdmGovernanceOverview(): Promise<MdmGovernanceOvervie
 }
 
 export async function fetchMdmQualityIssues(query: MdmGovernancePageQuery) {
-  const { from, to } = pageRange(query)
+  const { from, to } = buildSupabasePageRange(query)
   let request = supabase
     .from('mdm_quality_issue')
     .select('*', { count: 'exact' })
     .order('due_at')
     .order('severity', { ascending: false })
+    .order('id')
   if (query.keyword) {
     request = request.or(buildOrIlikeFilter(['source_code', 'source_name'], query.keyword))
   }
@@ -84,11 +81,12 @@ export async function fetchMdmQualityIssues(query: MdmGovernancePageQuery) {
 }
 
 export async function fetchMdmChangeRequests(query: MdmGovernancePageQuery) {
-  const { from, to } = pageRange(query)
+  const { from, to } = buildSupabasePageRange(query)
   let request = supabase
     .from('mdm_change_request')
     .select('*', { count: 'exact' })
     .order('create_time', { ascending: false })
+    .order('id')
   if (query.keyword) {
     request = request.or(
       buildOrIlikeFilter(['request_no', 'title', 'source_type', 'requester_email'], query.keyword)
@@ -103,12 +101,13 @@ export async function fetchMdmChangeRequests(query: MdmGovernancePageQuery) {
 }
 
 export async function fetchMdmMatchCandidates(query: MdmGovernancePageQuery) {
-  const { from, to } = pageRange(query)
+  const { from, to } = buildSupabasePageRange(query)
   let request = supabase
     .from('mdm_match_candidate')
     .select('*', { count: 'exact' })
     .order('match_score', { ascending: false })
     .order('create_time')
+    .order('id')
   if (query.keyword) {
     const keyword = query.keyword.trim()
     if (/^[0-9a-f-]{36}$/i.test(keyword)) {
@@ -124,7 +123,7 @@ export async function fetchMdmMatchCandidates(query: MdmGovernancePageQuery) {
 }
 
 export async function fetchMdmOutboxDeliveries(query: MdmGovernancePageQuery) {
-  const { from, to } = pageRange(query)
+  const { from, to } = buildSupabasePageRange(query)
   let request = supabase
     .from('mdm_outbox_delivery')
     .select(
@@ -132,6 +131,7 @@ export async function fetchMdmOutboxDeliveries(query: MdmGovernancePageQuery) {
       { count: 'exact' }
     )
     .order('create_time', { ascending: false })
+    .order('id')
   if (query.state) request = request.eq('status', query.state)
   const { data, total } = await responseHandle<MdmOutboxDelivery[]>(
     () => request.range(from, to),

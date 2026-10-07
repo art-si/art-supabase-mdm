@@ -1,12 +1,17 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
-import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'
+import {
+  buildSupabasePageRange,
+  buildSupabaseRpcRange,
+  fetchAllRangePages
+} from '@/utils/supabase/pagination'
 import { mapWithConcurrency } from '@/utils/async'
 import { loadAllDocumentPages, loadAllLinePages } from '@/utils/business/document-detail-list'
 import { keyBy, uniq } from 'lodash-es'
 import type {
   EmployeeSelectorContractParams,
+  EmployeeSelectorContractResult,
   EmployeeIntegrationItem
 } from '@/api/integration/employees'
 import type {
@@ -40,7 +45,8 @@ import type {
   WorkstationScope,
   WorkstationScopeCenter
 } from './workspaces.types'
-import type { ProductionDepartment, ProductionPerson } from './production.types'
+import type { ProductionPerson } from './production.types'
+import { fetchProductionDepartments } from './production'
 export * from './workspaces.types'
 const { supabase, responseHandle, keysToSnakeDeep } = useSupabase()
 const read = {
@@ -319,23 +325,20 @@ export async function deleteWorkCenters(ids: string[]) {
 
 export async function fetchWorkstationScope(tenantId?: string | null): Promise<WorkstationScope> {
   const [departmentResult, centerResult] = await Promise.all([
-    fetchAllRangePages<ProductionDepartment>(({ from, to }) => {
-      let query = supabase.from('mdm_production_department').select('*').order('sort').order('code')
-      if (tenantId) query = query.eq('tenant_id', tenantId)
-      return responseHandle<ProductionDepartment[]>(() => query.range(from, to), read)
-    }),
+    fetchProductionDepartments(tenantId),
     fetchAllRangePages<WorkstationScopeCenter>(({ from, to }) => {
       let query = supabase
         .from('mdm_work_center')
         .select('id,tenant_id,department_id,code,name,sort')
         .order('sort')
         .order('code')
+        .order('id')
       if (tenantId) query = query.eq('tenant_id', tenantId)
       return responseHandle<WorkstationScopeCenter[]>(() => query.range(from, to), read)
     })
   ])
   return {
-    departments: departmentResult.data ?? [],
+    departments: departmentResult,
     workCenters: centerResult.data ?? []
   }
 }
@@ -478,8 +481,11 @@ export async function deleteCenterDevice(id: string) {
     write
   )
 }
-export async function fetchProductionPersonSelector(p: EmployeeSelectorContractParams = {}) {
+export async function fetchProductionPersonSelector(
+  p: EmployeeSelectorContractParams = {}
+): Promise<EmployeeSelectorContractResult> {
   const { from = 0, to = 9 } = p
+  const { p_from, p_to } = buildSupabaseRpcRange(from, to)
   let query = supabase
     .rpc('mdm_work_center_people', {}, { count: 'exact' })
     .select('*')
@@ -489,14 +495,14 @@ export async function fetchProductionPersonSelector(p: EmployeeSelectorContractP
   if (p.tenantId) query = query.eq('tenant_id', p.tenantId)
   if (p.keyword) query = query.or(buildOrIlikeFilter(['name', 'employee_no'], p.keyword))
   const { data, total, error } = await responseHandle<CenterPersonReference[]>(
-    () => query.range(Math.max(0, from), Math.max(from, to, 0)),
+    () => query.range(p_from, p_to),
     read
   )
   return {
     data: (data ?? []).map(toCenterEmployee),
     total: total ?? 0,
     error,
-    fieldAccess: { contactDetails: false, identityDetails: false }
+    fieldAccess: { contactDetails: 'hidden', identityDetails: 'hidden' }
   }
 }
 export async function fetchCenterPeople(ids: string[]): Promise<EmployeeIntegrationItem[]> {
@@ -529,7 +535,7 @@ export async function fetchPersonnelWorkCenterConfigs(
 export async function fetchUnconfiguredPersonnelSelector(
   params: EmployeeSelectorContractParams = {},
   departmentIds?: string[]
-) {
+): Promise<EmployeeSelectorContractResult> {
   const { from = 0, to = 9 } = params
   const result = await fetchPersonnelWorkCenterConfigs({
     tenantId: params.tenantId || '',
@@ -558,7 +564,7 @@ export async function fetchUnconfiguredPersonnelSelector(
     })),
     total: result.total,
     error: undefined,
-    fieldAccess: { contactDetails: true, identityDetails: false }
+    fieldAccess: { contactDetails: 'read', identityDetails: 'hidden' }
   }
 }
 export async function savePersonnelCommonWorkCenters(input: PersonnelCommonWorkCenterInput) {

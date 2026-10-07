@@ -1,6 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import { uniq } from 'lodash-es'
 import type {
@@ -32,12 +33,13 @@ export async function fetchMovementTypePage(
   params: MovementTypeQuery,
   options?: { signal?: AbortSignal }
 ): Promise<{ records: MovementTypeRecord[]; total: number }> {
-  const from = Math.max((params.current - 1) * params.size, 0)
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_stock_movement_type')
     .select(selectFields, { count: 'exact' })
     .order('movement_code')
-    .range(from, from + params.size - 1)
+    .order('id')
+    .range(from, to)
   if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
   if (params.direction) query = query.eq('direction', params.direction)
   if (params.keyword?.trim()) {

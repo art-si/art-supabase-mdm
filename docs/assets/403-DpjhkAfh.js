@@ -1,0 +1,1 @@
+import{kr as e,mi as t,vr as n}from"./supabase-CumHoEIq.js";import{t as r}from"./art-permission-guard-Bu54O8b6.js";var i=e({name:`Exception403`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"force-denied":``,"resource-name":`目标页面`,"show-relogin":``,"viewport-centered":``}))}});export{i as default};

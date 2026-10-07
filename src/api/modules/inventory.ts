@@ -14,6 +14,7 @@ import type {
   WarehouseWorkspaceResult
 } from './inventory.types'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 
 export * from './inventory.types'
 
@@ -35,10 +36,10 @@ export async function fetchWarehouseWorkspace(
   params: WarehouseQuery,
   options?: { signal?: AbortSignal }
 ): Promise<WarehouseWorkspaceResult> {
-  const from = Math.max((params.current - 1) * params.size, 0)
+  const { from, to } = buildSupabasePageRange(params)
   let request = supabase.rpc('mdm_list_warehouses_secure', {
     p_from: from,
-    p_to: from + params.size - 1,
+    p_to: to,
     p_keyword: normalizeNullableText(params.keyword),
     p_status: params.status || null,
     p_group_id: params.groupId || null
@@ -127,6 +128,7 @@ export async function fetchSupplyChainCodeRules(
   params: InventoryRuleQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_supply_chain_code_rule')
     .select(
@@ -134,10 +136,11 @@ export async function fetchSupplyChainCodeRules(
       { count: 'exact' }
     )
     .order('update_time', { ascending: false })
+    .order('id')
   if (params.keyword)
     query = query.or(buildOrIlikeFilter(['rule_code', 'rule_name', 'example_code'], params.keyword))
   if (params.status) query = query.eq('status', params.status)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.range(from, to)
   const { data, total } = await responseHandle<SupplyChainCodeRule[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     ruleReadOptions
@@ -202,16 +205,18 @@ export async function fetchOutboundRules(
   params: InventoryRuleQuery,
   options?: { signal?: AbortSignal }
 ) {
+  const { from, to } = buildSupabasePageRange(params)
   let query = supabase
     .from('mdm_outbound_rule')
     .select('*,sorts:mdm_outbound_rule_sort(*,field:mdm_outbound_sort_field(*))', {
       count: 'exact'
     })
     .order('update_time', { ascending: false })
+    .order('id')
   if (params.keyword)
     query = query.or(buildOrIlikeFilter(['rule_code', 'rule_name', 'remark'], params.keyword))
   if (params.status) query = query.eq('status', params.status)
-  query = query.range((params.current - 1) * params.size, params.current * params.size - 1)
+  query = query.range(from, to)
   const { data, total } = await responseHandle<OutboundRule[]>(
     () => (options?.signal ? query.abortSignal(options.signal) : query),
     ruleReadOptions

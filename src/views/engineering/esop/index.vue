@@ -1174,7 +1174,6 @@
 
       small {
         margin-top: 3px;
-        font-family: var(--art-font-family-mono, Consolas, monospace);
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
@@ -1248,7 +1247,6 @@
   }
 
   .esop-detail__hero small {
-    font-family: var(--art-font-family-mono, Consolas, monospace);
     font-size: 10px;
     color: var(--theme-color);
   }

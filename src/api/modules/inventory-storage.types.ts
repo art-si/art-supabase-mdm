@@ -70,6 +70,15 @@ export interface StorageBin {
 
 export type StorageBinInput = Omit<StorageBin, 'id' | 'tenantId'>
 
+export interface StorageShelfGenerate {
+  warehouseId: string
+  zoneId: string | null
+  shelfCode: string
+  levels: number
+  columns: number
+  maxQuantity: number | null
+}
+
 export interface StorageShelfUpdate {
   warehouseId: string
   zoneId: string | null

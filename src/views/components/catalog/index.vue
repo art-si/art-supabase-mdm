@@ -459,7 +459,6 @@
     }
 
     span {
-      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
       font-size: 12px;
       color: var(--el-color-primary);
     }

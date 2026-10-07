@@ -1,6 +1,7 @@
 import { omit } from 'lodash-es'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 
 export interface PurchaseSupplier {
   id: string
@@ -81,11 +82,13 @@ const readOptions = {
 }
 
 export async function fetchPurchaseSuppliers(query: SupplierQuery, signal?: AbortSignal) {
+  const { from, to } = buildSupabasePageRange(query)
   let request = supabase
     .from('mdm_supplier')
     .select('*', { count: 'exact' })
     .order('update_time', { ascending: false })
-    .range((query.current - 1) * query.size, query.current * query.size - 1)
+    .order('id')
+    .range(from, to)
   if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
   if (query.groupIds?.length) request = request.in('group_id', query.groupIds)
   if (query.ids?.length) request = request.in('id', query.ids)
