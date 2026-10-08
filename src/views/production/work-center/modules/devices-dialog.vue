@@ -1,9 +1,8 @@
 <template>
-  <ArtDialog ref="dialogRef" size="lg"
+  <ArtDialog :loading="state.loading" ref="dialogRef" size="lg"
     ><ArtSectionCard
       title="设备列表"
       :subtitle="center ? `${center.code} · ${center.name}` : ''"
-      :loading="state.loading"
       :error="state.error"
       retryable
       @retry="load"

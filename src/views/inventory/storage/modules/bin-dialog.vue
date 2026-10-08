@@ -85,6 +85,7 @@
     shelfCode: null,
     levelNo: null,
     columnNo: null,
+    codeSeparator: null,
     maxWeightKg: null,
     maxAreaSqm: null,
     maxQuantity: null,
@@ -101,7 +102,11 @@
       key: 'binCode',
       label: '库位编码',
       type: 'input',
-      props: { maxlength: 60, placeholder: '如 WH01-A-S01-1-1' }
+      props: {
+        maxlength: 60,
+        placeholder: '如 A1-01-01',
+        disabled: context.value?.row?.codeSeparator != null
+      }
     },
     {
       key: 'binName',
@@ -113,7 +118,8 @@
       key: 'binType',
       label: '库位类型',
       type: 'select',
-      options: getDictMap.value.mdmWarehouseBinType ?? []
+      options: getDictMap.value.mdmWarehouseBinType ?? [],
+      props: { disabled: context.value?.row?.codeSeparator != null }
     },
     {
       key: 'parentId',
@@ -127,26 +133,45 @@
               bin.zoneId === (context.value?.zone?.id ?? null)
           )
           .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id })) ?? [],
-      props: { clearable: true, filterable: true, placeholder: '顶层库位' }
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: '顶层库位',
+        disabled: context.value?.row?.codeSeparator != null
+      }
     },
     { key: 'capacity', label: '货架与容量', type: 'divider', span: 24 },
     {
       key: 'shelfCode',
       label: '货架号',
       type: 'input',
-      props: { maxlength: 40, placeholder: '可选，如 S01' }
+      props: {
+        maxlength: 40,
+        placeholder: '可选，如 A1',
+        disabled: context.value?.row?.codeSeparator != null
+      }
     },
     {
       key: 'levelNo',
       label: '层号',
       type: 'number',
-      props: { min: 1, precision: 0, class: 'w-full!' }
+      props: {
+        min: 1,
+        precision: 0,
+        class: 'w-full!',
+        disabled: context.value?.row?.codeSeparator != null
+      }
     },
     {
       key: 'columnNo',
       label: '列号',
       type: 'number',
-      props: { min: 1, precision: 0, class: 'w-full!' }
+      props: {
+        min: 1,
+        precision: 0,
+        class: 'w-full!',
+        disabled: context.value?.row?.codeSeparator != null
+      }
     },
     {
       key: 'maxQuantity',
@@ -259,6 +284,7 @@
       shelfCode: row?.shelfCode ?? null,
       levelNo: row?.levelNo ?? null,
       columnNo: row?.columnNo ?? null,
+      codeSeparator: row?.codeSeparator ?? null,
       maxWeightKg: row?.maxWeightKg ?? null,
       maxAreaSqm: row?.maxAreaSqm ?? null,
       maxQuantity: row?.maxQuantity ?? null,

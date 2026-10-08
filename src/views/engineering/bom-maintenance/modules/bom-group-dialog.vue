@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <div class="bom-group-dialog">
+    <div class="bom-group-dialog grid gap-3">
       <ArtEntitySummary
         icon="ri:folder-settings-line"
         eyebrow="BOM GROUP"
@@ -242,10 +242,3 @@
 
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .bom-group-dialog {
-    display: grid;
-    gap: var(--art-space-3);
-  }
-</style>

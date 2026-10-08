@@ -1,6 +1,6 @@
 <template>
-  <ArtDialog ref="dialogRef" size="lg">
-    <div class="center-personnel">
+  <ArtDialog :loading="state.loading" ref="dialogRef" size="lg">
+    <div class="center-personnel flex flex-col gap-4 min-w-0">
       <ArtDescriptions
         :data="center || {}"
         :items="[
@@ -12,7 +12,6 @@
       <ArtSectionCard
         title="指定人员"
         subtitle="配置默认参与人员，临时变动通过下方时段管理。"
-        :loading="state.loading"
         :error="state.error"
         retryable
         @retry="load"
@@ -36,7 +35,6 @@
       <ArtSectionCard
         title="人员临时调整"
         subtitle="在派工前设置生效时间；结束后恢复默认人员安排。"
-        :loading="state.loading"
         :error="state.error"
         retryable
         @retry="load"
@@ -272,11 +270,3 @@
   }
   defineExpose({ handleOpen })
 </script>
-<style scoped lang="scss">
-  .center-personnel {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-</style>

@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <div class="template-binding-dialog">
+    <div class="template-binding-dialog grid gap-4">
       <ElAlert
         :title="`将为 ${ids.length} 个工艺工序绑定同一模板，原绑定会被替换。`"
         description="模板后续更新时，关联工序会继续使用该模板的最新任务与记分规则。"
@@ -80,9 +80,3 @@
   }
   defineExpose({ handleOpen })
 </script>
-<style scoped lang="scss">
-  .template-binding-dialog {
-    display: grid;
-    gap: 16px;
-  }
-</style>

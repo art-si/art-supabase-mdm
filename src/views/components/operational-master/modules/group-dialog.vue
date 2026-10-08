@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="sm">
-    <div class="master-group-dialog">
+    <div class="master-group-dialog grid gap-3">
       <ArtEntitySummary
         :icon="groupIcon"
         eyebrow="MASTER DATA GROUP"
@@ -199,10 +199,3 @@
 
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .master-group-dialog {
-    display: grid;
-    gap: var(--art-space-3);
-  }
-</style>

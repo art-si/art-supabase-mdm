@@ -24,13 +24,21 @@
         现有格位容量保持原值，新增格位默认不限；勾选后可统一设置或清空。
       </p>
       <p v-if="form.applyMaxQuantity">新数值会覆盖全部现有单元；留空表示清空容量上限。</p>
+      <p v-if="hasManagedCodes">新增格位沿用原货架的分隔符，货架编码保持不变。</p>
+      <p v-else
+        >历史编码货架可调整容量或缩减层列；新增格位请使用“生成货架”建立新货架，避免混用编码。</p
+      >
     </div>
   </ArtDialog>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="ts">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
-  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import { getDeleteReferenceContext } from '@/utils/supabase/delete-reference'
   import { ElMessage } from 'element-plus'
   import { useAuth } from '@/hooks/core/useAuth'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -52,6 +60,11 @@
 
   const emit = defineEmits<{ success: [code: string] }>()
   const { hasAuth } = useAuth()
+  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'mdm_warehouse_bin',
+    '库位'
+  )
   const dialogRef = ref<ArtDialogExpose<ShelfEditorContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<ShelfEditorContext>()
@@ -67,6 +80,10 @@
   })
   const canAdd = computed(() => hasAuth('MdmWarehouseBin:Add'))
   const canDelete = computed(() => hasAuth('MdmWarehouseBin:Delete'))
+  const hasManagedCodes = computed(
+    () =>
+      existingBins.value.length > 0 && existingBins.value.every((bin) => bin.codeSeparator != null)
+  )
   const removedCount = computed(
     () =>
       existingBins.value.filter(
@@ -79,7 +96,7 @@
       label: '货架编码',
       type: 'input',
       span: 24,
-      props: { maxlength: 40, placeholder: '如 HJ01' }
+      props: { maxlength: 40, placeholder: '如 A1', disabled: hasManagedCodes.value }
     },
     {
       key: 'levels',
@@ -87,7 +104,7 @@
       type: 'number',
       props: {
         min: canDelete.value ? 1 : originalLevels.value,
-        max: canAdd.value ? 20 : originalLevels.value,
+        max: canAdd.value && hasManagedCodes.value ? 20 : originalLevels.value,
         precision: 0,
         class: 'w-full!'
       }
@@ -98,7 +115,7 @@
       type: 'number',
       props: {
         min: canDelete.value ? 1 : originalColumns.value,
-        max: canAdd.value ? 30 : originalColumns.value,
+        max: canAdd.value && hasManagedCodes.value ? 30 : originalColumns.value,
         precision: 0,
         class: 'w-full!'
       }
@@ -148,8 +165,8 @@
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       if (form.value.levels > originalLevels.value || form.value.columns > originalColumns.value) {
-        if (!canAdd.value) {
-          ElMessage.warning('当前账号无新增库位权限，无法增加货架层列')
+        if (!canAdd.value || !hasManagedCodes.value) {
+          ElMessage.warning('当前货架无法扩层扩列，请核对新增权限及原编码格式')
           return false
         }
       }
@@ -158,20 +175,43 @@
         return false
       }
       const shelfCode = form.value.shelfCode.trim().toUpperCase()
-      await updateStorageShelf({
-        warehouseId: context.value.warehouse.id,
-        zoneId: context.value.zone?.id ?? null,
-        currentShelfCode: context.value.code,
-        shelfCode,
-        levels: form.value.levels,
-        columns: form.value.columns,
-        applyMaxQuantity: form.value.applyMaxQuantity,
-        maxQuantity: form.value.maxQuantity,
-        expectedBinIds: existingBins.value.map((bin) => bin.id)
-      })
+      const removed = existingBins.value
+        .filter(
+          (bin) =>
+            (bin.levelNo ?? 0) > form.value.levels || (bin.columnNo ?? 0) > form.value.columns
+        )
+        .map((bin) => ({ id: bin.id, label: `${bin.binName} · ${bin.binCode}` }))
+      if (removed.length) {
+        if (await inspectDeleteReferences(removed)) return false
+        await confirmDelete(
+          `保存将删除 ${removed.length} 个超出层列范围的库位，此操作不可恢复。确认继续？`
+        )
+        if (!canDelete.value) throw new Error('删除权限已变化，请刷新后重试')
+      }
+      try {
+        await updateStorageShelf({
+          warehouseId: context.value.warehouse.id,
+          zoneId: context.value.zone?.id ?? null,
+          currentShelfCode: context.value.code,
+          shelfCode,
+          levels: form.value.levels,
+          columns: form.value.columns,
+          applyMaxQuantity: form.value.applyMaxQuantity,
+          maxQuantity: form.value.maxQuantity,
+          expectedBinIds: existingBins.value.map((bin) => bin.id)
+        })
+      } catch (error) {
+        if (
+          removed.length &&
+          (await inspectDeleteReferences(removed, getDeleteReferenceContext(error)?.constraint))
+        )
+          return false
+        throw error
+      }
       emit('success', shelfCode)
       return true
     } catch (error) {
+      if (error === 'cancel' || error === 'close') return false
       notifyFriendlyError(error, '货架配置保存失败，请检查填写内容和网络后重试')
       return false
     }

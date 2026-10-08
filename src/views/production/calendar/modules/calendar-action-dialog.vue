@@ -28,6 +28,8 @@
   </ArtDialog>
 </template>
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed } from 'vue'
@@ -82,9 +84,7 @@
           key: 'sourceId',
           label: '参考产线',
           type: 'select',
-          options: form.departments
-            .filter((d) => d.id !== form.departmentId)
-            .map((d) => ({ label: `${d.name} · ${d.code}`, value: d.id })),
+          options: form.departments.filter((d) => d.id !== form.departmentId).map(toNameCodeOption),
           props: { filterable: true },
           help: '仅在当前产线没有轮班模式时可参考，复制后独立维护。'
         }

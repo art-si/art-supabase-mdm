@@ -57,6 +57,8 @@ export interface StorageBin {
   shelfCode: string | null
   levelNo: number | null
   columnNo: number | null
+  /** Null on historical/manual codes; generated shelves retain their separator. */
+  codeSeparator?: string | null
   maxWeightKg: number | null
   maxAreaSqm: number | null
   maxQuantity: number | null
@@ -77,6 +79,7 @@ export interface StorageShelfGenerate {
   levels: number
   columns: number
   maxQuantity: number | null
+  separator: string
 }
 
 export interface StorageShelfUpdate {

@@ -25,6 +25,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -80,9 +82,7 @@
       label: '上级分组',
       key: 'parentId',
       type: 'treeSelect',
-      options: form.groups
-        .filter((item) => item.id !== form.model.id)
-        .map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id })),
+      options: form.groups.filter((item) => item.id !== form.model.id).map(toNameCodeOption),
       props: { clearable: true, checkStrictly: true, placeholder: '不选择则为顶级分组' }
     },
     {

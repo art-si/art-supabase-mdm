@@ -19,6 +19,7 @@
           <template #primary>
             <aside v-if="isDesktopMenuLayout" class="document-type-page__menu-panel">
               <DocumentTypeMenuFilter
+                subject="单据类型"
                 :data="menu.tree"
                 :counts="overview.stats.menuCounts"
                 :selected-menu-id="menu.selectedId"
@@ -69,6 +70,7 @@
       <MasterDataDeleteGuard ref="deleteGuardRef" />
       <ArtDrawer ref="menuDrawerRef">
         <DocumentTypeMenuFilter
+          subject="单据类型"
           class="document-type-page__drawer-filter"
           :data="menu.tree"
           :counts="overview.stats.menuCounts"
@@ -83,7 +85,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { resolveMenuLabel } from '@/utils/navigation/menu'
+  import { createMenuPathResolver, resolveMenuLabel } from '@/utils/navigation/menu'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -142,7 +144,7 @@
   import DocumentTypeDetailDrawer, {
     type DocumentTypeDetailData
   } from './modules/document-type-detail-drawer.vue'
-  import DocumentTypeMenuFilter from './modules/document-type-menu-filter.vue'
+  import DocumentTypeMenuFilter from '../components/menu-type-filter.vue'
 
   defineOptions({ name: 'MdmDocumentTypeWorkspace' })
 
@@ -398,7 +400,7 @@
           })
           return rows.map<ExportRow>((row) => ({
             ...row,
-            menuPath: resolveMenuPaths(row.menuIds),
+            menuPath: menuPathResolver.value.resolveMany(row.menuIds),
             statusLabel: row.enabled ? '启用' : '禁用'
           }))
         }
@@ -475,8 +477,8 @@
       minWidth: 230,
       formatter: (row) => (
         <div class="document-type-menu-cell">
-          <strong title={resolveMenuPaths(row.menuIds)}>
-            {resolveMenuPaths(row.menuIds) || '--'}
+          <strong title={menuPathResolver.value.resolveMany(row.menuIds)}>
+            {menuPathResolver.value.resolveMany(row.menuIds) || '--'}
           </strong>
           <small title={resolveMenuComponent(row.menuId)}>{row.menuIds.length} 个功能页面</small>
         </div>
@@ -569,13 +571,7 @@
     }
   ]
 
-  const resolveMenuPath = (menuId: string): string =>
-    treeUtils
-      .getAncestors(menu.tree, menuId)
-      .map((item) => resolveMenuLabel(item))
-      .join(' / ')
-  const resolveMenuPaths = (menuIds: string[]): string =>
-    menuIds.map(resolveMenuPath).filter(Boolean).join('；')
+  const menuPathResolver = computed(() => createMenuPathResolver(menu.tree))
 
   const resolveMenuComponent = (menuId: string): string => {
     const item = treeUtils.findNode(menu.tree, menuId)
@@ -599,7 +595,7 @@
   const openDetail = (record: DocumentTypeRecord): void => {
     void detailDrawerRef.value?.handleOpen({
       record,
-      menuPath: resolveMenuPaths(record.menuIds),
+      menuPath: menuPathResolver.value.resolveMany(record.menuIds),
       isProductionType: record.menuIds.some(
         (id) => treeUtils.findNode(menu.tree, id)?.name === 'MesWorkOrder'
       )

@@ -1,1 +1,0 @@
-import{kr as e,mi as t,vr as n}from"./supabase-CumHoEIq.js";import{t as r}from"./governance-center-CDtbUV7u.js";var i=e({name:`MdmDataQuality`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`quality`}))}});export{i as default};

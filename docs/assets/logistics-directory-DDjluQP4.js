@@ -1,1 +1,0 @@
-import{kr as e,mi as t,vr as n}from"./supabase-CumHoEIq.js";import{t as r}from"./catalog-B8HiiAKR.js";var i=e({name:`MdmLogisticsDirectory`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

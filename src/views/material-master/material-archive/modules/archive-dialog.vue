@@ -216,6 +216,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -598,10 +600,7 @@
     )
   )
   const namedOptions = (items: MaterialContextOption[]) =>
-    scopedContextOptions(items).map((item) => ({
-      label: item.code ? `${item.name} · ${item.code}` : item.name,
-      value: item.id
-    }))
+    scopedContextOptions(items).map(toNameCodeOption)
   const materialGroupSelectOptions = computed(() => namedOptions(materialGroupOptions.value))
   const supplierSelectOptions = computed(() => namedOptions(supplierOptions.value))
   const warehouseSelectOptions = computed(() => namedOptions(warehouseOptions.value))

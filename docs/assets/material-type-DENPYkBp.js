@@ -1,0 +1,1 @@
+import{Or as e,lr as t,tr as n}from"./supabase-B_4-DdKh.js";import{t as r}from"./material-reference-BCNlj-fY.js";var i=t({name:`MdmMaterialType`,__name:`index`,setup(t){return(t,i)=>(e(),n(r))}});export{i as default};

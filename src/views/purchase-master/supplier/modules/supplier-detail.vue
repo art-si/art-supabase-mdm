@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false" show-fullscreen-button>
+  <ArtDrawer
+    :loading="loading"
+    ref="drawerRef"
+    size="xl"
+    :show-footer="false"
+    show-fullscreen-button
+  >
     <div v-if="record" class="supplier-detail">
       <ArtEntitySummary
         icon="ri:store-2-line"
@@ -40,7 +46,6 @@
           <ArtSectionCard
             title="银行信息"
             :subtitle="`共 ${banks.length} 个收款账户`"
-            :loading="loading"
             :error="error"
             :empty="!banks.length"
             empty-title="暂无银行信息"
@@ -76,7 +81,6 @@
           <ArtSectionCard
             title="联系人"
             :subtitle="`共 ${contacts.length} 位联系人`"
-            :loading="loading"
             :error="error"
             :empty="!contacts.length"
             empty-title="暂无联系人"

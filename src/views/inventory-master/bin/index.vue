@@ -465,18 +465,16 @@
   }
   const visibleBinTree = computed(() => treeUtils.listToTree<BinBranch>(visibleBins.value))
   const shelfGroups = computed(() => {
-    const shelfCodes = [
-      ...new Set(
-        visibleBinTree.value
-          .filter((bin) => bin.binType === 'shelf')
-          .map((bin) => bin.shelfCode || '未分组')
-      )
-    ]
+    const shelfCodes = uniq(
+      visibleBinTree.value
+        .filter((bin) => bin.binType === 'shelf')
+        .map((bin) => bin.shelfCode || '未分组')
+    )
     return shelfCodes.map((code) => {
       const groupBins = visibleBinTree.value.filter(
         (bin) => bin.binType === 'shelf' && (bin.shelfCode || '未分组') === code
       )
-      const numbers = [...new Set(groupBins.map((bin) => bin.levelNo ?? 0))].sort((a, b) => b - a)
+      const numbers = uniq(groupBins.map((bin) => bin.levelNo ?? 0)).sort((a, b) => b - a)
       return {
         code,
         bins: treeUtils.treeToList(groupBins),

@@ -50,6 +50,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -158,9 +160,7 @@
       label: '仓库分组',
       key: 'groupId',
       type: 'select',
-      options: form.groups
-        .filter((item) => item.enabled)
-        .map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id })),
+      options: form.groups.filter((item) => item.enabled).map(toNameCodeOption),
       props: { clearable: true, filterable: true, placeholder: '选择仓库分组' }
     },
     {

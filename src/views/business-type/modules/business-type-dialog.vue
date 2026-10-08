@@ -49,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+  import { uniq } from 'lodash-es'
   import { resolveMenuLabel } from '@/utils/navigation/menu'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -576,7 +577,7 @@
             form.data.documentTypeIds.includes(item.id)
           )
           if (documentTypes.length && !form.data.menuIds.length)
-            form.data.menuIds = [...new Set(documentTypes.flatMap((item) => item.menuIds))]
+            form.data.menuIds = uniq(documentTypes.flatMap((item) => item.menuIds))
           await refreshSuggestedSort()
           await nextTick()
           formRef.value?.clearValidate()

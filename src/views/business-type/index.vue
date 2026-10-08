@@ -19,6 +19,7 @@
           <template #primary>
             <aside v-if="isDesktopMenuLayout" class="business-type-page__menu-panel">
               <BusinessTypeMenuFilter
+                subject="业务类型"
                 :data="menu.tree"
                 :counts="overview.stats.menuCounts"
                 :selected-menu-id="menu.selectedId"
@@ -69,6 +70,7 @@
       <MasterDataDeleteGuard ref="deleteGuardRef" />
       <ArtDrawer ref="menuDrawerRef">
         <BusinessTypeMenuFilter
+          subject="业务类型"
           class="business-type-page__drawer-filter"
           :data="menu.tree"
           :counts="overview.stats.menuCounts"
@@ -83,7 +85,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { resolveMenuLabel } from '@/utils/navigation/menu'
+  import { createMenuPathResolver, resolveMenuLabel } from '@/utils/navigation/menu'
   import dayjs from 'dayjs'
   import { ElMessage, ElTag } from 'element-plus'
   import type { CSSProperties, ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -137,7 +139,7 @@
   import BusinessTypeDetailDrawer, {
     type BusinessTypeDetailData
   } from './modules/business-type-detail-drawer.vue'
-  import BusinessTypeMenuFilter from './modules/business-type-menu-filter.vue'
+  import BusinessTypeMenuFilter from '../components/menu-type-filter.vue'
 
   defineOptions({ name: 'MdmBusinessTypeWorkspace' })
 
@@ -383,7 +385,7 @@
           })
           return rows.map<ExportRow>((row) => ({
             ...row,
-            menuPath: resolveMenuPaths(row.menuIds),
+            menuPath: menuPathResolver.value.resolveMany(row.menuIds),
             stockMovementLabel: row.stockMovement
               ? { inbound: '入库', outbound: '出库', transfer: '库存转移' }[row.stockMovement]
               : '—',
@@ -482,7 +484,9 @@
       label: '所属菜单功能',
       minWidth: 220,
       formatter: (row) => (
-        <span title={resolveMenuPaths(row.menuIds)}>{resolveMenuPaths(row.menuIds) || '--'}</span>
+        <span title={menuPathResolver.value.resolveMany(row.menuIds)}>
+          {menuPathResolver.value.resolveMany(row.menuIds) || '--'}
+        </span>
       )
     },
     {
@@ -635,13 +639,7 @@
     }
   ]
 
-  const resolveMenuPath = (menuId: string): string =>
-    treeUtils
-      .getAncestors(menu.tree, menuId)
-      .map((item) => resolveMenuLabel(item))
-      .join(' / ')
-  const resolveMenuPaths = (menuIds: string[]): string =>
-    menuIds.map(resolveMenuPath).filter(Boolean).join('；')
+  const menuPathResolver = computed(() => createMenuPathResolver(menu.tree))
 
   const openDialog = (mode: 'add' | 'copy' | 'edit', record?: BusinessTypeRecord): void => {
     void dialogRef.value?.handleOpen({
@@ -660,7 +658,7 @@
   const openDetail = (record: BusinessTypeRecord): void => {
     void detailDrawerRef.value?.handleOpen({
       record,
-      menuPath: resolveMenuPaths(record.menuIds)
+      menuPath: menuPathResolver.value.resolveMany(record.menuIds)
     })
   }
 

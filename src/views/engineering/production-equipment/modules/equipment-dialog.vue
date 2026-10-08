@@ -73,6 +73,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -213,8 +215,7 @@
 
   const inTenant = (items: EquipmentReference[]): EquipmentReference[] =>
     form.tenantId ? items.filter((item) => item.tenantId === form.tenantId) : []
-  const options = (items: EquipmentReference[]) =>
-    inTenant(items).map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id }))
+  const options = (items: EquipmentReference[]) => inTenant(items).map(toNameCodeOption)
   const treeOptions = (items: EquipmentReference[]): EquipmentTreeOption[] =>
     referenceTree.listToTree(
       inTenant(items).map((item) => ({
@@ -230,7 +231,7 @@
   const workCenterOptions = computed(() =>
     inTenant(references.value.workCenters)
       .filter((item) => item.departmentId === form.productionDepartmentId)
-      .map((item) => ({ label: `${item.code} · ${item.name}`, value: item.id }))
+      .map(toNameCodeOption)
   )
   const selectedEmployee = computed<EmployeeIntegrationItem[]>(() => {
     if (!editingRow.value?.responsibleEmployeeId || !editingRow.value.responsibleName) return []

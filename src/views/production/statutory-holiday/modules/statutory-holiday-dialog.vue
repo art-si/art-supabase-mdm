@@ -39,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toDictionaryOption } from '@/utils/form/option'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref, shallowRef, nextTick, type ComputedRef } from 'vue'
@@ -100,10 +102,7 @@
   })
 
   const holidayTypeOptions = computed<FormItemOption[]>(() =>
-    (getDictMap.value.smisHolidayType ?? []).map((item) => ({
-      label: item.label || item.name,
-      value: item.value
-    }))
+    (getDictMap.value.smisHolidayType ?? []).map(toDictionaryOption)
   )
 
   const validateDateRange = (

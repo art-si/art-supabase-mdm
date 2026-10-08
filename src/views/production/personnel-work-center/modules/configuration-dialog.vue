@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg">
-    <div class="personnel-center-dialog">
+    <div class="personnel-center-dialog flex flex-col gap-4 min-w-0">
       <ElAlert v-if="form.error" :title="form.error" type="error" show-icon :closable="false" />
       <ElAlert
         :title="`工作中心范围：${form.scopeLabel}`"
@@ -275,12 +275,3 @@
 
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .personnel-center-dialog {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-</style>

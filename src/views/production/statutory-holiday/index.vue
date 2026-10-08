@@ -165,6 +165,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { toDictionaryOption } from '@/utils/form/option'
+
   import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -242,10 +244,7 @@
   const organizationTreeProps = { children: 'children', label: 'organizationName', value: 'id' }
 
   const holidayTypeOptions = computed(() =>
-    (getDictMap.value.smisHolidayType ?? []).map((item) => ({
-      label: item.label || item.name,
-      value: item.value
-    }))
+    (getDictMap.value.smisHolidayType ?? []).map(toDictionaryOption)
   )
   const flatOrganizations = computed(() => treeUtils.treeToList(organizationTree.value))
   const resolveHolidayType = (value: string): string =>

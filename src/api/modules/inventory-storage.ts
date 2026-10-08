@@ -220,8 +220,8 @@ export async function saveStorageBin(
   )
 }
 
-export async function createShelfBins(payload: StorageShelfGenerate): Promise<void> {
-  await responseHandle(
+export async function createShelfBins(payload: StorageShelfGenerate): Promise<number> {
+  const { data } = await responseHandle<number>(
     () =>
       supabase.rpc('mdm_generate_warehouse_shelf_secure', {
         p_warehouse_id: payload.warehouseId,
@@ -229,10 +229,13 @@ export async function createShelfBins(payload: StorageShelfGenerate): Promise<vo
         p_shelf_code: payload.shelfCode,
         p_levels: payload.levels,
         p_columns: payload.columns,
-        p_max_quantity: payload.maxQuantity
+        p_max_quantity: payload.maxQuantity,
+        p_separator: payload.separator
       }),
-    { ...writeOptions, requireAffected: false, message: '货架库位已生成' }
+    { ...writeOptions, requireAffected: false, showMessage: false, showErrorMessage: false }
   )
+  if (typeof data !== 'number') throw new Error('生成结果未返回，请刷新库位后重试')
+  return data
 }
 
 export async function updateStorageShelf(payload: StorageShelfUpdate): Promise<void> {
@@ -249,7 +252,7 @@ export async function updateStorageShelf(payload: StorageShelfUpdate): Promise<v
         p_max_quantity: payload.maxQuantity,
         p_expected_bin_ids: payload.expectedBinIds
       }),
-    { ...writeOptions, requireAffected: false, message: '货架已更新' }
+    { ...writeOptions, requireAffected: false, showErrorMessage: false, message: '货架已更新' }
   )
 }
 

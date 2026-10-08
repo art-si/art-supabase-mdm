@@ -11,10 +11,19 @@
       :show-reset="false"
       :show-submit="false"
     />
-    <p class="mt-3 text-xs text-[var(--el-text-color-secondary)]">
-      将一次生成 {{ form.levels * form.columns }} 个货架单元，库位编码按“系统管理 →
-      编号规则”中的“库位编码”规则自动生成。
-    </p>
+    <div
+      class="mt-3 rounded-[var(--el-border-radius-base)] bg-[var(--el-fill-color-light)] p-4"
+      aria-live="polite"
+    >
+      <p class="text-sm font-medium text-[var(--el-text-color-primary)]">编码示例</p>
+      <p class="mt-2 break-all font-mono text-sm text-[var(--el-color-primary)]">{{
+        previewCodes
+      }}</p>
+      <p class="mt-2 text-xs leading-5 text-[var(--el-text-color-secondary)]">
+        货架编码 + 层号 + 列号，层号与列号固定为两位。共 {{ form.levels * form.columns }}
+        个格位；重复生成仅补充缺失格位，已有库位与容量保持不变。
+      </p>
+    </div>
   </ArtDialog>
 </template>
 
@@ -25,6 +34,8 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { createShelfBins, type StorageWarehouse, type StorageZone } from '@mdm/api'
+  import { ElMessage } from 'element-plus'
+  import { formatWarehouseBinCode } from '../../../../utils/warehouse-bin-code'
 
   export interface ShelfGeneratorContext {
     warehouse: StorageWarehouse
@@ -38,6 +49,7 @@
     shelfCode: '',
     levels: 4,
     columns: 3,
+    separator: '-',
     maxQuantity: null as number | null
   })
   const items: FormItem[] = [
@@ -45,8 +57,14 @@
       key: 'shelfCode',
       label: '货架编码',
       type: 'input',
-      span: 24,
-      props: { maxlength: 40, placeholder: '如 S01' }
+      props: { maxlength: 40, placeholder: '如 A1' }
+    },
+    {
+      key: 'separator',
+      label: '段间分隔符',
+      type: 'input',
+      props: { maxlength: 1, placeholder: '留空表示不分隔' },
+      help: '支持连字符 -、下划线 _，留空不分隔。'
     },
     {
       key: 'levels',
@@ -70,6 +88,7 @@
     }
   ]
   const rules = {
+    separator: [{ pattern: /^[-_]?$/, message: '请输入 -、_ 或留空', trigger: 'blur' }],
     shelfCode: [
       { required: true, message: '请输入货架编码', trigger: 'blur' },
       { pattern: /^[A-Za-z][A-Za-z0-9_-]*$/, message: '编码格式不正确', trigger: 'blur' }
@@ -95,20 +114,33 @@
       }
     ]
   }
+  const previewCodes = computed(() => {
+    const shelfCode = form.value.shelfCode || 'A1'
+    const positions = [[1, 1]]
+    if (form.value.columns > 1) positions.push([1, 2])
+    if (form.value.levels > 1) positions.push([2, 1])
+    return positions
+      .map(([level, column]) =>
+        formatWarehouseBinCode(shelfCode, level, column, form.value.separator)
+      )
+      .join('、')
+  })
   async function submit(): Promise<boolean> {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       const { warehouse, zone } = context.value
       const shelfCode = form.value.shelfCode.trim().toUpperCase()
-      await createShelfBins({
+      const count = await createShelfBins({
         warehouseId: warehouse.id,
         zoneId: zone?.id ?? null,
         shelfCode,
         levels: form.value.levels,
         columns: form.value.columns,
-        maxQuantity: form.value.maxQuantity
+        maxQuantity: form.value.maxQuantity,
+        separator: form.value.separator
       })
+      ElMessage.success(count ? `已生成 ${count} 个库位` : '该货架格位已齐全，无需重复生成')
       emit('success')
       return true
     } catch (error) {
@@ -118,10 +150,17 @@
   }
   async function handleOpen(data: ShelfGeneratorContext): Promise<void> {
     context.value = data
-    Object.assign(form.value, { shelfCode: '', levels: 4, columns: 3, maxQuantity: null })
+    Object.assign(form.value, {
+      shelfCode: '',
+      levels: 4,
+      columns: 3,
+      separator: '-',
+      maxQuantity: null
+    })
     await dialogRef.value?.handleOpen(data, {
       title: '批量生成货架库位',
       subtitle: `${data.warehouse.warehouseName} · ${data.zone?.zoneName ?? '仓库直挂'}`,
+      confirmText: '生成库位',
       onConfirm: submit,
       onOpen: () => formRef.value?.clearValidate()
     })

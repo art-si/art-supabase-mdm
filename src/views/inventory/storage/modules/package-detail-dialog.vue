@@ -1,9 +1,14 @@
 <template>
-  <ArtDialog ref="dialogRef" size="xl" :show-cancel-button="false" confirm-text="关闭">
+  <ArtDialog
+    :loading="loading"
+    ref="dialogRef"
+    size="xl"
+    :show-cancel-button="false"
+    confirm-text="关闭"
+  >
     <ArtSectionCard
       :title="pack?.packNo || '包内板材'"
       :subtitle="`${pack?.workOrderNo || ''} · 与 MES 排包主表及包明细共用`"
-      :loading="loading"
       :error="error"
       :empty="!loading && !error && !items.length"
       empty-title="包内暂无板材明细"

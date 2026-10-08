@@ -1,5 +1,6 @@
 <template>
   <ArtDialog
+    :loading="loading"
     ref="dialogRef"
     size="xl"
     :show-cancel-button="false"
@@ -9,7 +10,6 @@
     <ArtSectionCard
       title="当前库存"
       :subtitle="`${context.label} · 双击库区或库位可随时回到此明细`"
-      :loading="loading"
       :error="error"
       :empty="!loading && !error && !rows.length"
       empty-title="暂无在库批次"

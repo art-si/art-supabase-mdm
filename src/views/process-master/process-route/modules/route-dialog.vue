@@ -59,6 +59,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -160,8 +162,7 @@
       return `已选择 ${selection.value.length} 个物料，生产单位已自动带入；仍可手工统一修改。`
     return `已选择 ${selection.value.length} 个物料，生产单位不一致；不修改时将分别继承各物料单位。`
   })
-  const option = (rows: Array<{ id: string; code: string; name: string }>) =>
-    rows.map((row) => ({ label: `${row.name} · ${row.code}`, value: row.id }))
+
   const items = computed<FormItem[]>(() => [
     { key: 'identity', label: '路线识别', type: 'divider', span: 24 },
     {
@@ -179,7 +180,7 @@
       key: 'groupId',
       label: '路线分组',
       type: 'select',
-      options: option(references.value.groups),
+      options: references.value.groups.map(toNameCodeOption),
       props: { clearable: true, filterable: true }
     },
     {
@@ -227,7 +228,7 @@
       key: 'productionUnitId',
       label: '生产单位',
       type: 'select',
-      options: option(references.value.units),
+      options: references.value.units.map(toNameCodeOption),
       props: { clearable: true, filterable: true, onChange: handleProductionUnitChange }
     },
     {

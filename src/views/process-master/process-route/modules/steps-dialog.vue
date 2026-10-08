@@ -659,6 +659,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { cloneDeep, groupBy } from 'lodash-es'
@@ -1022,8 +1024,7 @@
         ]
       : []
   )
-  const option = (rows: Array<{ id: string; code: string; name: string }>) =>
-    rows.map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id }))
+
   const dictLabel = (code: string, value: string): string =>
     getDictMap.value[code]?.find((item) => item.value === value)?.label || value || '—'
   const referenceLabel = (rows: ProcessRouteReference[], id: unknown): string => {
@@ -1115,7 +1116,7 @@
       key: 'operationId',
       label: '工序集',
       type: 'select',
-      options: option(references.operations),
+      options: references.operations.map(toNameCodeOption),
       props: { clearable: true, filterable: true, onChange: applyOperation }
     },
     { key: 'name', label: '工序名称', props: { maxlength: 120 } },
@@ -1130,7 +1131,7 @@
       key: 'unitId',
       label: '工序单位',
       type: 'select',
-      options: option(references.units),
+      options: references.units.map(toNameCodeOption),
       props: { clearable: true, filterable: true }
     },
     {
@@ -1160,7 +1161,7 @@
       key: 'workCenterIds',
       label: '工作中心',
       type: 'select',
-      options: option(departmentWorkCenters.value),
+      options: departmentWorkCenters.value.map(toNameCodeOption),
       help: '支持多选；不选择代表该车间内全部工作中心均可生产。',
       props: {
         multiple: true,
@@ -1246,7 +1247,7 @@
       key: 'controlCodeId',
       label: '工序控制码',
       type: 'select',
-      options: option(references.controlCodes),
+      options: references.controlCodes.map(toNameCodeOption),
       props: { clearable: true, filterable: true, onChange: applyControlCode }
     },
     {
@@ -1331,7 +1332,7 @@
       key: 'operationUnitId',
       label: '工序单位',
       type: 'select',
-      options: option(references.units),
+      options: references.units.map(toNameCodeOption),
       props: { clearable: true, filterable: true }
     }
   ])
@@ -1348,7 +1349,7 @@
       key: 'supplierId',
       label: '供应商',
       type: 'select',
-      options: option(references.suppliers),
+      options: references.suppliers.map(toNameCodeOption),
       props: { clearable: true, filterable: true, disabled: !outsourcingForm.enabled }
     },
     {
@@ -1393,7 +1394,7 @@
       label: '工程主数据 ESOP',
       type: 'select',
       props: { multiple: true, filterable: true, clearable: true },
-      options: option(references.esopDocuments)
+      options: references.esopDocuments.map(toNameCodeOption)
     },
     { key: 'attachments', label: '上传附件', type: 'slot' }
   ])

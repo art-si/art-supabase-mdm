@@ -95,6 +95,8 @@
 </template>
 
 <script setup lang="ts">
+  import { toNameCodeOption } from '@/utils/form/option'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { h, nextTick } from 'vue'
@@ -208,12 +210,9 @@
           (item) =>
             item.tenantId === form.model.tenantId && item.departmentId === form.model.departmentId
         )
-        .map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id }))
+        .map(toNameCodeOption)
     }
-    return form.references[field.reference].map((item) => ({
-      label: `${item.name} · ${item.code}`,
-      value: item.id
-    }))
+    return form.references[field.reference].map(toNameCodeOption)
   }
 
   const groupOptions = computed(() =>
@@ -249,7 +248,7 @@
         (item) =>
           item.tenantId === form.model.tenantId && item.departmentId === form.model.departmentId
       )
-      .map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id }))
+      .map(toNameCodeOption)
   })
 
   const employeeSelection = (id?: string | null): EmployeeIntegrationItem[] => {

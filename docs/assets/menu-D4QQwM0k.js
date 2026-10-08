@@ -1,1 +1,0 @@
-import{A as e}from"./index-j2qiUten.js";function t(t,n=`未命名菜单`){let r=String(t.meta?.title??``).trim();if(r)return e(r);let i=String(t.name??``).trim();return i?e(i):n}export{t};
