@@ -1,0 +1,1 @@
+function e(e){return{label:[e.name,e.code].filter(Boolean).join(` · `),value:e.id}}function t(e){return{label:e.label||e.name,value:e.value}}export{e as n,t};

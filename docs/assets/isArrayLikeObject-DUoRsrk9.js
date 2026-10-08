@@ -1,0 +1,1 @@
+import{I as e,V as t,q as n}from"./_baseForOwn-DJYPb9oJ.js";import{_n as r,ln as i}from"./index-vUGfGZ_t.js";function a(e,n){return r(i(e,n,t),e+``)}function o(t){return n(t)&&e(t)}export{a as n,o as t};

@@ -660,6 +660,7 @@
 
 <script setup lang="tsx">
   import { toNameCodeOption } from '@/utils/form/option'
+  import TreeUtils from '@/utils/tree'
 
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -745,6 +746,7 @@
   const search = reactive({ keyword: '' })
   const activeTab = ref('basic')
   const departmentTree = ref<DepartmentTreeOption[]>([])
+  const departmentTreeUtils = new TreeUtils({ parentKey: 'parentId' })
   const references = reactive<ProcessRouteReferences>({
     groups: [],
     operations: [],
@@ -2049,13 +2051,6 @@
     )
     await applyWorkCenters(validIds)
   }
-  function toDepartmentTreeOptions(rows: ProductionDepartmentTreeNode[]): DepartmentTreeOption[] {
-    return rows.map((row) => ({
-      ...row,
-      displayLabel: `${row.name} · ${row.code}`,
-      children: toDepartmentTreeOptions(row.children || [])
-    }))
-  }
   async function applyWorkCenters(value: string[]) {
     stepForm.workCenterIds = value
     stepForm.workCenterId = value[0] ?? null
@@ -2392,7 +2387,14 @@
             fetchProductionDepartmentTree(row.tenantId)
           ])
           Object.assign(references, nextReferences)
-          departmentTree.value = toDepartmentTreeOptions(nextDepartmentTree)
+          departmentTree.value = departmentTreeUtils.mapTree<
+            ProductionDepartmentTreeNode,
+            DepartmentTreeOption
+          >(nextDepartmentTree, (row) => ({
+            ...row,
+            displayLabel: toNameCodeOption(row).label,
+            children: []
+          }))
           await loadSequences()
           await nextTick()
           await tableRef.value?.getData()

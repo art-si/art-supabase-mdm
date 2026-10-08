@@ -1,0 +1,1 @@
+import{Or as e,lr as t,tr as n}from"./supabase-B_4-DdKh.js";import{t as r}from"./governance-center-xUm_yyBy.js";var i=t({name:`MdmGoldenRecord`,__name:`index`,setup(t){return(t,i)=>(e(),n(r,{"initial-view":`matches`}))}});export{i as default};
