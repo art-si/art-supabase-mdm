@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref } from 'vue'
@@ -125,7 +126,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchShiftSchedulePatterns,
     fetchShiftSchedulePersonnel,
@@ -161,8 +162,7 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  void userStore.ensureDictLoaded('mdmShiftScheduleDateMode')
+  const dateModeOptions = useDictionaryOptions('mdmShiftScheduleDateMode')
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const state = reactive({
@@ -250,7 +250,7 @@
       label: '有效方式',
       type: 'segment',
       span: 24,
-      options: userStore.getDictMap.mdmShiftScheduleDateMode ?? []
+      options: dateModeOptions
     },
     {
       key: 'startDate',
@@ -358,8 +358,7 @@
   async function fetchPeople(params: DataSelectFetchParams) {
     return fetchShiftSchedulePersonnel(state.departmentId, {
       keyword: params.keyword,
-      from: (params.page - 1) * params.pageSize,
-      to: params.page * params.pageSize - 1
+      ...buildSupabasePageRange({ current: params.page, size: params.pageSize })
     })
   }
 

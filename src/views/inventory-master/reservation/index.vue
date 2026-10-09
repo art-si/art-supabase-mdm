@@ -38,8 +38,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
-  import dayjs from 'dayjs'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
@@ -54,7 +55,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ColumnOption } from '@/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchInventoryReservations,
     fetchStorageWarehouses,
@@ -64,11 +65,15 @@
   } from '@mdm/api'
   import ReservationDialog from '../../inventory/storage/modules/reservation-dialog.vue'
 
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
+
   defineOptions({ name: 'MdmInventoryReservation' })
   const { confirmDelete } = useArtFeedback()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmInventoryReservationStatus')
+  const statusOptions = useDictionaryOptions('mdmInventoryReservationStatus')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof ReservationDialog>>()
   const warehouses = ref<StorageWarehouse[]>([])
@@ -98,7 +103,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: getDictMap.value.mdmInventoryReservationStatus ?? []
+        options: statusOptions
       }
     }
   ])
@@ -164,7 +169,7 @@
       prop: 'createTime',
       label: '预留时间',
       width: 170,
-      formatter: (row) => dayjs(row.createTime).format('YYYY-MM-DD HH:mm')
+      formatter: (row) => formatTableDateTime(row.createTime)
     },
     {
       prop: 'operation',

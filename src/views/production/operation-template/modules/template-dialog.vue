@@ -71,6 +71,7 @@
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { saveOperationTemplate, type OperationTemplate, type OperationTask } from '@mdm/api'
   import { createTemplate, createTask, templatePayload, templateScore } from './template-model'
@@ -92,7 +93,7 @@
   })
   const form = reactive({ model: createTemplate(), readonly: false, error: '' })
   const total = computed(() => templateScore(form.model.items))
-  const inputOptions = computed(() => user.getDictMap.mdmCenter_inputMode ?? [])
+  const inputOptions = useDictionaryOptions('mdmCenter_inputMode')
   const rules = { name: [{ required: true, message: '请输入作业模板名称', trigger: 'blur' }] }
   const formItems: FormItem[] = [
     { key: 'basic', label: '模板信息', type: 'divider', span: 24 },
@@ -116,7 +117,7 @@
           <span>{row.inputMode}</span>
         ) : (
           <ElSelect v-model={row.inputMode} class="w-full!" aria-label="输入方式">
-            {inputOptions.value.map((option) => (
+            {inputOptions.map((option) => (
               <ElOption
                 key={String(option.value)}
                 label={String(option.label)}

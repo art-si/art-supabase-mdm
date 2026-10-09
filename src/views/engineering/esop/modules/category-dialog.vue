@@ -48,7 +48,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
   import { saveEsopCategory, type EsopCategory, type EsopCategoryInput } from '@mdm/api'
 
@@ -66,8 +66,7 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const dialogRef = ref<ArtDialogExpose<EsopCategoryDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const categories = shallowRef<EsopCategory[]>([])
@@ -136,7 +135,7 @@
       span: 12,
       props: {
         class: 'w-full',
-        options: getDictMap.value.commonEnabledStatus ?? []
+        options: statusOptions
       }
     },
     {
@@ -154,7 +153,6 @@
       props: { rows: 3, maxlength: 500, showWordLimit: true, resize: 'none' }
     }
   ])
-  void userStore.ensureDictLoaded('commonEnabledStatus')
   const rules: FormRules<EsopCategoryInput> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
     categoryCode: [

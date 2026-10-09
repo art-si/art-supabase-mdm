@@ -76,7 +76,7 @@
                   >
                     <span class="route-maintenance__sequence-index">{{ item.sequenceNo }}</span>
                     <span class="route-maintenance__sequence-copy">
-                      <strong>{{ sequenceTypeLabel(item.sequenceType) }}</strong>
+                      <strong>{{ getProcessRouteSequenceLabel(item.sequenceType) }}</strong>
                       <small>{{ sequenceNodeDescription(item) }}</small>
                     </span>
                   </button>
@@ -101,7 +101,7 @@
                 <ul
                   v-if="getSequenceSteps(item.id).length"
                   class="route-maintenance__sequence-children"
-                  :aria-label="`${sequenceTypeLabel(item.sequenceType)}包含的工序`"
+                  :aria-label="`${getProcessRouteSequenceLabel(item.sequenceType)}包含的工序`"
                 >
                   <li v-for="step in getSequenceSteps(item.id)" :key="step.id">
                     <button
@@ -264,7 +264,7 @@
   </ArtDialog>
 
   <ArtDialog ref="editDialog" size="xl">
-    <div class="step-editor">
+    <div class="step-editor min-w-0 grid-cols-[minmax(0,1fr)]">
       <ArtEntitySummary
         class="step-editor__identity"
         icon="ri:settings-3-line"
@@ -297,7 +297,7 @@
         </ElTabPane>
       </ElTabs>
 
-      <section class="step-editor__panel">
+      <section class="step-editor__panel min-w-0">
         <div class="step-editor__section-heading">
           <div>
             <strong>{{ activeStepPanel.title }}</strong>
@@ -385,9 +385,13 @@
           />
           <div class="step-editor__equation" role="status">
             <span>相当于</span>
-            <strong>1 {{ route?.productionUnit?.unitName || '生产单位' }}</strong>
+            <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
+              >1 {{ route?.productionUnit?.unitName || '生产单位' }}</strong
+            >
             <ArtSvgIcon icon="ri:arrow-right-line" />
-            <strong>{{ unitConversionPreview }} {{ operationUnitName }}</strong>
+            <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
+              >{{ unitConversionPreview }} {{ operationUnitName }}</strong
+            >
           </div>
         </div>
 
@@ -409,170 +413,34 @@
               ><ArtSvgIcon icon="ri:add-line" />新增活动</ElButton
             >
           </div>
-          <ElScrollbar class="route-maintenance__activity-scroll">
-            <ArtEmptyState
-              v-if="!activityRows.length"
-              class="route-maintenance__tab-empty"
-              title="暂无活动配置"
-              description="选择车间与工作中心后可自动带入活动，也可手工新增。"
-            >
-              <template v-if="!editorReadonly" #default>
-                <ElButton v-auth="'MdmProcessRoute:Edit'" type="primary" plain @click="addActivity"
-                  ><ArtSvgIcon icon="ri:add-line" />新增活动</ElButton
-                >
-              </template>
-            </ArtEmptyState>
-            <div
-              v-if="activityRows.length"
-              class="route-maintenance__activity-row is-header"
-              :class="{ 'is-readonly': editorReadonly }"
-            >
-              <span>#</span><span>来源工作中心</span><span>活动名称</span><span>活动类型</span
-              ><span>维护规则</span><span>基数数量</span><span>活动单位</span
-              ><span>计划活动量公式</span><span>汇报活动量公式</span><span>倒冲</span
-              ><span>备注</span
-              ><span v-if="!editorReadonly" class="route-maintenance__activity-operation"
-                >操作</span
+          <ArtTable
+            class="process-activity-table min-w-0 max-w-full"
+            :data="activityRows"
+            :columns="activityColumns"
+            row-key="key"
+            :pagination="false"
+            :height="390"
+            empty-height="390px"
+            :stripe="false"
+          >
+            <template #empty>
+              <ArtEmptyState
+                class="min-h-[220px]"
+                title="暂无活动配置"
+                description="选择车间与工作中心后可自动带入活动，也可手工新增。"
               >
-            </div>
-            <div
-              v-for="(activity, index) in activityRows"
-              :key="activity.key"
-              class="route-maintenance__activity-row"
-              :class="{ 'is-readonly': editorReadonly }"
-            >
-              <span class="route-maintenance__activity-index">{{ index + 1 }}</span>
-              <template v-if="editorReadonly">
-                <span class="route-maintenance__activity-value">
-                  {{ activity.sourceWorkCenterName || '手工维护' }}
-                </span>
-                <span class="route-maintenance__activity-value is-strong">
-                  {{ activity.name || '—' }}
-                </span>
-                <span class="route-maintenance__activity-value">
-                  {{ dictLabel('mdmActivityType', activity.activityType) }}
-                </span>
-                <span class="route-maintenance__activity-value">
-                  {{ dictLabel('mdmWorkCenterMaintenanceRule', activity.maintenanceRule) }}
-                </span>
-                <span class="route-maintenance__activity-value is-number">
-                  {{ formatQuantity(activity.basicQuantity) }}
-                </span>
-                <span class="route-maintenance__activity-value">
-                  {{ dictLabel('mdmActivityUnit', activity.activityUnit) }}
-                </span>
-                <span class="route-maintenance__activity-value is-code">
-                  {{ activity.planExpression || '—' }}
-                </span>
-                <span class="route-maintenance__activity-value is-code">
-                  {{ activity.reportExpression || '—' }}
-                </span>
-                <span class="route-maintenance__activity-value">
-                  {{ activity.backflush ? '是' : '否' }}
-                </span>
-                <span class="route-maintenance__activity-value">
-                  {{ activity.remark || '—' }}
-                </span>
-              </template>
-              <template v-else>
-                <span class="route-maintenance__activity-value">
-                  {{ activity.sourceWorkCenterName || '手工维护' }}
-                </span>
-                <ElInput
-                  v-model="activity.name"
-                  :aria-label="`第 ${index + 1} 行活动名称`"
-                  maxlength="100"
-                  placeholder="活动名称"
-                />
-                <ElSelect
-                  v-model="activity.activityType"
-                  :aria-label="`第 ${index + 1} 行活动类型`"
-                  filterable
-                  clearable
-                  placeholder="活动类型"
+                <ElButton
+                  v-if="!editorReadonly"
+                  v-auth="'MdmProcessRoute:Edit'"
+                  type="primary"
+                  plain
+                  @click="addActivity"
                 >
-                  <ElOption
-                    v-for="item in getDictMap.mdmActivityType ?? []"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </ElSelect>
-                <ElSelect
-                  v-model="activity.maintenanceRule"
-                  :aria-label="`第 ${index + 1} 行维护规则`"
-                  filterable
-                  clearable
-                  placeholder="维护规则"
-                >
-                  <ElOption
-                    v-for="item in getDictMap.mdmWorkCenterMaintenanceRule ?? []"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </ElSelect>
-                <ElInputNumber
-                  v-model="activity.basicQuantity"
-                  :aria-label="`第 ${index + 1} 行基本数量`"
-                  :min="0"
-                  :precision="6"
-                  controls-position="right"
-                />
-                <ElSelect
-                  v-model="activity.activityUnit"
-                  :aria-label="`第 ${index + 1} 行活动单位`"
-                  filterable
-                  clearable
-                  placeholder="活动单位"
-                >
-                  <ElOption
-                    v-for="item in getDictMap.mdmActivityUnit ?? []"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </ElSelect>
-                <ElInput
-                  v-model="activity.planExpression"
-                  :aria-label="`第 ${index + 1} 行计划活动量公式`"
-                  placeholder="计划活动量公式"
-                />
-                <ElInput
-                  v-model="activity.reportExpression"
-                  :aria-label="`第 ${index + 1} 行汇报活动量公式`"
-                  placeholder="汇报活动量公式"
-                />
-                <ElSwitch v-model="activity.backflush" :aria-label="`第 ${index + 1} 行倒冲`" />
-                <ElInput
-                  v-model="activity.remark"
-                  :aria-label="`第 ${index + 1} 行备注`"
-                  maxlength="500"
-                  placeholder="备注"
-                />
-                <div class="route-maintenance__activity-actions">
-                  <ArtIconButton
-                    icon="ri:arrow-up-line"
-                    label="上移活动"
-                    :disabled="index === 0"
-                    @click="moveActivity(index, -1)"
-                  />
-                  <ArtIconButton
-                    icon="ri:arrow-down-line"
-                    label="下移活动"
-                    :disabled="index === activityRows.length - 1"
-                    @click="moveActivity(index, 1)"
-                  />
-                  <ArtIconButton
-                    icon="ri:delete-bin-6-line"
-                    label="删除活动"
-                    tone="danger"
-                    @click="activityRows.splice(index, 1)"
-                  />
-                </div>
-              </template>
-            </div>
-          </ElScrollbar>
+                  <ArtSvgIcon icon="ri:add-line" />新增活动
+                </ElButton>
+              </ArtEmptyState>
+            </template>
+          </ArtTable>
         </div>
 
         <div v-show="activeTab === 'outsourcing'" class="step-editor__content">
@@ -659,7 +527,12 @@
 </template>
 
 <script setup lang="tsx">
+  import { getProcessRouteSequenceLabel } from '@mdm/domain/process-route-display'
   import { toNameCodeOption } from '@/utils/form/option'
+  import { formatArtValue, formatNumberValue } from '@/utils/ui/format'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import { ElInput, ElInputNumber, ElSelect, ElOption, ElSwitch } from 'element-plus'
   import TreeUtils from '@/utils/tree'
 
   import { replaceReactiveModel } from '@/utils/form/model'
@@ -688,6 +561,7 @@
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
+    ArtDataSelectExpose,
     DataSelectFetchParams,
     DataSelectKey,
     DataSelectRecord
@@ -730,7 +604,6 @@
   }
 
   const user = useUserStore()
-  const { getDictMap } = storeToRefs(user)
   const { confirmAction } = useArtFeedback()
   const dialogRef = ref<ArtDialogExpose>()
   const sequenceDialog = ref<ArtDialogExpose>()
@@ -738,7 +611,7 @@
   const tableRef = ref<ArtTableQueryExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const sequenceFormRef = ref<InstanceType<typeof ArtForm>>()
-  const operationSelectRef = ref<InstanceType<typeof ArtTableMultipleSelect>>()
+  const operationSelectRef = ref<ArtDataSelectExpose>()
   const route = shallowRef<ProcessRoute>()
   const readonly = ref(false)
   const maintenanceFullscreen = ref(false)
@@ -834,17 +707,242 @@
   const inspectionForm = reactive({ method: '', standard: '', samplingRule: '', remark: '' })
   const sopForm = reactive({ documentIds: [] as string[], attachments: [] as string[] })
   const activityRows = ref<ActivityRow[]>([])
+  const processRouteSequenceTypeOptions = useDictionaryOptions('mdmProcessRouteSequenceType')
+  const processOperationModeOptions = useDictionaryOptions('mdmProcessOperationMode')
+  const processingModeOptions = useDictionaryOptions('mdmProcessingMode')
+  const reportModeOptions = useDictionaryOptions('mdmReportMode')
+  const inspectionModeOptions = useDictionaryOptions('mdmInspectionMode')
+  const sequenceControlOptions = useDictionaryOptions('mdmSequenceControl')
+  const reworkModeOptions = useDictionaryOptions('mdmReworkMode')
+  const processSequenceControlModeOptions = useDictionaryOptions('mdmProcessSequenceControlMode')
+  const materialPurchaseOrganizationOptions = useDictionaryOptions(
+    'mdmMaterialPurchaseOrganization'
+  )
+  const processStepInspectionModeOptions = useDictionaryOptions('mdmProcessStepInspectionMode')
+  const activityTypeOptions = useDictionaryOptions('mdmActivityType')
+  const maintenanceRuleOptions = useDictionaryOptions('mdmWorkCenterMaintenanceRule')
+  const activityUnitOptions = useDictionaryOptions('mdmActivityUnit')
+  const activityColumns = computed<ColumnOption<ActivityRow>[]>(() => [
+    { type: 'index', label: '#', width: 48 },
+    {
+      prop: 'sourceWorkCenterName',
+      label: '来源工作中心',
+      minWidth: 150,
+      formatter: (row) => row.sourceWorkCenterName || '手工维护'
+    },
+    {
+      prop: 'name',
+      label: '活动名称',
+      minWidth: 180,
+      formatter: (row) =>
+        editorReadonly.value ? (
+          <strong>{row.name || '—'}</strong>
+        ) : (
+          <ElInput
+            v-model={row.name}
+            aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行活动名称`}
+            maxlength={100}
+            placeholder="活动名称"
+          />
+        )
+    },
+    {
+      prop: 'activityType',
+      label: '活动类型',
+      minWidth: 150,
+      ...(editorReadonly.value
+        ? { dict: { code: 'mdmActivityType', display: 'text' as const } }
+        : {
+            formatter: (row: ActivityRow) => (
+              <ElSelect
+                v-model={row.activityType}
+                aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行活动类型`}
+                class="w-full!"
+                filterable
+                clearable
+                placeholder="活动类型"
+              >
+                {activityTypeOptions.map((item) => (
+                  <ElOption key={item.value} label={item.label} value={item.value} />
+                ))}
+              </ElSelect>
+            )
+          })
+    },
+    {
+      prop: 'maintenanceRule',
+      label: '维护规则',
+      minWidth: 150,
+      ...(editorReadonly.value
+        ? { dict: { code: 'mdmWorkCenterMaintenanceRule', display: 'text' as const } }
+        : {
+            formatter: (row: ActivityRow) => (
+              <ElSelect
+                v-model={row.maintenanceRule}
+                aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行维护规则`}
+                class="w-full!"
+                filterable
+                clearable
+                placeholder="维护规则"
+              >
+                {maintenanceRuleOptions.map((item) => (
+                  <ElOption key={item.value} label={item.label} value={item.value} />
+                ))}
+              </ElSelect>
+            )
+          })
+    },
+    {
+      prop: 'basicQuantity',
+      label: '基数数量',
+      minWidth: 180,
+      align: 'right',
+      formatter: (row) =>
+        editorReadonly.value ? (
+          formatNumberValue(row.basicQuantity || 0, 'zh-CN', { maximumFractionDigits: 6 })
+        ) : (
+          <ElInputNumber
+            v-model={row.basicQuantity}
+            aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行基本数量`}
+            class="w-full!"
+            min={0}
+            precision={6}
+            controls-position="right"
+          />
+        )
+    },
+    {
+      prop: 'activityUnit',
+      label: '活动单位',
+      minWidth: 150,
+      ...(editorReadonly.value
+        ? { dict: { code: 'mdmActivityUnit', display: 'text' as const } }
+        : {
+            formatter: (row: ActivityRow) => (
+              <ElSelect
+                v-model={row.activityUnit}
+                aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行活动单位`}
+                class="w-full!"
+                filterable
+                clearable
+                placeholder="活动单位"
+              >
+                {activityUnitOptions.map((item) => (
+                  <ElOption key={item.value} label={item.label} value={item.value} />
+                ))}
+              </ElSelect>
+            )
+          })
+    },
+    {
+      prop: 'planExpression',
+      label: '计划活动量公式',
+      minWidth: 200,
+      formatter: (row) =>
+        editorReadonly.value ? (
+          <span class="font-mono">{row.planExpression || '—'}</span>
+        ) : (
+          <ElInput
+            v-model={row.planExpression}
+            aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行计划活动量公式`}
+            placeholder="计划活动量公式"
+          />
+        )
+    },
+    {
+      prop: 'reportExpression',
+      label: '汇报活动量公式',
+      minWidth: 200,
+      formatter: (row) =>
+        editorReadonly.value ? (
+          <span class="font-mono">{row.reportExpression || '—'}</span>
+        ) : (
+          <ElInput
+            v-model={row.reportExpression}
+            aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行汇报活动量公式`}
+            placeholder="汇报活动量公式"
+          />
+        )
+    },
+    {
+      prop: 'backflush',
+      label: '倒冲',
+      width: 84,
+      align: 'center',
+      ...(editorReadonly.value
+        ? {
+            dict: {
+              code: 'commonBoolean',
+              display: 'text' as const,
+              value: (row: ActivityRow) => String(row.backflush)
+            }
+          }
+        : {
+            formatter: (row: ActivityRow) => (
+              <ElSwitch
+                v-model={row.backflush}
+                aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行倒冲`}
+              />
+            )
+          })
+    },
+    {
+      prop: 'remark',
+      label: '备注',
+      minWidth: 180,
+      formatter: (row) =>
+        editorReadonly.value ? (
+          row.remark || '—'
+        ) : (
+          <ElInput
+            v-model={row.remark}
+            aria-label={`第 ${activityRows.value.indexOf(row) + 1} 行备注`}
+            maxlength={500}
+            placeholder="备注"
+          />
+        )
+    },
+    ...(!editorReadonly.value
+      ? [
+          {
+            prop: 'operation',
+            label: '操作',
+            width: 144,
+            fixed: 'right' as const,
+            formatter: (row: ActivityRow) => (
+              <BusinessTableRowActions>
+                <ArtIconButton
+                  icon="ri:arrow-up-line"
+                  label="上移活动"
+                  disabled={activityRows.value.indexOf(row) === 0}
+                  onClick={() => moveActivity(activityRows.value.indexOf(row), -1)}
+                />
+                <ArtIconButton
+                  icon="ri:arrow-down-line"
+                  label="下移活动"
+                  disabled={activityRows.value.indexOf(row) === activityRows.value.length - 1}
+                  onClick={() => moveActivity(activityRows.value.indexOf(row), 1)}
+                />
+                <ArtIconButton
+                  icon="ri:delete-bin-6-line"
+                  label="删除活动"
+                  tone="danger"
+                  onClick={() => activityRows.value.splice(activityRows.value.indexOf(row), 1)}
+                />
+              </BusinessTableRowActions>
+            )
+          }
+        ]
+      : [])
+  ])
   const departmentWorkCenters = computed(() =>
     stepForm.departmentId
       ? references.workCenters.filter((item) => item.departmentId === stepForm.departmentId)
       : references.workCenters
   )
-  const sequenceTypeLabel = (value: string) =>
-    getDictMap.value.mdmProcessRouteSequenceType?.find((item) => item.value === value)?.label ||
-    (value === 'main' ? '标准序列' : value)
   const meaningfulSequenceRemark = (item: ProcessSequence): string => {
     const remark = item.remark.trim()
-    return remark && remark !== sequenceTypeLabel(item.sequenceType) ? remark : ''
+    return remark && remark !== getProcessRouteSequenceLabel(item.sequenceType) ? remark : ''
   }
   const sequenceNodeDescription = (item: ProcessSequence): string => {
     const remark = meaningfulSequenceRemark(item)
@@ -912,7 +1010,7 @@
   )
   const currentSequenceSubtitle = computed(() =>
     currentSequence.value
-      ? `${currentSequence.value.sequenceNo} · ${sequenceTypeLabel(currentSequence.value.sequenceType)}`
+      ? `${currentSequence.value.sequenceNo} · ${getProcessRouteSequenceLabel(currentSequence.value.sequenceType)}`
       : '请选择左侧工序序列'
   )
   const stepEditorDescription = computed(
@@ -952,13 +1050,16 @@
       references.units.find((item) => item.id === stepForm.unitId)?.name ||
       '工序单位'
   )
-  const unitConversionPreview = computed(() => {
+  const unitConversionRatio = computed(() => {
     const productionFactor = Number(unitForm.productionFactor) || 1
     const operationFactor = Number(unitForm.operationFactor) || 1
-    return (productionFactor / operationFactor).toLocaleString('zh-CN', {
+    return productionFactor / operationFactor
+  })
+  const unitConversionPreview = computed(() =>
+    formatNumberValue(unitConversionRatio.value, 'zh-CN', {
       maximumFractionDigits: 6
     })
-  })
+  )
   const activeStepPanel = computed(() => {
     const count = sopForm.documentIds.length + sopForm.attachments.length
     return (
@@ -971,7 +1072,7 @@
         unit: {
           title: '生产与工序单位换算',
           description: '维护生产单位和工序执行单位之间的数量关系。',
-          status: '默认按 1 : 1 换算'
+          status: unitConversionRatio.value === 1 ? '按 1 : 1 换算' : '已配置单位换算'
         },
         activity: {
           title: '活动量与资源消耗',
@@ -998,7 +1099,7 @@
   })
   const currentSequenceTitle = computed(() =>
     currentSequence.value
-      ? `${currentSequence.value.sequenceNo} · ${sequenceTypeLabel(currentSequence.value.sequenceType)}`
+      ? `${currentSequence.value.sequenceNo} · ${getProcessRouteSequenceLabel(currentSequence.value.sequenceType)}`
       : '尚未选择序列'
   )
   const currentSequenceDescription = computed(() =>
@@ -1027,8 +1128,6 @@
       : []
   )
 
-  const dictLabel = (code: string, value: string): string =>
-    getDictMap.value[code]?.find((item) => item.value === value)?.label || value || '—'
   const referenceLabel = (rows: ProcessRouteReference[], id: unknown): string => {
     if (!id) return '—'
     const row = rows.find((item) => item.id === id)
@@ -1040,8 +1139,6 @@
       : stepForm.departmentId
         ? '全部工作中心'
         : '未指定车间'
-  const formatQuantity = (value: number): string =>
-    Number(value || 0).toLocaleString('zh-CN', { maximumFractionDigits: 6 })
   const fetchOperationOptions = (params: DataSelectFetchParams) =>
     fetchOperationalMaster('operation', {
       tenantId: route.value?.tenantId || user.info.tenantId || '',
@@ -1067,7 +1164,7 @@
       key: 'sequenceType',
       label: '序列类型',
       type: 'select',
-      options: getDictMap.value.mdmProcessRouteSequenceType ?? [],
+      options: processRouteSequenceTypeOptions,
       props: {
         disabled:
           !sequenceEditId.value ||
@@ -1109,7 +1206,7 @@
       label: '工序序列',
       type: 'select',
       options: sequenceState.rows.map((item) => ({
-        label: `${item.sequenceNo} · ${sequenceTypeLabel(item.sequenceType)}`,
+        label: `${item.sequenceNo} · ${getProcessRouteSequenceLabel(item.sequenceType)}`,
         value: item.id
       }))
     },
@@ -1243,7 +1340,7 @@
       key: 'operationMode',
       label: '作业类型',
       type: 'select',
-      options: getDictMap.value.mdmProcessOperationMode ?? []
+      options: processOperationModeOptions
     },
     {
       key: 'controlCodeId',
@@ -1256,35 +1353,35 @@
       key: 'processingMode',
       label: '加工类型',
       type: 'select',
-      options: getDictMap.value.mdmProcessingMode ?? [],
+      options: processingModeOptions,
       props: { disabled: true, placeholder: '由工序控制码带入' }
     },
     {
       key: 'reportMode',
       label: '汇报方式',
       type: 'select',
-      options: getDictMap.value.mdmReportMode ?? [],
+      options: reportModeOptions,
       props: { disabled: true, placeholder: '由工序控制码带入' }
     },
     {
       key: 'inspectionMode',
       label: '检验方式',
       type: 'select',
-      options: getDictMap.value.mdmInspectionMode ?? [],
+      options: inspectionModeOptions,
       props: { disabled: true, placeholder: '由工序控制码带入' }
     },
     {
       key: 'sequenceControl',
       label: '汇报顺序控制',
       type: 'select',
-      options: getDictMap.value.mdmSequenceControl ?? [],
+      options: sequenceControlOptions,
       props: { disabled: true, placeholder: '由工序控制码带入' }
     },
     {
       key: 'reworkMode',
       label: '返工方式',
       type: 'select',
-      options: getDictMap.value.mdmReworkMode ?? [],
+      options: reworkModeOptions,
       props: { disabled: true, placeholder: '由工序控制码带入' }
     },
     { key: 'needInspection', label: '工序质检', type: 'switch' },
@@ -1293,7 +1390,7 @@
       key: 'firstInspectionControl',
       label: '首检控制',
       type: 'select',
-      options: getDictMap.value.mdmProcessSequenceControlMode ?? []
+      options: processSequenceControlModeOptions
     },
     {
       key: 'isFirst',
@@ -1344,7 +1441,7 @@
       key: 'purchaseOrganization',
       label: '采购组织',
       type: 'select',
-      options: getDictMap.value.mdmMaterialPurchaseOrganization ?? [],
+      options: materialPurchaseOrganizationOptions,
       props: { clearable: true, disabled: !outsourcingForm.enabled }
     },
     {
@@ -1372,7 +1469,7 @@
       key: 'method',
       label: '检验方式',
       type: 'select',
-      options: getDictMap.value.mdmProcessStepInspectionMode ?? []
+      options: processStepInspectionModeOptions
     },
     { key: 'samplingRule', label: '抽样规则', type: 'input' },
     {
@@ -1408,7 +1505,7 @@
       formatter: (value) => {
         const sequence = sequenceState.rows.find((item) => item.id === value)
         return sequence
-          ? `${sequence.sequenceNo} · ${sequenceTypeLabel(sequence.sequenceType)}`
+          ? `${sequence.sequenceNo} · ${getProcessRouteSequenceLabel(sequence.sequenceType)}`
           : '—'
       }
     },
@@ -1443,32 +1540,38 @@
     {
       key: 'runOutputQuantity',
       label: '单趟产出数量',
-      value: () => `${formatQuantity(stepForm.runOutputQuantity)} pcs`
+      value: () =>
+        `${formatNumberValue(stepForm.runOutputQuantity || 0, 'zh-CN', { maximumFractionDigits: 6 })} pcs`
     },
     {
       key: 'runProcessingMinutes',
       label: '单趟加工时长',
-      value: () => `${formatQuantity(stepForm.runProcessingMinutes)} 分钟`
+      value: () =>
+        `${formatNumberValue(stepForm.runProcessingMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'runGreenMinutes',
       label: '单趟绿灯时长',
-      value: () => `${formatQuantity(stepForm.runGreenMinutes ?? 0)} 分钟`
+      value: () =>
+        `${formatNumberValue(stepForm.runGreenMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'setupMinutes',
       label: '调机时长',
-      value: () => `${formatQuantity(stepForm.setupMinutes)} 分钟`
+      value: () =>
+        `${formatNumberValue(stepForm.setupMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'queueMinutes',
       label: '排队时长',
-      value: () => `${formatQuantity(stepForm.queueMinutes)} 分钟`
+      value: () =>
+        `${formatNumberValue(stepForm.queueMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'transferMinutes',
       label: '转运时长',
-      value: () => `${formatQuantity(stepForm.transferMinutes)} 分钟`
+      value: () =>
+        `${formatNumberValue(stepForm.transferMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'minimumTransferQuantity',
@@ -1579,13 +1682,21 @@
       key: 'productionFactor',
       label: '生产单位换算系数',
       field: 'productionFactor',
-      format: 'number'
+      formatter: (value) =>
+        formatArtValue(value, 'number', {
+          numberFormat: { maximumFractionDigits: 6 },
+          emptyText: '—'
+        })
     },
     {
       key: 'operationFactor',
       label: '工序单位换算系数',
       field: 'operationFactor',
-      format: 'number'
+      formatter: (value) =>
+        formatArtValue(value, 'number', {
+          numberFormat: { maximumFractionDigits: 6 },
+          emptyText: '—'
+        })
     }
   ])
   const outsourcingDetailItems = computed<ArtDescriptionItem<typeof outsourcingForm>[]>(() => [
@@ -1674,7 +1785,7 @@
       prop: 'sequenceType',
       label: '序列类型',
       width: 110,
-      formatter: (row) => sequenceTypeLabel(row.sequence?.sequenceType || '')
+      formatter: (row) => getProcessRouteSequenceLabel(row.sequence?.sequenceType, '')
     },
     { prop: 'code', label: '工序号', width: 100 },
     {
@@ -1729,7 +1840,7 @@
       prop: 'operationMode',
       label: '作业类型',
       width: 110,
-      formatter: (row) => dictLabel('mdmProcessOperationMode', row.operationMode)
+      dict: { code: 'mdmProcessOperationMode', display: 'text' }
     },
     {
       prop: 'controlCode',
@@ -1741,72 +1852,92 @@
       prop: 'processingMode',
       label: '加工类型',
       width: 110,
-      formatter: (row) => dictLabel('mdmProcessingMode', row.processingMode)
+      dict: { code: 'mdmProcessingMode', display: 'text' }
     },
     {
       prop: 'reportMode',
       label: '汇报方式',
       width: 110,
-      formatter: (row) => dictLabel('mdmReportMode', row.reportMode)
+      dict: { code: 'mdmReportMode', display: 'text' }
     },
     {
       prop: 'inspectionMode',
       label: '检验方式',
       width: 110,
-      formatter: (row) => dictLabel('mdmInspectionMode', row.inspectionMode)
+      dict: { code: 'mdmInspectionMode', display: 'text' }
     },
     {
       prop: 'sequenceControl',
       label: '汇报顺序控制',
       width: 130,
-      formatter: (row) => dictLabel('mdmSequenceControl', row.sequenceControl)
+      dict: { code: 'mdmSequenceControl', display: 'text' }
     },
     {
       prop: 'reworkMode',
       label: '返工方式',
       width: 110,
-      formatter: (row) => dictLabel('mdmReworkMode', row.reworkMode)
+      dict: { code: 'mdmReworkMode', display: 'text' }
     },
     {
       prop: 'needInspection',
       label: '工序质检',
       width: 92,
       align: 'center',
-      formatter: (row) => (row.needInspection ? '是' : '否')
+      dict: {
+        code: 'commonBoolean',
+        display: 'text',
+        value: (row) => (row.needInspection == null ? undefined : String(row.needInspection))
+      }
     },
     {
       prop: 'firstInspection',
       label: '首检',
       width: 72,
       align: 'center',
-      formatter: (row) => (row.firstInspection ? '是' : '否')
+      dict: {
+        code: 'commonBoolean',
+        display: 'text',
+        value: (row) => (row.firstInspection == null ? undefined : String(row.firstInspection))
+      }
     },
     {
       prop: 'firstInspectionControl',
       label: '首检控制方式',
       width: 130,
-      formatter: (row) => dictLabel('mdmProcessSequenceControlMode', row.firstInspectionControl)
+      dict: { code: 'mdmProcessSequenceControlMode', display: 'text' }
     },
     {
       prop: 'isFirst',
       label: '首序',
       width: 72,
       align: 'center',
-      formatter: (row) => (row.isFirst ? '是' : '否')
+      dict: {
+        code: 'commonBoolean',
+        display: 'text',
+        value: (row) => (row.isFirst == null ? undefined : String(row.isFirst))
+      }
     },
     {
       prop: 'isLast',
       label: '末序',
       width: 72,
       align: 'center',
-      formatter: (row) => (row.isLast ? '是' : '否')
+      dict: {
+        code: 'commonBoolean',
+        display: 'text',
+        value: (row) => (row.isLast == null ? undefined : String(row.isLast))
+      }
     },
     {
       prop: 'critical',
       label: '关键',
       width: 80,
       align: 'center',
-      formatter: (row) => (row.critical ? '是' : '否')
+      dict: {
+        code: 'commonBoolean',
+        display: 'text',
+        value: (row) => (row.critical == null ? undefined : String(row.critical))
+      }
     },
     ...(!readonly.value
       ? [
@@ -2027,7 +2158,7 @@
     if (row.sequenceType === 'main') return
     try {
       await confirmAction(
-        `确认删除序列“${row.sequenceNo} · ${sequenceTypeLabel(row.sequenceType)}”？`,
+        `确认删除序列“${row.sequenceNo} · ${getProcessRouteSequenceLabel(row.sequenceType)}”？`,
         '删除工序序列',
         { type: 'warning' }
       )
@@ -2365,23 +2496,6 @@
       loading: true,
       onOpen: async (_data, api) => {
         try {
-          await Promise.all(
-            [
-              'mdmProcessRouteSequenceType',
-              'mdmProcessOperationMode',
-              'mdmProcessSequenceControlMode',
-              'mdmProcessStepInspectionMode',
-              'mdmProcessingMode',
-              'mdmReportMode',
-              'mdmInspectionMode',
-              'mdmSequenceControl',
-              'mdmReworkMode',
-              'mdmMaterialPurchaseOrganization',
-              'mdmActivityType',
-              'mdmWorkCenterMaintenanceRule',
-              'mdmActivityUnit'
-            ].map((code) => user.ensureDictLoaded(code))
-          )
           const [nextReferences, nextDepartmentTree] = await Promise.all([
             fetchProcessRouteReferences(row.tenantId),
             fetchProductionDepartmentTree(row.tenantId)
@@ -2659,8 +2773,7 @@
       min-width: 0;
     }
 
-    &__sequence-actions,
-    &__activity-actions {
+    &__sequence-actions {
       display: flex;
       gap: 0;
       align-items: center;
@@ -2785,118 +2898,6 @@
       min-height: 36px;
       margin-bottom: var(--art-space-3);
       color: var(--el-text-color-secondary);
-    }
-
-    &__activity-scroll {
-      height: 390px;
-      background: var(--default-box-color);
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--art-control-radius);
-    }
-
-    &__activity-row {
-      display: grid;
-      grid-template-columns:
-        28px minmax(150px, 1fr) minmax(160px, 1fr) minmax(130px, 0.8fr) 140px
-        minmax(130px, 0.8fr) minmax(135px, 0.8fr) minmax(200px, 1fr) minmax(200px, 1fr)
-        84px minmax(180px, 1fr) 112px;
-      gap: var(--art-space-3);
-      align-items: center;
-      min-width: 1860px;
-      min-height: 60px;
-      padding: 10px var(--art-space-3);
-      border-bottom: 1px solid var(--el-border-color-lighter);
-      transition: background-color var(--art-motion-duration-fast) ease;
-
-      &.is-readonly {
-        grid-template-columns:
-          28px minmax(150px, 1fr) minmax(160px, 1fr) minmax(130px, 0.8fr) 140px
-          minmax(130px, 0.8fr) minmax(135px, 0.8fr) minmax(200px, 1fr) minmax(200px, 1fr)
-          84px minmax(180px, 1fr);
-        min-width: 1736px;
-      }
-
-      &:not(.is-header):hover {
-        background: color-mix(in srgb, var(--theme-color) 3%, var(--default-box-color));
-      }
-
-      &.is-header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        min-height: 44px;
-        padding-block: 10px;
-        font-size: var(--art-font-size-caption);
-        font-weight: 600;
-        color: var(--el-text-color-secondary);
-        background: var(--el-fill-color-light);
-        box-shadow: inset 0 -1px 0 var(--el-border-color-lighter);
-      }
-
-      :deep(.el-select),
-      :deep(.el-input),
-      :deep(.el-input-number) {
-        width: 100%;
-        min-width: 0;
-      }
-    }
-
-    &__activity-index {
-      font-variant-numeric: tabular-nums;
-      color: var(--el-text-color-secondary);
-      text-align: center;
-    }
-
-    &__activity-operation,
-    &__activity-actions {
-      position: sticky;
-      right: 0;
-      z-index: 1;
-      align-self: stretch;
-      justify-content: center;
-      padding-right: var(--art-space-3);
-      margin-right: calc(var(--art-space-3) * -1);
-      background: var(--default-box-color);
-      border-left: 1px solid var(--el-border-color-lighter);
-      box-shadow: -10px 0 16px -16px rgb(15 23 42 / 45%);
-    }
-
-    &__activity-operation {
-      display: flex;
-      align-items: center;
-      background: var(--el-fill-color-light);
-    }
-
-    &__activity-row:not(.is-header):hover &__activity-actions {
-      background: color-mix(in srgb, var(--theme-color) 3%, var(--default-box-color));
-    }
-
-    &__activity-value {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: var(--art-font-size-caption);
-      line-height: 20px;
-      color: var(--el-text-color-regular);
-      white-space: nowrap;
-
-      &.is-strong {
-        font-weight: 600;
-        color: var(--el-text-color-primary);
-      }
-
-      &.is-number {
-        font-variant-numeric: tabular-nums;
-        text-align: right;
-      }
-
-      &.is-code {
-        font-family: var(--art-font-family-mono, Consolas, monospace);
-      }
-    }
-
-    &__tab-empty {
-      min-height: 220px;
     }
   }
 
@@ -3128,14 +3129,6 @@
       border: 1px solid color-mix(in srgb, var(--theme-color) 14%, var(--art-card-border));
       border-radius: var(--art-control-radius);
 
-      strong {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--el-text-color-primary);
-        white-space: nowrap;
-      }
-
       svg {
         color: var(--theme-color);
       }
@@ -3192,6 +3185,10 @@
         > span {
           display: none;
         }
+      }
+
+      &__equation {
+        grid-template-columns: auto minmax(0, 1fr);
       }
     }
   }

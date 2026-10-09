@@ -14,47 +14,55 @@
         <template #actions><BusinessTableWorkspaceActions :table="tableRef" /></template>
       </BusinessWorkspaceHeader>
 
-      <div
-        class="operational-master-page__workspace"
-        :class="{ 'has-group-panel': !!config.groupDomain }"
-      >
-        <MasterGroupPanel
-          v-if="config.groupDomain"
-          :title="config.groupTitle || '业务分组'"
-          :groups="groupState.rows"
-          :selected-id="groupState.selectedId"
-          :loading="groupState.loading"
-          :error="groupState.error"
-          :manage-permission="`${config.routeName}:ManageGroup`"
-          @select="selectGroup"
-          @refresh="loadGroups"
-          @add="openGroupAdd"
-          @edit="openGroupEdit"
-          @remove="removeGroup"
-        />
+      <div class="operational-master-page__workspace">
+        <ArtWorkspaceSplitter
+          primary-size="300px"
+          primary-min="220px"
+          primary-max="380px"
+          :primary-collapsed="!config.groupDomain"
+          :breakpoint="900"
+          stacked-primary-size="auto"
+        >
+          <template #primary>
+            <MasterGroupPanel
+              v-if="config.groupDomain"
+              :title="config.groupTitle || '业务分组'"
+              :groups="groupState.rows"
+              :selected-id="groupState.selectedId"
+              :loading="groupState.loading"
+              :error="groupState.error"
+              :manage-permission="`${config.routeName}:ManageGroup`"
+              @select="selectGroup"
+              @refresh="loadGroups"
+              @add="openGroupAdd"
+              @edit="openGroupEdit"
+              @remove="removeGroup"
+            />
+          </template>
 
-        <ArtTableQuery
-          ref="tableRef"
-          v-model="table.search"
-          :api-fn="fetchRows"
-          :search-items="table.searchItems"
-          :columns-factory="columnsFactory"
-          :header-actions="table.headerActions"
-          :selection-actions="table.selectionActions"
-          :immediate="false"
-          header-actions-placement="workspace"
-          :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
-          :table-props="{
-            rowKey: 'id',
-            tableLayout: 'fixed',
-            emptyText: `暂无${config.title}`,
-            emptyDescription: `点击新增，建立第一条${config.title}主数据。`
-          }"
-          :focus-scope-selector="
-            config.groupDomain ? '.operational-master-page__workspace' : undefined
-          "
-          focusable
-        />
+          <ArtTableQuery
+            ref="tableRef"
+            v-model="table.search"
+            :api-fn="fetchRows"
+            :search-items="table.searchItems"
+            :columns-factory="columnsFactory"
+            :header-actions="table.headerActions"
+            :selection-actions="table.selectionActions"
+            :immediate="false"
+            header-actions-placement="workspace"
+            :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
+            :table-props="{
+              rowKey: 'id',
+              tableLayout: 'fixed',
+              emptyText: `暂无${config.title}`,
+              emptyDescription: `点击新增，建立第一条${config.title}主数据。`
+            }"
+            :focus-scope-selector="
+              config.groupDomain ? '.operational-master-page__workspace' : undefined
+            "
+            focusable
+          />
+        </ArtWorkspaceSplitter>
       </div>
 
       <ActivityFormulaDialog
@@ -69,13 +77,15 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
@@ -112,9 +122,16 @@
   import ActivityFormulaDialog from './modules/activity-formula-dialog.vue'
   import MasterDialog, { type MasterDialogOpenData } from './modules/master-dialog.vue'
   import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import { resolveMasterConfig } from './modules/master-config'
   import DocumentTypePage from '../../document-type/index.vue'
   import BusinessTypePage from '../../business-type/index.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
 
   defineOptions({ name: 'MdmOperationalMaster' })
   const declaredPermissions = [
@@ -169,7 +186,6 @@
   const isBusinessTypeRoute = computed(() => route.path.endsWith('/business-type'))
   const { confirmDelete } = useArtFeedback()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const { defaultWriteTenantId } = useTenantScopeFormPolicy()
@@ -205,7 +221,6 @@
     menus: []
   })
 
-  void userStore.ensureDictLoaded('commonBoolean')
   const workspaceTags = computed<BusinessWorkspaceTag[]>(() => [
     { label: config.value.groupDomain ? '层级分组' : '统一口径', type: 'primary' },
     { label: '租户隔离', type: 'success' },
@@ -238,11 +253,9 @@
     }
   ])
 
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      ...item,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   const table = reactive({
     search: { keyword: '', enabled: undefined as boolean | undefined },
@@ -257,7 +270,7 @@
         key: 'enabled',
         label: '启用状态',
         type: 'select',
-        props: { clearable: true, placeholder: '全部状态', options: booleanOptions.value }
+        props: { clearable: true, placeholder: '全部状态', options: booleanOptions }
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => {
@@ -305,7 +318,7 @@
               title: field.label,
               required: !!field.required
             })),
-          importTransformer: (rows) =>
+          importRecordTransformer: (rows) =>
             rows.map((row) => ({
               ...row,
               tenantId: defaultWriteTenantId.value || '',
@@ -352,20 +365,17 @@
     if (config.value.kind === 'activity-formula') {
       if (key === 'purpose') {
         const rawValue = value === null || value === undefined ? '' : String(value)
-        const dictionaryLabel = getDictMap.value[field?.dictCode || '']?.find(
-          (item) => item.value === rawValue
-        )?.label
+        const dictionaryLabel = userStore.getDictItemByValue(field?.dictCode || '', rawValue)?.label
         return rawValue ? activityFormulaPurposeLabel(rawValue, dictionaryLabel) : '—'
       }
       if (key === 'activityTypes') {
         const legacyActivityType = row.activityType ? [row.activityType] : []
-        const activityTypes = Array.isArray(value) && value.length ? value : legacyActivityType
+        const activityTypes = row.activityTypes?.length ? row.activityTypes : legacyActivityType
         return (
           activityTypes
             .map(
               (entry) =>
-                getDictMap.value[field?.dictCode || '']?.find((item) => item.value === entry)
-                  ?.label || String(entry)
+                userStore.getDictItemByValue(field?.dictCode || '', entry)?.label || String(entry)
             )
             .join('、') || '—'
         )
@@ -387,20 +397,22 @@
       return groupState.rows.find((item) => item.id === value)?.name || '未分组'
     if (field?.reference) return referenceLabel(references.value[field.reference], value)
     if (field?.dictCode) {
+      const dictCode = field.dictCode
       if (Array.isArray(value)) {
         return (
           value
             .map(
               (entry) =>
-                getDictMap.value[field.dictCode!]?.find((item) => item.value === entry)?.label ||
-                String(entry)
+                (typeof entry === 'string' || typeof entry === 'number'
+                  ? userStore.getDictLabelByValue(dictCode, entry)
+                  : '') || String(entry)
             )
             .join('、') || '—'
         )
       }
       const normalizedValue = typeof value === 'boolean' ? String(value) : value
       return (
-        getDictMap.value[field.dictCode]?.find((item) => item.value === normalizedValue)?.label ||
+        userStore.getDictItemByValue(dictCode, normalizedValue)?.label ||
         (value === null || value === undefined || value === '' ? '—' : String(value))
       )
     }
@@ -457,8 +469,7 @@
         prop: 'updateTime',
         label: '更新时间',
         width: 164,
-        formatter: (row) =>
-          row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—'
+        formatter: (row) => formatTableDateTime(row.updateTime)
       },
       {
         prop: 'operation',
@@ -660,27 +671,7 @@
     &__workspace {
       display: flex;
       flex: 1;
-      flex-direction: column;
       min-height: 0;
-
-      &.has-group-panel {
-        display: grid;
-        grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
-        gap: 14px;
-      }
-    }
-
-    @media (width <= 1024px) {
-      &__workspace.has-group-panel {
-        grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-      }
-    }
-
-    @media (width <= 767px) {
-      &__workspace.has-group-panel {
-        grid-template-rows: minmax(240px, 34vh) minmax(520px, 1fr);
-        grid-template-columns: 1fr;
-      }
     }
   }
 </style>

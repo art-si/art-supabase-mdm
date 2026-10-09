@@ -34,7 +34,6 @@
 
 <script setup lang="tsx">
   import { computed, ref } from 'vue'
-  import { storeToRefs } from 'pinia'
   import { ElButton, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import type {
@@ -42,7 +41,7 @@
     ArtTableValidationResult
   } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { WorkCenterActivityInput, WorkCenterReference } from '@mdm/api'
 
   const props = defineProps<{
@@ -51,7 +50,12 @@
     readonly?: boolean
   }>()
   const model = defineModel<WorkCenterActivityInput[]>({ required: true })
-  const { getDictMap } = storeToRefs(useUserStore())
+  const dictionaryOptions = {
+    mdmWorkCenterActivityName: useDictionaryOptions('mdmWorkCenterActivityName'),
+    mdmActivityType: useDictionaryOptions('mdmActivityType'),
+    mdmWorkCenterMaintenanceRule: useDictionaryOptions('mdmWorkCenterMaintenanceRule'),
+    mdmActivityUnit: useDictionaryOptions('mdmActivityUnit')
+  }
   const tableRef = ref<ArtTableExpose>()
   const currentRow = ref<WorkCenterActivityInput>()
   const selectedRows = ref<WorkCenterActivityInput[]>([])
@@ -60,7 +64,6 @@
   )
   const tableHeight = computed(() => (props.fullscreen ? 'calc(100vh - 330px)' : '440px'))
 
-  const dictOptions = (code: string) => getDictMap.value[code] ?? []
   const formulaLabel = (id: string | null) => {
     const formula = props.formulas.find((item) => item.id === id)
     return formula ? `${formula.name} · ${formula.code}` : '—'
@@ -71,14 +74,21 @@
   const select = (
     row: WorkCenterActivityInput,
     field: 'activityName' | 'activityType' | 'maintenanceRule' | 'activityUnit',
-    code: string,
+    code: keyof typeof dictionaryOptions,
     placeholder: string
   ) =>
     props.readonly ? (
       dictDisplay(code, row[field])
     ) : (
-      <ElSelect v-model={row[field]} placeholder={placeholder} filterable clearable class="w-full">
-        {dictOptions(code).map((item) => (
+      <ElSelect
+        v-model={row[field]}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        filterable
+        clearable
+        class="w-full"
+      >
+        {dictionaryOptions[code].map((item) => (
           <ElOption key={item.value} label={item.label} value={item.value} />
         ))}
       </ElSelect>

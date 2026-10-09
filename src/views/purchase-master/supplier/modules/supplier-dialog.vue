@@ -44,13 +44,10 @@
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtForm, {
-    type FormItem,
-    type FormItemOption
-  } from '@/components/core/forms/art-form/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     savePurchaseSupplier,
@@ -58,14 +55,6 @@
     type PurchaseSupplier,
     type PurchaseSupplierInput
   } from '@mdm/api'
-
-  const supplierDictionaryCodes = [
-    'supplierCategory',
-    'supplierType',
-    'enterpriseNature',
-    'supplierIndustry'
-  ] as const
-  type SupplierDictionaryCode = (typeof supplierDictionaryCodes)[number]
 
   export interface SupplierDialogOpenData {
     row?: PurchaseSupplier
@@ -105,8 +94,10 @@
   }
 
   const emit = defineEmits<{ success: [type: 'add' | 'edit'] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const supplierCategoryOptions = useDictionaryOptions('supplierCategory')
+  const supplierTypeOptions = useDictionaryOptions('supplierType')
+  const enterpriseNatureOptions = useDictionaryOptions('enterpriseNature')
+  const industryOptions = useDictionaryOptions('supplierIndustry')
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
   const dialogRef = ref<ArtDialogExpose<SupplierDialogOpenData>>()
   const formRef = ref<FormExpose>()
@@ -134,12 +125,6 @@
     coordinateSystem: 'gcj02',
     remark: ''
   })
-
-  const toOptions = (code: SupplierDictionaryCode): FormItemOption[] =>
-    (getDictMap.value[code] ?? []).map((item) => ({
-      label: String(item.label || item.name || item.value || ''),
-      value: String(item.value ?? '')
-    }))
 
   const model = reactive<SupplierForm>(initialForm())
   const form = reactive<{
@@ -174,7 +159,7 @@
         label: '供应商类别',
         key: 'supplierCategory',
         type: 'select',
-        options: toOptions('supplierCategory'),
+        options: supplierCategoryOptions,
         props: { clearable: true, placeholder: '请选择供应商类别' }
       },
       {
@@ -191,7 +176,7 @@
         key: 'supplierType',
         type: 'select',
         span: 8,
-        options: toOptions('supplierType'),
+        options: supplierTypeOptions,
         props: { clearable: false, placeholder: '请选择供应商类型' }
       },
       {
@@ -199,7 +184,7 @@
         key: 'enterpriseNature',
         type: 'select',
         span: 8,
-        options: toOptions('enterpriseNature'),
+        options: enterpriseNatureOptions,
         props: { clearable: true, placeholder: '请选择企业性质' }
       },
       {
@@ -207,7 +192,7 @@
         key: 'industry',
         type: 'select',
         span: 8,
-        options: toOptions('supplierIndustry'),
+        options: industryOptions,
         props: { clearable: true, placeholder: '请选择行业' }
       },
       { label: '联系与位置', key: 'contactSection', type: 'divider', span: 24 },
@@ -341,14 +326,6 @@
       subtitle: '维护跨系统共用的单位身份、分类口径、联系人和地图地址',
       confirmText: data.row ? '保存更改' : '创建供应商',
       contentMaxHeight: '72vh',
-      onOpen: async (_openData, api) => {
-        api.setLoading(true)
-        try {
-          await Promise.all(supplierDictionaryCodes.map((code) => userStore.ensureDictLoaded(code)))
-        } finally {
-          api.setLoading(false)
-        }
-      },
       onConfirm: handleSubmit,
       onReset: () => void resetForm()
     })

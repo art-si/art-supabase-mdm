@@ -25,6 +25,13 @@
         :show-reset="false"
         :show-submit="false"
       >
+        <template #movementType>
+          <ArtDictDisplay
+            dict-code="mdmInventoryMovementType"
+            :value="form.movementType"
+            display="text"
+          />
+        </template>
         <template #materialId>
           <ArtMaterialSelect
             :model-value="form.materialId || undefined"
@@ -54,6 +61,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtMaterialSelect from '@/components/business/art-material-select/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -72,7 +80,7 @@
     type StorageWorkOrder,
     type StorageZone
   } from '@mdm/api'
-  import type { MaterialSelectRecord } from '@/components/business/art-material-select/index.vue'
+  import type { MaterialSelectRecord } from '@/components/business/art-material-select/types'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
   import type { StorageActionContext } from './storage-action-dialog.vue'
 
@@ -80,8 +88,6 @@
   const dialogRef = ref<ArtDialogExpose<StorageActionContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmInventoryMovementType')
   const context = reactive<StorageActionContext>({ warehouseId: '', tenantId: '', label: '' })
   const form = reactive<InventoryMovementInput>({
     movementType: 'purchase_in',
@@ -99,10 +105,8 @@
   const inboundWarehouseError = ref('')
   let destinationRevision = 0
   const isInbound = computed(() => form.movementType.endsWith('_in'))
-  const movementLabel = computed(
-    () =>
-      getDictMap.value.mdmInventoryMovementType?.find((item) => item.value === form.movementType)
-        ?.label || '库存业务'
+  const movementLabel = computed(() =>
+    userStore.getDictDisplayLabelByValue('mdmInventoryMovementType', form.movementType, '库存业务')
   )
   const currentWarehouse = computed(() =>
     warehouses.value.find(
@@ -152,9 +156,7 @@
     {
       label: '业务类型',
       key: 'movementType',
-      type: 'select',
-      options: getDictMap.value.mdmInventoryMovementType ?? [],
-      props: { disabled: true }
+      type: 'slot'
     },
     {
       label: '业务单号',
@@ -506,7 +508,7 @@
   }
 
   async function handleOpen(type: string, data: StorageActionContext): Promise<void> {
-    destinationRevision += 1
+    const openingRevision = ++destinationRevision
     inboundWarehouseError.value = ''
     Object.assign(context, { zoneId: undefined, binId: undefined }, data)
     Object.assign(form, {
@@ -553,15 +555,17 @@
             fetchStorageWarehouses(),
             fetchStorageBins(data.warehouseId),
             fetchStorageZones(data.warehouseId),
-            fetchStorageWorkOrders(data.warehouseId)
+            fetchStorageWorkOrders(data.warehouseId),
+            userStore.ensureDictLoaded('mdmInventoryMovementType')
           ])
+          if (openingRevision !== destinationRevision || !api.visible.value) return
           warehouses.value = warehouseRows
           sourceBins.value = binRows
           sourceZones.value = zoneRows
           workOrders.value = orderRows
           targetBins.value = binRows
           targetZones.value = zoneRows
-          batchOptions.value = isInbound.value
+          const batches = isInbound.value
             ? []
             : (
                 await fetchInventoryBatches({
@@ -573,10 +577,22 @@
                   size: 100
                 })
               ).data
+          if (openingRevision !== destinationRevision || !api.visible.value) return
+          batchOptions.value = batches
+          api.setOptions({
+            title:
+              type === 'production_in'
+                ? movementLabel.value
+                : `${movementLabel.value} · ${data.label}`
+          })
         } catch {
-          ElMessage.warning('库存基础数据加载失败，请关闭弹窗后重试')
+          if (openingRevision === destinationRevision && api.visible.value) {
+            ElMessage.warning('库存基础数据加载失败，请关闭弹窗后重试')
+          }
         } finally {
-          api.setLoading(false)
+          if (openingRevision === destinationRevision && api.visible.value) {
+            api.setLoading(false)
+          }
         }
       }
     })

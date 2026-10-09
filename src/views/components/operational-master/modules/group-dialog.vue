@@ -41,7 +41,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import type { MasterGroup, MasterGroupDomain } from '@mdm/api'
   import { saveMasterGroup } from '@mdm/api'
@@ -57,8 +57,6 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
   const dialogRef = ref<ArtDialogExpose<GroupDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -106,11 +104,9 @@
       ? `上级分组：${parent.name} · ${parent.code}`
       : `建立${groupTypeTitle.value}层级，便于主档筛选与归类。`
   })
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label || item.value,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   const items = computed<FormItem[]>(() => [
     { key: 'hierarchy', label: '分组层级', type: 'divider', span: 24 },
@@ -148,7 +144,7 @@
       key: 'enabled',
       label: '启用状态',
       type: 'segment',
-      options: booleanOptions.value
+      options: booleanOptions
     },
     {
       key: 'remark',
@@ -158,7 +154,6 @@
       props: { rows: 3, maxlength: 500, showWordLimit: true, resize: 'none' }
     }
   ])
-  void userStore.ensureDictLoaded('commonBoolean')
 
   const handleOpen = async (data: GroupDialogOpenData): Promise<void> => {
     form.id = data.row?.id

@@ -165,7 +165,7 @@
                 :value="selectedBom.status"
                 display="tag"
               />
-              <BusinessWorkspaceFocusToggle v-if="focusMode" v-model="focusMode" />
+              <BusinessWorkspaceFocusToggle v-show="focusMode" v-model="focusMode" />
             </template>
             <div v-if="selectedBom" class="bom-structure-page__root">
               <span><ArtSvgIcon icon="ri:box-3-line" /></span>
@@ -176,7 +176,12 @@
                 ><strong>{{ formatBomMaterialDescription(selectedBom.material) }}</strong
                 ><p
                   >生产单位：{{ selectedBom.baseUnit?.unitName || '—' }} · 基准数量
-                  {{ selectedBom.baseQuantity }}</p
+                  {{
+                    formatSensitiveNumberWithAffix(selectedBom.baseQuantity, {
+                      emptyText: '—',
+                      numberFormat: { maximumFractionDigits: 6 }
+                    })
+                  }}</p
                 ></div
               >
               <div class="bom-structure-page__root-search">
@@ -215,7 +220,8 @@
 <script setup lang="tsx">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { TreeInstance } from 'element-plus'
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatArtValue } from '@/utils/ui/format'
+  import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
@@ -295,17 +301,11 @@
     { prop: 'specificationModel', label: '规格型号', minWidth: 140 },
     { prop: 'drawingNo', label: '图号', minWidth: 120 }
   ]
-  const formatQuantity = (value: unknown, maximumFractionDigits = 6): string => {
-    if (value === null || value === undefined || value === '') return '—'
-    const amount = Number(value)
-    return Number.isFinite(amount) ? amount.toLocaleString('zh-CN', { maximumFractionDigits }) : '—'
-  }
   const formatDate = createDateTimeFormatter({
     format: 'YYYY-MM-DD',
     emptyText: '—',
     invalidText: '—'
   })
-  const formatText = (value?: string | null): string => value?.trim() || '—'
   const unitIdentity = (row: BomStructureNode) => (
     <BusinessTableIdentityCell primary={row.unitName || '—'} secondary={row.unitCode} />
   )
@@ -317,7 +317,10 @@
   )
   const processStepIdentity = (row: BomStructureNode) => (
     <BusinessTableIdentityCell
-      primary={row.processRouteStepName || formatText(row.operationName)}
+      primary={
+        row.processRouteStepName ||
+        formatArtValue(row.operationName?.trim(), 'text', { emptyText: '—' })
+      }
       secondary={
         [row.processSequenceNo ? `序列 ${row.processSequenceNo}` : '', row.processRouteStepCode]
           .filter(Boolean)
@@ -389,7 +392,7 @@
       label: '图号',
       width: 160,
       showOverflowTooltip: true,
-      formatter: (row) => formatText(row.drawingNo)
+      formatter: (row) => formatArtValue(row.drawingNo?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'materialSource',
@@ -408,14 +411,22 @@
       label: '单位用量',
       width: 120,
       align: 'right',
-      formatter: (row) => formatQuantity(row.componentQuantity)
+      formatter: (row) =>
+        formatSensitiveNumberWithAffix(row.componentQuantity, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 6 }
+        })
     },
     {
       prop: 'quantity',
       label: '累计需求',
       width: 120,
       align: 'right',
-      formatter: (row) => formatQuantity(row.quantity)
+      formatter: (row) =>
+        formatSensitiveNumberWithAffix(row.quantity, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 6 }
+        })
     },
     { prop: 'unitId', label: '计量单位', width: 140, formatter: unitIdentity },
     {
@@ -459,14 +470,18 @@
       label: '项目文本',
       width: 220,
       showOverflowTooltip: true,
-      formatter: (row) => formatText(row.projectText)
+      formatter: (row) => formatArtValue(row.projectText?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'scrapRate',
       label: '损耗率 %',
       width: 120,
       align: 'right',
-      formatter: (row) => formatQuantity(row.scrapRate, 2)
+      formatter: (row) =>
+        formatSensitiveNumberWithAffix(row.scrapRate, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 2 }
+        })
     },
     { prop: 'processSequenceNo', label: '工序序列', width: 100, align: 'center' },
     {
@@ -491,7 +506,7 @@
       prop: 'positionNo',
       label: '位号',
       width: 140,
-      formatter: (row) => formatText(row.positionNo)
+      formatter: (row) => formatArtValue(row.positionNo?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'bomId',
@@ -504,7 +519,7 @@
       label: '备注',
       width: 220,
       showOverflowTooltip: true,
-      formatter: (row) => formatText(row.remark)
+      formatter: (row) => formatArtValue(row.remark?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'hasChildren',

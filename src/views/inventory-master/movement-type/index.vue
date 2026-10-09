@@ -64,6 +64,7 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     deleteMovementTypes,
     exportMovementTypes,
@@ -91,14 +92,13 @@
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
   const { effectiveTenantId, isAllTenants, tenantOptions } = storeToRefs(tenantScopeStore)
-  const { getDictMap } = storeToRefs(userStore)
   const { confirmDelete } = useArtFeedback()
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof MovementTypeDialog>>()
   const detailRef = ref<InstanceType<typeof MovementTypeDetailDrawer>>()
   const optionError = ref(false)
   const search = reactive<SearchModel>({ keyword: '', direction: undefined })
-  const directionOptions = computed(() => getDictMap.value.mdmStockMovementDirection ?? [])
+  const directionOptions = useDictionaryOptions('mdmStockMovementDirection')
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       key: 'keyword',
@@ -110,7 +110,7 @@
       key: 'direction',
       label: '出入标志',
       type: 'select',
-      props: { clearable: true, placeholder: '全部类型', options: directionOptions.value }
+      props: { clearable: true, placeholder: '全部类型', options: directionOptions }
     }
   ])
   const fetchRows = (params: TableParams, options?: { signal?: AbortSignal }) =>
@@ -136,13 +136,15 @@
   }
   const toExportRow = (row: MovementTypeRecord): ExportRow => ({
     ...row,
-    directionLabel:
-      directionOptions.value.find((item) => item.value === row.direction)?.label || row.direction,
+    directionLabel: userStore.getDictDisplayLabelByValue(
+      'mdmStockMovementDirection',
+      row.direction
+    ),
     reverseTypeLabel: row.reverseType
       ? `${row.reverseType.movementCode} · ${row.reverseType.movementName}`
       : '',
-    reversalLabel: row.reversal ? '是' : '否',
-    otherIoLabel: row.otherIo ? '是' : '否',
+    reversalLabel: userStore.getDictDisplayLabelByValue('commonBoolean', String(row.reversal)),
+    otherIoLabel: userStore.getDictDisplayLabelByValue('commonBoolean', String(row.otherIo)),
     statusLabel: row.status === 'enabled' ? '启用' : '禁用'
   })
   const headerActions: ArtTableQueryHeaderAction[] = [
@@ -189,6 +191,11 @@
         { key: 'remark', title: '备注' }
       ],
       exportApi: async ({ selectedRows, searchParams, maxRows }) => {
+        await Promise.all(
+          ['mdmStockMovementDirection', 'commonBoolean'].map((code) =>
+            userStore.ensureDictLoaded(code)
+          )
+        )
         const rows = selectedRows.length
           ? (selectedRows as MovementTypeRecord[])
           : await exportMovementTypes(

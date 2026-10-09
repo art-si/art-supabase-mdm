@@ -41,9 +41,10 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
-  import dayjs from 'dayjs'
   import { cloneDeep } from 'lodash-es'
   import { ElTag } from 'element-plus'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -70,6 +71,12 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import OutboundRuleDialog, { type OutboundRuleDialogOpenData } from './outbound-rule-dialog.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
 
   const commonEnabledStatusOptions = useDictionaryOptions('commonEnabledStatus')
 
@@ -221,7 +228,7 @@
       prop: 'updateTime',
       label: '更新时间',
       width: 168,
-      formatter: (row) => (row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—')
+      formatter: (row) => formatTableDateTime(row.updateTime)
     },
     {
       prop: 'operation',

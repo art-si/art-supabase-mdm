@@ -252,10 +252,10 @@
   import { replaceReactiveModel } from '@/utils/form/model'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { createDateTimeFormatter } from '@/utils/ui/format'
-  import { ElImage, ElTag } from 'element-plus'
+  import { ElAvatar, ElImage, ElTag } from 'element-plus'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
@@ -302,8 +302,7 @@
     handleOpen: (data: EquipmentDialogOpenData) => Promise<void>
   }
 
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const tenantScopeStore = useTenantScopeStore()
   const { confirmAction } = useArtFeedback()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
@@ -420,15 +419,10 @@
       type: 'select',
       props: {
         clearable: true,
-        options: getDictMap.value.commonEnabledStatus ?? []
+        options: statusOptions
       }
     }
   ])
-  void Promise.all(
-    ['commonEnabledStatus', 'mdmEquipmentOperationStatus'].map((code) =>
-      userStore.ensureDictLoaded(code)
-    )
-  )
 
   const fetchData = async (params: Record<string, unknown>) => {
     const result = await fetchProductionEquipment({
@@ -532,18 +526,17 @@
       fixed: 'left',
       link: { permission: 'MdmProductionEquipment:View', onClick: showDetail },
       formatter: (row) => (
-        <div class="production-equipment-page__identity">
-          <span>
-            {row.photoUrl ? (
-              <img src={row.photoUrl} alt={`${row.equipmentName}缩略图`} width="38" height="38" />
-            ) : (
-              <ArtSvgIcon icon="ri:tools-line" />
-            )}
-          </span>
-          <span>
-            <strong title={row.equipmentName}>{row.equipmentName}</strong>
-            <small title={row.equipmentCode}>{row.equipmentCode}</small>
-          </span>
+        <div class="flex min-w-0 items-center gap-2">
+          <ElAvatar
+            size={36}
+            shape="square"
+            src={row.photoUrl || undefined}
+            alt={`${row.equipmentName}缩略图`}
+            class="shrink-0 bg-[var(--art-gray-100)]! text-[var(--theme-color)]!"
+          >
+            <ArtSvgIcon icon="ri:tools-line" />
+          </ElAvatar>
+          <BusinessTableIdentityCell primary={row.equipmentName} secondary={row.equipmentCode} />
         </div>
       )
     },
@@ -957,50 +950,6 @@
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
-    }
-
-    :deep(&__identity) {
-      display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
-      gap: 10px;
-      align-items: center;
-      min-width: 0;
-    }
-
-    :deep(&__identity > span:first-child) {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      overflow: hidden;
-      color: var(--theme-color);
-      background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));
-      border-radius: var(--el-border-radius-base);
-
-      .el-image,
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-
-    :deep(&__identity > span:last-child) {
-      display: grid;
-      min-width: 0;
-    }
-
-    :deep(&__identity strong),
-    :deep(&__identity small) {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    :deep(&__identity small) {
-      margin-top: 3px;
-      font-size: 11px;
-      color: var(--el-text-color-secondary);
     }
   }
 

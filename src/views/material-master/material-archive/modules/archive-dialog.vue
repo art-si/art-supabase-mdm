@@ -664,9 +664,7 @@
   )
   const descriptionRuleLabels = computed(() => {
     return (selectedCategory.value?.compositionColumns ?? []).map(
-      (column) =>
-        getDictMap.value.mdmMaterialCoreAttribute?.find((item) => item.value === column)?.label ??
-        column
+      (column) => userStore.getDictItemByValue('mdmMaterialCoreAttribute', column)?.label ?? column
     )
   })
   const isTabConfigured = (tab: ArchiveTab): boolean => {

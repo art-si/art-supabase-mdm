@@ -42,9 +42,8 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtMaterialSelect, {
-    type MaterialSelectRecord
-  } from '@/components/business/art-material-select/index.vue'
+  import ArtMaterialSelect from '@/components/business/art-material-select/index.vue'
+  import type { MaterialSelectRecord } from '@/components/business/art-material-select/types'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
   import {
     fetchStorageBins,

@@ -46,7 +46,11 @@
                 <small
                   >{{ data.code
                   }}<template v-if="data.activityUnit">
-                    · {{ dictLabel('mdmActivityUnit', data.activityUnit) }}</template
+                    ·
+                    {{
+                      userStore.getDictItemByValue('mdmActivityUnit', data.activityUnit)?.label ||
+                      data.activityUnit
+                    }}</template
                   ></small
                 >
               </span>
@@ -147,15 +151,10 @@
   }>()
 
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const parameterTree = computed(() => buildActivityFormulaParameterTree(props.parameters))
   const parameterCount = computed(
     () => props.parameters.filter((item) => item.nodeType === 'parameter').length
   )
-
-  function dictLabel(code: string, value: string): string {
-    return getDictMap.value[code]?.find((item) => String(item.value) === value)?.label || value
-  }
 
   const overviewItems = computed<ArtDescriptionItem<OperationalMasterRecord>[]>(() => [
     { key: 'code', label: '公式编码', field: 'code', copyable: true },
@@ -166,7 +165,10 @@
       field: 'purpose',
       formatter: (value) => {
         const rawValue = String(value || '')
-        return activityFormulaPurposeLabel(rawValue, dictLabel('mdmFormulaPurpose', rawValue))
+        return activityFormulaPurposeLabel(
+          rawValue,
+          userStore.getDictItemByValue('mdmFormulaPurpose', rawValue)?.label || rawValue
+        )
       }
     },
     {
@@ -178,7 +180,10 @@
         return (
           values
             .filter(Boolean)
-            .map((item) => dictLabel('mdmActivityType', String(item)))
+            .map(
+              (item) =>
+                userStore.getDictItemByValue('mdmActivityType', String(item))?.label || String(item)
+            )
             .join('、') || '—'
         )
       }

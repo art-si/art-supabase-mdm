@@ -55,7 +55,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import {
     fetchProductionPersonSelector,
@@ -74,8 +74,6 @@
   }
 
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<WorkstationDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
 
@@ -100,13 +98,9 @@
     selectedPerson: [] as EmployeeIntegrationItem[]
   })
 
-  void userStore.ensureDictLoaded('commonBoolean')
-
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      ...item,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
 
   const scopeDescription = computed(
@@ -146,7 +140,7 @@
       key: 'enabled',
       label: '启用状态',
       type: 'segment',
-      options: booleanOptions.value,
+      options: booleanOptions,
       help: '禁用后不再作为下游业务的新选项，历史记录保持不变。'
     },
     {

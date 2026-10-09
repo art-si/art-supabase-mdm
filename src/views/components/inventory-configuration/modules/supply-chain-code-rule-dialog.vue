@@ -112,7 +112,7 @@
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     fetchSupplyChainCodeAttributes,
@@ -140,13 +140,9 @@
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const segmentTableRef = ref<ArtTableExpose>()
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void Promise.all(
-    ['commonEnabledStatus', 'mdmSupplyChainCodeUseMode', 'mdmSupplyChainCodeDateFormat'].map(
-      (code) => userStore.ensureDictLoaded(code)
-    )
-  )
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
+  const useModeOptions = useDictionaryOptions('mdmSupplyChainCodeUseMode')
+  const dateFormatOptions = useDictionaryOptions('mdmSupplyChainCodeDateFormat')
 
   const initialForm = (): RuleFormModel => ({
     id: undefined,
@@ -230,7 +226,7 @@
       label: '启用状态',
       key: 'status',
       type: 'segment',
-      options: getDictMap.value.commonEnabledStatus ?? []
+      options: statusOptions
     },
     { label: '适用范围', key: 'scopeDivider', type: 'divider', span: 24 },
     { label: '业务对象', key: 'scope', type: 'slot', span: 16 },
@@ -297,7 +293,7 @@
       width: 120,
       formatter: (row) => (
         <ElSelect v-model={row.useMode} aria-label="使用模式">
-          {(getDictMap.value.mdmSupplyChainCodeUseMode ?? []).map((option) => (
+          {useModeOptions.map((option) => (
             <ElOption key={option.value} label={option.label} value={option.value} />
           ))}
         </ElSelect>
@@ -315,7 +311,7 @@
       formatter: (row) =>
         row.attribute?.attributeType === 'date' ? (
           <ElSelect v-model={row.format} aria-label="日期格式">
-            {(getDictMap.value.mdmSupplyChainCodeDateFormat ?? []).map((option) => (
+            {dateFormatOptions.map((option) => (
               <ElOption key={option.value} label={option.label} value={option.value} />
             ))}
           </ElSelect>

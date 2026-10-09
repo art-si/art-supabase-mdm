@@ -25,7 +25,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { fetchEnabledOrganizationTree } from '@/api/system-manage'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     saveProductionDepartment,
@@ -41,7 +41,7 @@
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const user = useUserStore()
+  const departmentKindOptions = useDictionaryOptions('mdmProductionDepartmentKind')
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const form = reactive({
@@ -140,7 +140,7 @@
       key: 'kind',
       label: '类型',
       type: 'select',
-      options: user.getDictMap.mdmProductionDepartmentKind ?? [],
+      options: departmentKindOptions,
       props: { allowCreate: true, filterable: true }
     },
     { key: 'sort', label: '排序', type: 'number', props: { min: 0, precision: 0 } },

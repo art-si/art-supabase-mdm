@@ -65,6 +65,7 @@
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
   import type {
     BusinessTypeDocumentReference,
@@ -125,15 +126,15 @@
   const formRef = ref<FormExpose>()
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const inventoryDirectionOptions = useDictionaryOptions('mdmBusinessInventoryDirection')
+  const movementDirectionOptions = useDictionaryOptions('mdmStockMovementDirection')
+  const ownerTypeOptions = useDictionaryOptions('mdmBusinessOwnerType')
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
 
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label,
-      value: String(item.value) === 'true' || String(item.value) === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -253,7 +254,7 @@
           key: 'isDefault',
           type: 'segment',
           span: 8,
-          options: booleanOptions.value,
+          options: booleanOptions,
           props: { onChange: handleDefaultChange },
           description: '同一单据类型及菜单功能只能设置一个默认项。'
         },
@@ -287,7 +288,7 @@
           key: 'inventoryDirection',
           type: 'select',
           span: 8,
-          options: getDictMap.value.mdmBusinessInventoryDirection ?? [],
+          options: inventoryDirectionOptions,
           props: { clearable: true, placeholder: '默认为空' }
         },
         {
@@ -295,7 +296,7 @@
           key: 'stockMovement',
           type: 'select',
           span: 16,
-          options: getDictMap.value.mdmStockMovementDirection ?? [],
+          options: movementDirectionOptions,
           props: { clearable: true, placeholder: '可选，默认为空' },
           description: '用于标识该业务类型的库存流转方向。'
         },
@@ -304,7 +305,7 @@
           key: 'ownerType',
           type: 'select',
           span: 8,
-          options: getDictMap.value.mdmBusinessOwnerType ?? [],
+          options: ownerTypeOptions,
           props: { clearable: true, placeholder: '请选择货主类型' }
         },
         {
@@ -312,7 +313,7 @@
           key: 'inventoryAccounting',
           type: 'segment',
           span: 8,
-          options: booleanOptions.value,
+          options: booleanOptions,
           description: '默认为否，启用后纳入存货核算。'
         },
         { label: '显示、排序与状态', key: 'presentationSection', type: 'divider', span: 24 },

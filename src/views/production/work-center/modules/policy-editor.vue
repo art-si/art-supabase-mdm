@@ -14,11 +14,14 @@
   import { computed } from 'vue'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { CenterPolicy } from '@mdm/api'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { centerPolicyFields } from './center-policy'
   const props = defineProps<{ section?: string; readonly?: boolean }>()
   const model = defineModel<CenterPolicy>({ required: true })
-  const user = useUserStore()
+  const policyOptions = new Map(
+    centerPolicyFields.map((field) => [field.key, useDictionaryOptions(`mdmCenter_${field.key}`)])
+  )
+  const operationUnitOptions = useDictionaryOptions('mdmWorkCenterOperationUnit')
   const items = computed<FormItem[]>(() => {
     const list: FormItem[] = centerPolicyFields
       .filter((f) => !props.section || f.section === props.section)
@@ -27,7 +30,7 @@
         label: f.label,
         type: 'select',
         help: f.help,
-        options: user.getDictMap['mdmCenter_' + f.key] ?? [],
+        options: policyOptions.get(f.key) ?? [],
         props: {
           multiple: f.multiple,
           collapseTags: true,
@@ -47,7 +50,7 @@
           key: 'operationUnit',
           label: '时限单位',
           type: 'select',
-          options: user.getDictMap.mdmWorkCenterOperationUnit ?? []
+          options: operationUnitOptions
         },
         {
           key: 'customLimit',

@@ -85,9 +85,9 @@
 </template>
 
 <script setup lang="tsx">
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatArtValue } from '@/utils/ui/format'
+  import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
 
-  import dayjs from 'dayjs'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -104,21 +104,17 @@
   const dialogRef = ref<ArtDialogExpose<BomRecord>>()
   const record = shallowRef<BomRecord>()
 
-  const formatQuantity = (value: unknown, maximumFractionDigits = 6): string => {
-    const amount = Number(value)
-    return Number.isFinite(amount) ? amount.toLocaleString('zh-CN', { maximumFractionDigits }) : '—'
-  }
-
   const formatDateTime = createDateTimeFormatter({
     format: 'YYYY-MM-DD HH:mm',
     emptyText: '—',
     invalidText: '—'
   })
 
-  const formatDate = (value?: string | null): string =>
-    value && dayjs(value).isValid() ? dayjs(value).format('YYYY-MM-DD') : '—'
-
-  const formatText = (value?: string | null): string => value?.trim() || '—'
+  const formatDate = createDateTimeFormatter({
+    format: 'YYYY-MM-DD',
+    emptyText: '—',
+    invalidText: '—'
+  })
 
   const materialIdentity = (row: BomRecord): string =>
     [row.material?.materialCode, row.material?.specificationModel].filter(Boolean).join(' · ') ||
@@ -155,7 +151,11 @@
     {
       key: 'baseQuantity',
       label: '基准数量',
-      value: (row: BomRecord) => formatQuantity(row.baseQuantity)
+      value: (row: BomRecord) =>
+        formatSensitiveNumberWithAffix(row.baseQuantity, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 6 }
+        })
     },
     {
       key: 'baseUnit',
@@ -265,7 +265,11 @@
       label: '用量',
       width: 120,
       align: 'right',
-      formatter: (row) => formatQuantity(row.quantity)
+      formatter: (row) =>
+        formatSensitiveNumberWithAffix(row.quantity, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 6 }
+        })
     },
     {
       prop: 'unitId',
@@ -323,14 +327,18 @@
       prop: 'projectText',
       label: '项目文本',
       width: 220,
-      formatter: (row) => formatText(row.projectText)
+      formatter: (row) => formatArtValue(row.projectText?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'scrapRate',
       label: '损耗率 %',
       width: 120,
       align: 'right',
-      formatter: (row) => formatQuantity(row.scrapRate, 2)
+      formatter: (row) =>
+        formatSensitiveNumberWithAffix(row.scrapRate, {
+          emptyText: '—',
+          numberFormat: { maximumFractionDigits: 2 }
+        })
     },
     {
       prop: 'processSequenceNo',
@@ -354,7 +362,7 @@
       width: 220,
       formatter: (row) => {
         const step = row.processRouteStep
-        if (!step) return formatText(row.operationName)
+        if (!step) return formatArtValue(row.operationName?.trim(), 'text', { emptyText: '—' })
         return (
           <BusinessTableIdentityCell
             primary={step.name || '未命名工序'}
@@ -376,13 +384,13 @@
       prop: 'positionNo',
       label: '位号',
       width: 140,
-      formatter: (row) => formatText(row.positionNo)
+      formatter: (row) => formatArtValue(row.positionNo?.trim(), 'text', { emptyText: '—' })
     },
     {
       prop: 'remark',
       label: '备注',
       width: 220,
-      formatter: (row) => formatText(row.remark)
+      formatter: (row) => formatArtValue(row.remark?.trim(), 'text', { emptyText: '—' })
     }
   ]
 

@@ -118,6 +118,7 @@
   import { recordDeleteGuardOptions } from '@/hooks/core/useRecordDeleteGuard'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { formatWithDayjs } from '@/utils/time'
   import {
     getFriendlySupabaseErrorMessage,
@@ -201,7 +202,6 @@
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const userStore = useUserStore()
   const tenantScopeStore = useTenantScopeStore()
-  const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, isAllTenants, scopeLabel, tenantOptions } =
     storeToRefs(tenantScopeStore)
   const { hasAuth, hasAnyAuth } = useAuth()
@@ -305,11 +305,9 @@
     { label: `最近更新：${formatWithDayjs(overview.stats.lastUpdateTime) || '-'}` }
   ])
   const workspaceMetrics = computed(() => overview.metrics)
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label,
-      value: String(item.value) === 'true' || String(item.value) === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   const selectedMenu = computed(() =>
     menu.selectedId ? treeUtils.findNode(menu.tree, menu.selectedId) : undefined
@@ -340,13 +338,13 @@
         key: 'enabled',
         label: '状态',
         type: 'select',
-        props: { clearable: true, placeholder: '全部状态', options: booleanOptions.value }
+        props: { clearable: true, placeholder: '全部状态', options: booleanOptions }
       },
       {
         key: 'isDefault',
         label: '默认类型',
         type: 'select',
-        props: { clearable: true, placeholder: '全部类型', options: booleanOptions.value }
+        props: { clearable: true, placeholder: '全部类型', options: booleanOptions }
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() => [

@@ -44,7 +44,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
   import {
     saveMaterialCategory,
@@ -78,8 +78,9 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const coreAttributeOptions = useDictionaryOptions('mdmMaterialCoreAttribute')
+  const valuationOptions = useDictionaryOptions('mdmMaterialValuationMethod')
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const dialogRef = ref<ArtDialogExpose<CategoryDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
@@ -207,7 +208,7 @@
       key: 'compositionColumns',
       type: 'select',
       span: 24,
-      options: getDictMap.value.mdmMaterialCoreAttribute ?? [],
+      options: coreAttributeOptions,
       help: '物料档案将按所选字段顺序与连接符实时生成“物料描述”。',
       props: { multiple: true, clearable: true, filterable: true }
     },
@@ -255,7 +256,7 @@
       label: '计价方法',
       key: 'valuationMethod',
       type: 'select',
-      options: getDictMap.value.mdmMaterialValuationMethod ?? []
+      options: valuationOptions
     },
     { label: '自动收货', key: 'autoReceive', type: 'switch' },
     { label: '需要检验', key: 'requiresInspection', type: 'switch' },
@@ -266,7 +267,7 @@
       label: '状态',
       key: 'status',
       type: 'select',
-      options: getDictMap.value.commonEnabledStatus ?? []
+      options: statusOptions
     },
     {
       label: '显示顺序',
@@ -282,11 +283,6 @@
       props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true, resize: 'none' }
     }
   ])
-  void Promise.all(
-    ['mdmMaterialValuationMethod', 'commonEnabledStatus', 'mdmMaterialCoreAttribute'].map((code) =>
-      userStore.ensureDictLoaded(code)
-    )
-  )
   const formRules: FormRules<Record<string, unknown>> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
     categoryCode: [{ required: true, message: '请输入分类编码', trigger: 'blur' }],

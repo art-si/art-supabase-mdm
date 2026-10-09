@@ -78,6 +78,7 @@
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     saveProcessRoute,
     saveProcessRoutes,
@@ -97,7 +98,6 @@
 
   const emit = defineEmits<{ success: [] }>()
   const user = useUserStore()
-  const { getDictMap } = storeToRefs(user)
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const selection = ref<ProcessRouteMaterialOption[]>([])
@@ -140,12 +140,13 @@
     remark: ''
   })
   const form = reactive<ProcessRouteInput>(initialForm())
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label || item.value,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
+  const routeTypeOptions = useDictionaryOptions('mdmProcessRouteType')
+  const allocationModeOptions = useDictionaryOptions('mdmProcessRouteAllocationMode')
+  const sourceOptions = useDictionaryOptions('mdmProcessRouteSource')
   const routeIdentityTitle = computed(
     () => form.name.trim() || selection.value[0]?.materialName || '新工艺路线'
   )
@@ -187,13 +188,13 @@
       key: 'routeType',
       label: '路线类型',
       type: 'select',
-      options: getDictMap.value.mdmProcessRouteType ?? []
+      options: routeTypeOptions
     },
     {
       key: 'allocationMode',
       label: '分配方式',
       type: 'select',
-      options: getDictMap.value.mdmProcessRouteAllocationMode ?? []
+      options: allocationModeOptions
     },
     { key: 'version', label: '工艺版本', props: { maxlength: 40 } },
     {
@@ -253,25 +254,25 @@
       key: 'source',
       label: '来源',
       type: 'select',
-      options: getDictMap.value.mdmProcessRouteSource ?? []
+      options: sourceOptions
     },
     {
       key: 'isDefault',
       label: '默认路线',
       type: 'segment',
-      options: booleanOptions.value
+      options: booleanOptions
     },
     {
       key: 'customUnitConversion',
       label: '自定义单位换算',
       type: 'segment',
-      options: booleanOptions.value
+      options: booleanOptions
     },
     {
       key: 'enabled',
       label: '启用状态',
       type: 'segment',
-      options: booleanOptions.value
+      options: booleanOptions
     },
     {
       key: 'path',

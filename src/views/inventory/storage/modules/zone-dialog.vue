@@ -23,7 +23,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchMaterialCategories,
     saveStorageZone,
@@ -40,10 +40,8 @@
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<ZoneDialogContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const { getDictMap } = storeToRefs(useUserStore())
-  const userStore = useUserStore()
-  void userStore.ensureDictLoaded('mdmWarehouseZonePurpose')
-  void userStore.ensureDictLoaded('commonEnabledStatus')
+  const purposeOptions = useDictionaryOptions('mdmWarehouseZonePurpose')
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const context = shallowRef<ZoneDialogContext>()
   const categories = ref<MaterialCategory[]>([])
   const form = reactive<StorageZoneInput>({
@@ -90,7 +88,7 @@
       key: 'purpose',
       label: '库区用途',
       type: 'select',
-      options: getDictMap.value.mdmWarehouseZonePurpose ?? [],
+      options: purposeOptions,
       props: { clearable: true, placeholder: '选择用途' }
     },
     { key: 'policy', label: '存放控制', type: 'divider', span: 24 },
@@ -102,7 +100,7 @@
       key: 'status',
       label: '启用状态',
       type: 'select',
-      options: getDictMap.value.commonEnabledStatus ?? []
+      options: statusOptions
     },
     {
       key: 'sort',

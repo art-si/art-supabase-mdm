@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-  import { toNameCodeOption } from '@/utils/form/option'
+  import { toDictionaryOption, toNameCodeOption } from '@/utils/form/option'
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -196,10 +196,12 @@
   })
 
   const dictionaryOptions = (code: string): Array<{ label: string; value: unknown }> =>
-    (getDictMap.value[code] ?? []).map((item) => ({
-      label: item.label || item.value,
-      value: code === 'commonBoolean' ? item.value === 'true' || item.value === '1' : item.value
-    }))
+    (getDictMap.value[code] ?? [])
+      .filter((item) => !item.status || item.status === '1')
+      .map((item) => ({
+        label: toDictionaryOption(item).label || item.value,
+        value: code === 'commonBoolean' ? item.value === 'true' || item.value === '1' : item.value
+      }))
 
   const referenceOptions = (field: MasterFieldConfig) => {
     if (!field.reference) return []

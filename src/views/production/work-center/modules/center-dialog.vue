@@ -7,7 +7,7 @@
   >
     <div class="center-dialog" :class="{ 'is-fullscreen': dialogFullscreen }">
       <ElAlert v-if="form.error" :title="form.error" type="error" :closable="false" show-icon />
-      <ElTabs v-model="form.tab" stretch>
+      <ElTabs v-model="form.tab" class="min-w-0" stretch>
         <ElTabPane label="基本资料" name="基本资料">
           <ArtSectionCard
             title="工作中心资料"
@@ -146,6 +146,7 @@
   } from '@/components/core/forms/art-data-select/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     saveWorkCenter,
     fetchWorkCenterActivities,
@@ -176,6 +177,8 @@
   }
   const emit = defineEmits<{ success: [] }>()
   const user = useUserStore()
+  const personnelModeOptions = useDictionaryOptions('mdmCenter_personnelMode')
+  const capacityModeOptions = useDictionaryOptions('mdmWorkCenterCapacityMode')
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const activityEditorRef = ref<InstanceType<typeof ActivityEditor>>()
@@ -272,7 +275,7 @@
       key: 'personnelMode',
       label: '人员安排',
       type: 'select',
-      options: user.getDictMap.mdmCenter_personnelMode ?? []
+      options: personnelModeOptions
     },
     {
       key: 'headcount',
@@ -292,7 +295,7 @@
       key: 'capacityMode',
       label: '产能模式',
       type: 'select',
-      options: user.getDictMap.mdmWorkCenterCapacityMode ?? [],
+      options: capacityModeOptions,
       help: '有限产能会避让同一工作中心已有排程。'
     },
     {

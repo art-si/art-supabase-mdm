@@ -89,7 +89,7 @@
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     saveProductionEquipment,
     type EquipmentReference,
@@ -120,8 +120,8 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
+  const operationStatusOptions = useDictionaryOptions('mdmEquipmentOperationStatus')
   const dialogRef = ref<ArtDialogExpose<EquipmentDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const activeTab = ref<EquipmentTab>('identity')
@@ -286,7 +286,7 @@
           label: '启用状态',
           key: 'status',
           type: 'select',
-          options: getDictMap.value.commonEnabledStatus ?? []
+          options: statusOptions
         }
       ]
     if (activeTab.value === 'assignment')
@@ -401,7 +401,7 @@
         label: '运行状态',
         key: 'operationStatus',
         type: 'select',
-        options: getDictMap.value.mdmEquipmentOperationStatus ?? []
+        options: operationStatusOptions
       },
       {
         label: '显示顺序',
@@ -418,11 +418,6 @@
       }
     ]
   })
-  void Promise.all(
-    ['commonEnabledStatus', 'mdmEquipmentOperationStatus'].map((code) =>
-      userStore.ensureDictLoaded(code)
-    )
-  )
 
   const rules: FormRules<Record<string, unknown>> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],

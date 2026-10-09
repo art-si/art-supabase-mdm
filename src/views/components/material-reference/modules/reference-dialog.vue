@@ -172,7 +172,7 @@
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types/component'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import {
     fetchMaterialReferenceOptions,
@@ -231,8 +231,6 @@
   }
 
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<ReferenceDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const currentKind = ref<MaterialReferenceKind>('unit-of-measure')
@@ -302,11 +300,10 @@
       )
       .map((unit) => ({ label: `${unit.unitName} · ${unit.unitCode}`, value: unit.id }))
   )
-  const statusOptions = computed(() => getDictMap.value.commonEnabledStatus ?? [])
-  const segmentSourceOptions = computed(() => getDictMap.value.mdmMaterialCodeSegmentSource ?? [])
-  const materialCodeDateFormatOptions = computed(
-    () => getDictMap.value.mdmMaterialCodeDateFormat ?? []
-  )
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
+  const segmentSourceOptions = useDictionaryOptions('mdmMaterialCodeSegmentSource')
+  const materialCodeDateFormatOptions = useDictionaryOptions('mdmMaterialCodeDateFormat')
+  const materialCodeStrategyOptions = useDictionaryOptions('mdmMaterialCodeStrategy')
   const tenantItems = (): FormItem[] => [
     {
       label: '目标租户',
@@ -325,7 +322,7 @@
       label: '启用状态',
       key: 'status',
       type: 'select',
-      options: statusOptions.value,
+      options: statusOptions,
       props: { clearable: false }
     },
     {
@@ -477,7 +474,7 @@
           label: '归类策略',
           key: 'strategy',
           type: 'select',
-          options: getDictMap.value.mdmMaterialCodeStrategy ?? [],
+          options: materialCodeStrategyOptions,
           props: { clearable: false, onChange: applyStrategyPreset }
         },
         {
@@ -542,14 +539,6 @@
       ruleName: [{ required: true, message: '请输入规则名称', trigger: 'blur' }]
     }
   })
-  void Promise.all(
-    [
-      'commonEnabledStatus',
-      'mdmMaterialCodeStrategy',
-      'mdmMaterialCodeSegmentSource',
-      'mdmMaterialCodeDateFormat'
-    ].map((code) => userStore.ensureDictLoaded(code))
-  )
   const rulePreview = computed(() =>
     buildMaterialCodePreview({
       fixedField: form.model.prefix,

@@ -56,8 +56,6 @@
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { cloneDeep } from 'lodash-es'
-  import { storeToRefs } from 'pinia'
-  import { useUserStore } from '@/store/modules/user'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { fetchEnabledOrganizationOptionsList } from '@/api/system-manage'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
@@ -83,10 +81,9 @@
   }
 
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmWarehouseType')
-  void userStore.ensureDictLoaded('mdmWarehouseBusinessScope')
+  const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
+  const businessScopeOptions = useDictionaryOptions('mdmWarehouseBusinessScope')
+  const booleanOptions = useDictionaryOptions('commonBoolean')
   const dialogRef = ref<ArtDialogExpose<WarehouseDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const organizationLoadError = ref(false)
@@ -142,7 +139,7 @@
       label: '仓库类型',
       key: 'warehouseType',
       type: 'select',
-      options: getDictMap.value.mdmWarehouseType ?? [],
+      options: warehouseTypeOptions,
       props: { placeholder: '选择仓库类型' }
     },
     {
@@ -179,7 +176,7 @@
       key: 'businessScopes',
       type: 'select',
       span: 24,
-      options: getDictMap.value.mdmWarehouseBusinessScope ?? [],
+      options: businessScopeOptions,
       props: {
         multiple: true,
         collapseTags: true,
@@ -207,7 +204,7 @@
             label: '一位一品',
             key: 'singleSkuPerBinChoice',
             type: 'select' as const,
-            options: getDictMap.value.commonBoolean ?? [],
+            options: booleanOptions,
             props: { placeholder: '请选择是否一位一品' },
             help: '启用后每个库位只能存放一种物料。'
           }
@@ -344,7 +341,7 @@
       onOpen: async (_openData, api) => {
         formRef.value?.clearValidate()
         try {
-          await Promise.all([userStore.ensureDictLoaded('commonBoolean'), loadOrganizations()])
+          await loadOrganizations()
         } finally {
           api.setLoading(false)
         }

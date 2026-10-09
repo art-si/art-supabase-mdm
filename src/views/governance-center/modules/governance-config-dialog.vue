@@ -33,7 +33,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     createMdmQualityRuleVersion,
     fetchMdmGovernanceUsers,
@@ -72,11 +72,6 @@
   }
 
   const emit = defineEmits<{ (event: 'success', kind: ConfigKind): void }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void Promise.all(
-    ['mdmGovernanceDomain', 'mdmGovernanceSeverity'].map((code) => userStore.ensureDictLoaded(code))
-  )
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const kind = ref<ConfigKind>('steward')
@@ -128,7 +123,8 @@
       })[kind.value]
   )
 
-  const domainOptions = computed(() => getDictMap.value.mdmGovernanceDomain ?? [])
+  const domainOptions = useDictionaryOptions('mdmGovernanceDomain')
+  const severityOptions = useDictionaryOptions('mdmGovernanceSeverity')
   const scopeByDomain: Record<MdmGovernanceDomain, (keyof typeof mdmCatalogSourceDefinitions)[]> = {
     organization: ['organization', 'position', 'employee'],
     partner: ['partner'],
@@ -153,7 +149,7 @@
   const formItems = computed<FormItem[]>(() => {
     if (kind.value === 'steward') {
       return [
-        { label: '治理域', key: 'domainKey', type: 'select', options: domainOptions.value },
+        { label: '治理域', key: 'domainKey', type: 'select', options: domainOptions },
         {
           label: '主档类型（选填）',
           key: 'sourceType',
@@ -197,7 +193,7 @@
           props: { placeholder: '例如 catalog.material.completeness' }
         },
         { label: '规则名称', key: 'ruleName', type: 'input' },
-        { label: '治理域', key: 'domainKey', type: 'select', options: domainOptions.value },
+        { label: '治理域', key: 'domainKey', type: 'select', options: domainOptions },
         {
           label: '主档类型',
           key: 'sourceType',
@@ -209,7 +205,7 @@
           label: '严重级别',
           key: 'severity',
           type: 'select',
-          options: getDictMap.value.mdmGovernanceSeverity ?? []
+          options: severityOptions
         },
         {
           label: '完整度阈值',

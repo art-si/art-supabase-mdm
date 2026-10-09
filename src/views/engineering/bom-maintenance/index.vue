@@ -61,11 +61,12 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
   import { replaceReactiveModel } from '@/utils/form/model'
-  import dayjs from 'dayjs'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -84,6 +85,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useUserStore } from '@/store/modules/user'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
@@ -119,11 +121,18 @@
   import BomGroupPanel from './modules/bom-group-panel.vue'
   import { formatBomMaterialDescription } from '../../bom/modules/material-description'
 
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
+
   defineOptions({ name: 'MdmBomMaintenance' })
   const { confirmAction } = useArtFeedback()
   const { hasAuth } = useAuth()
+  const purposeOptions = useDictionaryOptions('mdmBomPurpose')
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('mdmBomStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
   const { defaultWriteTenantId } = useTenantScopeFormPolicy()
@@ -200,13 +209,13 @@
       key: 'purpose',
       label: 'BOM 用途',
       type: 'select',
-      props: { clearable: true, options: getDictMap.value.mdmBomPurpose ?? [] }
+      props: { clearable: true, options: purposeOptions }
     },
     {
       key: 'status',
       label: '生命周期',
       type: 'select',
-      props: { clearable: true, options: getDictMap.value.mdmBomStatus ?? [] }
+      props: { clearable: true, options: statusOptions }
     }
   ])
   let loadedUnitScope: string | undefined
@@ -563,7 +572,7 @@
       prop: 'updateTime',
       label: '更新时间',
       width: 164,
-      formatter: (row) => (row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—')
+      formatter: (row) => formatTableDateTime(row.updateTime)
     },
     {
       prop: 'operation',
@@ -623,10 +632,6 @@
     })
   }
 
-  void Promise.all([
-    userStore.ensureDictLoaded('mdmBomPurpose'),
-    userStore.ensureDictLoaded('mdmBomStatus')
-  ])
   watch(
     tenantId,
     () => {

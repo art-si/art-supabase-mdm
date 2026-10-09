@@ -43,7 +43,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { saveBomGroup, type BomGroup, type BomGroupInput } from '@mdm/api'
 
@@ -56,8 +56,6 @@
   }
 
   const emit = defineEmits<{ success: [id: string, mode: 'add' | 'edit'] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<BomGroupDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const initialModel = (): BomGroupInput => ({
@@ -83,11 +81,9 @@
     if (parent) return `上级分组：${parent.name} · ${parent.code}`
     return form.model.code ? `分组编码：${form.model.code}` : '一次维护编码、名称与层级关系。'
   })
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label || item.value,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   const formItems = computed<FormItem[]>(() => [
     { key: 'hierarchy', label: '分组层级', type: 'divider', span: 24 },
@@ -142,7 +138,7 @@
       key: 'enabled',
       label: '启用状态',
       type: 'segment',
-      options: booleanOptions.value
+      options: booleanOptions
     },
     {
       key: 'remark',
@@ -164,8 +160,6 @@
     ],
     name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
   }
-
-  void userStore.ensureDictLoaded('commonBoolean')
 
   let formRevision = 0
   const invalidateForm = () => {

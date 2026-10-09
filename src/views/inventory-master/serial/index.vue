@@ -38,8 +38,9 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
-  import dayjs from 'dayjs'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -53,7 +54,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ColumnOption } from '@/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchInventorySerials,
     fetchMaterialReferenceOptions,
@@ -64,11 +65,14 @@
   } from '@mdm/api'
   import SerialDialog from '../../inventory/storage/modules/serial-dialog.vue'
 
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
+
   defineOptions({ name: 'MdmInventorySerial' })
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmInventorySerialStatus')
-  void userStore.ensureDictLoaded('mdmMaterialSource')
+  const statusOptions = useDictionaryOptions('mdmInventorySerialStatus')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof SerialDialog>>()
   const warehouses = ref<StorageWarehouse[]>([])
@@ -107,7 +111,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: getDictMap.value.mdmInventorySerialStatus ?? []
+        options: statusOptions
       }
     }
   ])
@@ -198,7 +202,7 @@
       prop: 'createTime',
       label: '创建时间',
       width: 170,
-      formatter: (row) => dayjs(row.createTime).format('YYYY-MM-DD HH:mm')
+      formatter: (row) => formatTableDateTime(row.createTime)
     },
     {
       prop: 'operation',

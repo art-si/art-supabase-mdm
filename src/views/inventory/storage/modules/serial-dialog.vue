@@ -34,11 +34,10 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtMaterialSelect, {
-    type MaterialSelectRecord
-  } from '@/components/business/art-material-select/index.vue'
+  import ArtMaterialSelect from '@/components/business/art-material-select/index.vue'
+  import type { MaterialSelectRecord } from '@/components/business/art-material-select/types'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchStorageBins,
     fetchStorageMaterialsPage,
@@ -58,9 +57,7 @@
   const dialogRef = ref<ArtDialogExpose<SerialDialogContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<SerialDialogContext>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmInventorySerialStatus')
+  const statusOptions = useDictionaryOptions('mdmInventorySerialStatus')
   const bins = ref<StorageBin[]>([])
   const orders = ref<StorageWorkOrder[]>([])
   const workOrderOptions = computed(() => {
@@ -118,7 +115,7 @@
       key: 'status',
       label: '序列号状态',
       type: 'select',
-      options: (getDictMap.value.mdmInventorySerialStatus ?? []).filter((item) =>
+      options: statusOptions.filter((item) =>
         (transitions[context.value?.row?.status ?? 'pending_in'] ?? []).includes(item.value)
       )
     },

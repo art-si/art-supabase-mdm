@@ -106,7 +106,7 @@
   import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { exportExcel } from '@/utils/file'
   import {
     deleteWorkstations,
@@ -126,10 +126,8 @@
 
   defineOptions({ name: 'MdmWorkstation' })
 
-  const userStore = useUserStore()
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
-  const { getDictMap } = storeToRefs(userStore)
   const { confirmDelete } = useArtFeedback()
   const { hasAuth } = useAuth()
   const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
@@ -156,8 +154,6 @@
     enabled: 0,
     rows: [] as Workstation[]
   })
-
-  void userStore.ensureDictLoaded('commonBoolean')
 
   const departmentTree = computed(() => productionTree.listToTree(scope.departments))
   const selectedWorkshop = computed(() =>
@@ -244,11 +240,9 @@
     }
   ])
 
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      ...item,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -261,7 +255,7 @@
       key: 'enabled',
       label: '启用状态',
       type: 'select',
-      props: { clearable: true, placeholder: '全部状态', options: booleanOptions.value }
+      props: { clearable: true, placeholder: '全部状态', options: booleanOptions }
     }
   ])
 

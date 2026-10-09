@@ -58,8 +58,7 @@
             @update:selected-data="updateSelection" /></template
       ></ArtForm>
     </div>
-    ></ArtDialog
-  >
+  </ArtDialog>
 </template>
 <script setup lang="tsx">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -72,7 +71,7 @@
   import { computed, ref, reactive, shallowRef } from 'vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { ColumnOption } from '@/types'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type {
@@ -96,8 +95,7 @@
   const editingRow = shallowRef<CenterDevice>()
   const selection = ref<{ id: string; equipmentCode: string; equipmentName: string }[]>([])
   const state = reactive({ rows: [] as CenterDevice[], loading: false, error: '' })
-  const userStore = useUserStore()
-  void userStore.ensureDictLoaded('mdmWorkCenterEquipmentPoint')
+  const equipmentPointOptions = useDictionaryOptions('mdmWorkCenterEquipmentPoint')
   const form = ref({ equipmentIds: [] as string[], isMain: false, point: '无' })
   const items = computed<FormItem[]>(() => [
     { key: 'equipmentIds', label: '设备', hidden: Boolean(editingRow.value) },
@@ -114,7 +112,7 @@
       key: 'point',
       label: '投入 / 产出点',
       type: 'select',
-      options: userStore.getDictMap.mdmWorkCenterEquipmentPoint ?? []
+      options: equipmentPointOptions
     }
   ])
   const rules = {

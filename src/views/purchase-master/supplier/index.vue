@@ -16,40 +16,51 @@
       </BusinessWorkspaceHeader>
 
       <div class="purchase-supplier-page__workspace">
-        <MasterGroupPanel
-          title="供应商分组"
-          :groups="groups"
-          :selected-id="selectedGroupId"
-          :loading="groupsLoading"
-          :error="groupsError"
-          manage-permission="MdmPurchaseSupplier:ManageGroup"
-          @select="selectGroup"
-          @refresh="loadGroups"
-          @add="openGroupAdd"
-          @edit="openGroupEdit"
-          @remove="removeGroup"
-        />
-        <ArtTableQuery
-          ref="tableRef"
-          :model-value="search"
-          @update:model-value="replaceReactiveModel(search, $event)"
-          :api-fn="fetchRows"
-          :search-items="searchItems"
-          :columns-factory="columnsFactory"
-          :header-actions="headerActions"
-          :selection-actions="selectionActions"
-          :immediate="false"
-          header-actions-placement="workspace"
-          :search-bar-props="{ span: 8, labelWidth: 86, showExpand: false }"
-          :table-props="{
-            rowKey: 'id',
-            tableLayout: 'fixed',
-            emptyText: '暂无供应商',
-            emptyDescription: '可新增供应商，并按左侧分组统一管理。'
-          }"
-          focus-scope-selector=".purchase-supplier-page__workspace"
-          focusable
-        />
+        <ArtWorkspaceSplitter
+          primary-size="276px"
+          primary-min="230px"
+          primary-max="380px"
+          :breakpoint="900"
+          stacked-primary-size="auto"
+          stacked-secondary-min-size="480px"
+        >
+          <template #primary>
+            <MasterGroupPanel
+              title="供应商分组"
+              :groups="groups"
+              :selected-id="selectedGroupId"
+              :loading="groupsLoading"
+              :error="groupsError"
+              manage-permission="MdmPurchaseSupplier:ManageGroup"
+              @select="selectGroup"
+              @refresh="loadGroups"
+              @add="openGroupAdd"
+              @edit="openGroupEdit"
+              @remove="removeGroup"
+            />
+          </template>
+          <ArtTableQuery
+            ref="tableRef"
+            :model-value="search"
+            @update:model-value="replaceReactiveModel(search, $event)"
+            :api-fn="fetchRows"
+            :search-items="searchItems"
+            :columns-factory="columnsFactory"
+            :header-actions="headerActions"
+            :selection-actions="selectionActions"
+            :immediate="false"
+            header-actions-placement="workspace"
+            :search-bar-props="{ span: 8, labelWidth: 86, showExpand: false }"
+            :table-props="{
+              rowKey: 'id',
+              tableLayout: 'fixed',
+              emptyText: '暂无供应商',
+              emptyDescription: '可新增供应商，并按左侧分组统一管理。'
+            }"
+            focus-scope-selector=".purchase-supplier-page__workspace"
+            focusable
+          />
+        </ArtWorkspaceSplitter>
       </div>
 
       <SupplierDialog ref="supplierDialogRef" @success="refreshAfterSave" />
@@ -61,13 +72,15 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
-  import dayjs from 'dayjs'
   import TreeUtils from '@/utils/tree'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useSupplierDelete } from '@/hooks/core/useSupplierDelete'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -93,11 +106,18 @@
     type SupplierQuery
   } from '@mdm/api'
   import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
+  import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import GroupDialog, {
     type GroupDialogOpenData
   } from '../../components/operational-master/modules/group-dialog.vue'
   import SupplierDialog, { type SupplierDialogOpenData } from './modules/supplier-dialog.vue'
   import SupplierDetail from './modules/supplier-detail.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   defineOptions({ name: 'MdmPurchaseSupplier' })
   const { confirmDelete } = useArtFeedback()
@@ -105,7 +125,8 @@
     'MdmPurchaseSupplier:Delete'
   )
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const supplierCategoryOptions = useDictionaryOptions('supplierCategory')
+  const supplierTypeOptions = useDictionaryOptions('supplierType')
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const tableRef = ref<ArtTableQueryExpose>()
@@ -147,13 +168,6 @@
     }
   ])
 
-  const options = (code: string) =>
-    (getDictMap.value[code] ?? []).map((item) => ({
-      label: String(item.label || item.name || item.value || ''),
-      value: String(item.value ?? '')
-    }))
-  const label = (code: string, value?: string | null) =>
-    options(code).find((item) => item.value === value)?.label || value || '—'
   const searchItems = computed<SearchFormItem[]>(() => [
     {
       key: 'keyword',
@@ -165,13 +179,13 @@
       key: 'supplierCategory',
       label: '供应商类别',
       type: 'select',
-      props: { clearable: true, placeholder: '全部类别', options: options('supplierCategory') }
+      props: { clearable: true, placeholder: '全部类别', options: supplierCategoryOptions }
     },
     {
       key: 'supplierType',
       label: '供应商类型',
       type: 'select',
-      props: { clearable: true, placeholder: '全部类型', options: options('supplierType') }
+      props: { clearable: true, placeholder: '全部类型', options: supplierTypeOptions }
     }
   ])
 
@@ -215,6 +229,11 @@
       exportSheetName: '供应商',
       exportColumns,
       exportApi: async ({ selectedIds, searchParams }) => {
+        await Promise.all(
+          ['supplierCategory', 'supplierType', 'enterpriseNature', 'supplierIndustry'].map((code) =>
+            userStore.ensureDictLoaded(code)
+          )
+        )
         const query: Omit<SupplierQuery, 'current' | 'size'> = {
           ...searchParams,
           tenantId: effectiveTenantId.value,
@@ -236,10 +255,26 @@
         return {
           data: rows.map((row) => ({
             ...row,
-            supplierCategory: label('supplierCategory', row.supplierCategory),
-            supplierType: label('supplierType', row.supplierType),
-            enterpriseNature: label('enterpriseNature', row.enterpriseNature),
-            industry: label('supplierIndustry', row.industry),
+            supplierCategory: userStore.getDictDisplayLabelByValue(
+              'supplierCategory',
+              row.supplierCategory,
+              row.supplierCategory || '—'
+            ),
+            supplierType: userStore.getDictDisplayLabelByValue(
+              'supplierType',
+              row.supplierType,
+              row.supplierType || '—'
+            ),
+            enterpriseNature: userStore.getDictDisplayLabelByValue(
+              'enterpriseNature',
+              row.enterpriseNature,
+              row.enterpriseNature || '—'
+            ),
+            industry: userStore.getDictDisplayLabelByValue(
+              'supplierIndustry',
+              row.industry,
+              row.industry || '—'
+            ),
             supplierGroup: groups.value.find((group) => group.id === row.groupId)?.name || '未分组'
           }))
         }
@@ -280,13 +315,13 @@
       prop: 'supplierCategory',
       label: '供应商类别',
       minWidth: 130,
-      formatter: (row) => label('supplierCategory', row.supplierCategory)
+      dict: { code: 'supplierCategory', display: 'text' }
     },
     {
       prop: 'supplierType',
       label: '供应商类型',
       minWidth: 120,
-      formatter: (row) => label('supplierType', row.supplierType)
+      dict: { code: 'supplierType', display: 'text' }
     },
     { prop: 'contactPerson', label: '主要联系人', minWidth: 120, showOverflowTooltip: true },
     { prop: 'contactPhone', label: '联系电话', minWidth: 145, showOverflowTooltip: true },
@@ -295,7 +330,7 @@
       prop: 'updateTime',
       label: '更新时间',
       width: 164,
-      formatter: (row) => dayjs(row.updateTime).format('YYYY-MM-DD HH:mm')
+      formatter: (row) => formatTableDateTime(row.updateTime)
     },
     {
       prop: 'operation',
@@ -387,12 +422,7 @@
   async function loadContext(): Promise<void> {
     selectedGroupId.value = ''
     await tenantScopeStore.loadTenantOptions()
-    await Promise.all([
-      loadGroups(),
-      ...['supplierCategory', 'supplierType', 'enterpriseNature', 'supplierIndustry'].map((code) =>
-        userStore.ensureDictLoaded(code)
-      )
-    ])
+    await loadGroups()
     await tableRef.value?.getData()
   }
   watch(effectiveTenantId, () => void loadContext(), { immediate: true })
@@ -406,25 +436,10 @@
     min-width: 0;
 
     &__workspace {
-      display: grid;
+      display: flex;
       flex: 1;
-      grid-template-columns: 276px minmax(0, 1fr);
-      gap: 12px;
       min-width: 0;
       min-height: 0;
-    }
-
-    @media (width <= 1100px) {
-      &__workspace {
-        grid-template-columns: 230px minmax(0, 1fr);
-      }
-    }
-
-    @media (width <= 760px) {
-      &__workspace {
-        grid-template-rows: minmax(220px, auto) minmax(480px, 1fr);
-        grid-template-columns: minmax(0, 1fr);
-      }
     }
   }
 </style>

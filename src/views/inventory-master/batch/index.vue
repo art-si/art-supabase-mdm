@@ -40,7 +40,6 @@
 
 <script setup lang="tsx">
   import { replaceReactiveModel } from '@/utils/form/model'
-  import dayjs from 'dayjs'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
@@ -53,7 +52,7 @@
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ColumnOption } from '@/types'
-  import { formatCurrencyValue } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatCurrencyValue } from '@/utils/ui/format'
   import {
     fetchInventoryBatches,
     fetchStorageWarehouses,
@@ -63,6 +62,12 @@
   } from '@mdm/api'
   import InventoryMovementDialog from '../../inventory/storage/modules/inventory-movement-dialog.vue'
   import InventoryPolicyDialog from '../../inventory/storage/modules/inventory-policy-dialog.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   defineOptions({ name: 'MdmInventoryBatch' })
   const tableRef = ref<ArtTableQueryExpose>()
@@ -211,7 +216,7 @@
       prop: 'lastMovementAt',
       label: '最后出入库',
       width: 170,
-      formatter: (row) => dayjs(row.lastMovementAt).format('YYYY-MM-DD HH:mm')
+      formatter: (row) => formatTableDateTime(row.lastMovementAt)
     },
     {
       prop: 'operation',

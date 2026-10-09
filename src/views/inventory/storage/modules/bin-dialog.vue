@@ -37,10 +37,9 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtMaterialSelect, {
-    type MaterialSelectRecord
-  } from '@/components/business/art-material-select/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import ArtMaterialSelect from '@/components/business/art-material-select/index.vue'
+  import type { MaterialSelectRecord } from '@/components/business/art-material-select/types'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { DataSelectFetchParams } from '@/components/core/forms/art-data-select/types'
   import {
     fetchStorageMaterial,
@@ -70,10 +69,8 @@
     const tree = treeUtils.listToTree(context.value?.bins ?? [])
     return new Set(treeUtils.getDescendants(tree, row.id, true).map((bin) => bin.id))
   })
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  void userStore.ensureDictLoaded('mdmWarehouseBinType')
-  void userStore.ensureDictLoaded('mdmWarehouseBinStatus')
+  const binTypeOptions = useDictionaryOptions('mdmWarehouseBinType')
+  const binStatusOptions = useDictionaryOptions('mdmWarehouseBinStatus')
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
   const form = reactive<StorageBinInput>({
     warehouseId: '',
@@ -118,7 +115,7 @@
       key: 'binType',
       label: '库位类型',
       type: 'select',
-      options: getDictMap.value.mdmWarehouseBinType ?? [],
+      options: binTypeOptions,
       props: { disabled: context.value?.row?.codeSeparator != null }
     },
     {
@@ -205,7 +202,7 @@
       key: 'status',
       label: '库位状态',
       type: 'select',
-      options: getDictMap.value.mdmWarehouseBinStatus ?? []
+      options: binStatusOptions
     },
     {
       key: 'sort',

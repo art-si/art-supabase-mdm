@@ -1,5 +1,11 @@
 <template>
-  <ArtDialog ref="dialogRef" width="1440px" show-fullscreen-button>
+  <ArtDialog
+    :loading="referenceLoading || routeLoading || stepLoading"
+    loading-text="正在加载 BOM 资料…"
+    ref="dialogRef"
+    width="1440px"
+    show-fullscreen-button
+  >
     <div class="bom-dialog">
       <ArtEntitySummary
         icon="ri:git-merge-line"
@@ -13,12 +19,10 @@
       </ArtEntitySummary>
 
       <ArtAsyncState
-        v-if="referenceLoading || referenceError"
-        :loading="referenceLoading"
+        v-if="referenceError"
         :error="referenceError"
         error-title="BOM 选项加载失败"
         size="compact"
-        :skeleton-rows="2"
         retryable
         @retry="loadReferences"
       />
@@ -50,12 +54,10 @@
       </ArtForm>
 
       <ArtAsyncState
-        v-if="routeLoading || stepLoading || processLoadError"
-        :loading="routeLoading || stepLoading"
+        v-if="processLoadError"
         :error="processLoadError"
         error-title="工艺数据加载失败"
         size="compact"
-        :skeleton-rows="2"
         retryable
         @retry="retryProcessData"
       />
@@ -155,6 +157,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { getProcessRouteSequenceLabel } from '@mdm/domain/process-route-display'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
@@ -184,6 +187,7 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { ColumnOption } from '@/types'
   import type {
     DataSelectColumn,
@@ -233,7 +237,10 @@
   const emit = defineEmits<{ success: [] }>()
   const { hasAnyAuth } = useAuth()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const purposeOptions = useDictionaryOptions('mdmBomPurpose')
+  const issueMethodOptions = useDictionaryOptions('mdmMaterialIssueMethod')
+  const backflushMethodOptions = useDictionaryOptions('mdmMaterialBackflushMethod')
+  const overIssueControlOptions = useDictionaryOptions('mdmMaterialOverIssueControl')
   const dialogRef = ref<ArtDialogExpose<BomDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const componentTableRef = ref<ArtTableExpose>()
@@ -368,7 +375,7 @@
       key: 'purpose',
       label: 'BOM 用途',
       type: 'select',
-      options: getDictMap.value.mdmBomPurpose ?? []
+      options: purposeOptions
     },
     {
       key: 'sort',
@@ -433,12 +440,8 @@
     ]
   }
   void Promise.all([
-    userStore.ensureDictLoaded('mdmBomPurpose'),
     userStore.ensureDictLoaded('mdmBomStatus'),
     userStore.ensureDictLoaded('mdmMaterialSource'),
-    userStore.ensureDictLoaded('mdmMaterialIssueMethod'),
-    userStore.ensureDictLoaded('mdmMaterialBackflushMethod'),
-    userStore.ensureDictLoaded('mdmMaterialOverIssueControl'),
     userStore.ensureDictLoaded('mdmProcessRouteSequenceType')
   ])
   const fetchMaterials = (params: DataSelectFetchParams) =>
@@ -481,15 +484,12 @@
       if (version === referenceVersion) referenceLoading.value = false
     }
   }
-  const sequenceTypeLabel = (value?: string | null): string =>
-    getDictMap.value.mdmProcessRouteSequenceType?.find((item) => item.value === value)?.label ||
-    (value === 'main' ? '标准序列' : value || '—')
   const workCenterLabel = (step?: BomProcessRouteStepOption | null): string =>
     step?.workCenter?.name || (step?.workCenterIds?.length ? '已配置工作中心' : '未指定')
   const processStepLabel = (step: BomProcessRouteStepOption): string =>
     [
       step.sequence?.sequenceNo ? `序列 ${step.sequence.sequenceNo}` : '',
-      sequenceTypeLabel(step.sequence?.sequenceType),
+      getProcessRouteSequenceLabel(step.sequence?.sequenceType),
       step.code,
       step.name
     ]
@@ -503,7 +503,7 @@
     const step = row as BomProcessRouteStepOption
     return [
       step.sequence?.sequenceNo ? `序列 ${step.sequence.sequenceNo}` : '',
-      sequenceTypeLabel(step.sequence?.sequenceType),
+      getProcessRouteSequenceLabel(step.sequence?.sequenceType),
       workCenterLabel(step)
     ]
       .filter(Boolean)
@@ -522,7 +522,7 @@
       label: '序列类型',
       width: 120,
       formatter: (row) =>
-        sequenceTypeLabel((row as BomProcessRouteStepOption).sequence?.sequenceType)
+        getProcessRouteSequenceLabel((row as BomProcessRouteStepOption).sequence?.sequenceType)
     },
     { prop: 'code', label: '工序号', width: 110 },
     { prop: 'name', label: '工序名称', minWidth: 180 },
@@ -821,8 +821,8 @@
       label: '领送料方式',
       width: 170,
       formatter: (row) => (
-        <ElSelect v-model={row.issueMethod}>
-          {(getDictMap.value.mdmMaterialIssueMethod ?? []).map((item) => (
+        <ElSelect v-model={row.issueMethod} aria-label="发料方式">
+          {issueMethodOptions.map((item) => (
             <ElOption key={item.value} label={item.label} value={item.value} />
           ))}
         </ElSelect>
@@ -833,8 +833,8 @@
       label: '倒冲',
       width: 150,
       formatter: (row) => (
-        <ElSelect v-model={row.backflushMethod}>
-          {(getDictMap.value.mdmMaterialBackflushMethod ?? []).map((item) => (
+        <ElSelect v-model={row.backflushMethod} aria-label="倒冲方式">
+          {backflushMethodOptions.map((item) => (
             <ElOption key={item.value} label={item.label} value={item.value} />
           ))}
         </ElSelect>
@@ -845,8 +845,8 @@
       label: '超发控制方式',
       width: 190,
       formatter: (row) => (
-        <ElSelect v-model={row.overIssueControlMethod} clearable>
-          {(getDictMap.value.mdmMaterialOverIssueControl ?? []).map((item) => (
+        <ElSelect v-model={row.overIssueControlMethod} clearable aria-label="超发控制方式">
+          {overIssueControlOptions.map((item) => (
             <ElOption key={item.value} label={item.label} value={item.value} />
           ))}
         </ElSelect>
@@ -903,7 +903,7 @@
       label: '序列类型',
       width: 120,
       formatter: (row) =>
-        sequenceTypeLabel(
+        getProcessRouteSequenceLabel(
           processSteps.value.find((step) => step.id === row.processRouteStepId)?.sequence
             ?.sequenceType
         )

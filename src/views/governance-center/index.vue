@@ -184,7 +184,7 @@
   } from '@/components/core/forms/art-button-more/index.vue'
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchMdmChangeRequests,
     fetchMdmGovernanceOverview,
@@ -228,22 +228,11 @@
   }
 
   const activeTab = ref<ActiveTab>(props.initialView)
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
-  const dictOptions = (code: string) =>
-    (getDictMap.value[code] ?? []).map((item) => ({
-      label: item.label ?? item.value,
-      value: item.value
-    }))
-  void Promise.all(
-    [
-      'mdmGovernanceQualityIssueStatus',
-      'mdmGovernanceChangeStatus',
-      'mdmGovernanceMatchStatus',
-      'mdmGovernanceOutboxStatus',
-      'mdmGovernanceSeverity'
-    ].map((code) => userStore.ensureDictLoaded(code))
-  )
+  const qualityStatusOptions = useDictionaryOptions('mdmGovernanceQualityIssueStatus')
+  const changeStatusOptions = useDictionaryOptions('mdmGovernanceChangeStatus')
+  const matchStatusOptions = useDictionaryOptions('mdmGovernanceMatchStatus')
+  const outboxStatusOptions = useDictionaryOptions('mdmGovernanceOutboxStatus')
+  const severityOptions = useDictionaryOptions('mdmGovernanceSeverity')
   const pageHeaders: Record<
     ActiveTab,
     { eyebrow: string; title: string; description: string; icon: string }
@@ -305,7 +294,7 @@
   const configDialogRef = ref<ConfigDialogExpose>()
   const actionDialogRef = ref<ActionDialogExpose>()
 
-  const searchBarProps = { span: 8, labelWidth: 84 }
+  const searchBarProps = { span: 8, labelWidth: 84, showExpand: false }
   const qualityTableProps = {
     rowKey: 'id',
     tableLayout: 'fixed' as const,
@@ -355,14 +344,14 @@
       type: 'input',
       props: { clearable: true, placeholder: '搜索编码或名称' }
     },
-    stateSearch(dictOptions('mdmGovernanceQualityIssueStatus')),
+    stateSearch(qualityStatusOptions),
     {
       label: '严重级别',
       key: 'severity',
       type: 'select',
       props: {
         clearable: true,
-        options: dictOptions('mdmGovernanceSeverity')
+        options: severityOptions
       }
     }
   ])
@@ -373,7 +362,7 @@
       type: 'input',
       props: { clearable: true, placeholder: '编号、标题或申请人' }
     },
-    stateSearch(dictOptions('mdmGovernanceChangeStatus'))
+    stateSearch(changeStatusOptions)
   ])
   const matchSearchItems = computed<SearchFormItem[]>(() => [
     {
@@ -382,11 +371,9 @@
       type: 'input',
       props: { clearable: true, placeholder: '输入完整 UUID' }
     },
-    stateSearch(dictOptions('mdmGovernanceMatchStatus'))
+    stateSearch(matchStatusOptions)
   ])
-  const outboxSearchItems = computed<SearchFormItem[]>(() => [
-    stateSearch(dictOptions('mdmGovernanceOutboxStatus'))
-  ])
+  const outboxSearchItems = computed<SearchFormItem[]>(() => [stateSearch(outboxStatusOptions)])
 
   const activeTabDescription = computed(
     () =>

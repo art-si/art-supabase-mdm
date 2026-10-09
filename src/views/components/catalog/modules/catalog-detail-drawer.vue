@@ -47,12 +47,15 @@
         subtitle="与当前主档相关的业务信息。"
         preserve-content-structure
       >
-        <dl class="mdm-catalog-detail__attributes">
-          <div v-for="attribute in visibleAttributes" :key="attribute.label">
-            <dt>{{ attribute.label }}</dt>
-            <dd>{{ formatAttribute(attribute.value) }}</dd>
-          </div>
-        </dl>
+        <ArtDescriptions
+          class="mdm-catalog-detail__attributes"
+          :label-width="96"
+          :data="record"
+          :items="attributeItems"
+          :columns="2"
+          :tablet-columns="2"
+          empty-text="—"
+        />
       </ArtSectionCard>
 
       <section
@@ -77,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { computed, ref } from 'vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
@@ -91,11 +95,7 @@
   const drawerRef = ref<ArtDrawerExpose<MdmCatalogRecord>>()
   const record = ref<MdmCatalogRecord | null>(null)
 
-  const formatDateTime = (value?: string | null): string => {
-    if (!value) return '—'
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('zh-CN', { hour12: false })
-  }
+  const formatDateTime = createDateTimeFormatter({ emptyText: '—', invalidText: '—' })
 
   const sourceAppLabel = (value: string): string => {
     const labels: Record<string, string> = {
@@ -144,14 +144,14 @@
     )
   )
 
-  const formatAttribute = (value: string | number | boolean | null): string =>
-    value === null || value === ''
-      ? '—'
-      : typeof value === 'boolean'
-        ? value
-          ? '是'
-          : '否'
-        : String(value)
+  const attributeItems = computed<ArtDescriptionItem<MdmCatalogRecord>[]>(() =>
+    visibleAttributes.value.map((attribute, index) => ({
+      key: String(index),
+      label: attribute.label,
+      value: attribute.value,
+      format: typeof attribute.value === 'boolean' ? 'boolean' : 'text'
+    }))
+  )
 
   const handleOpen = async (row: MdmCatalogRecord): Promise<void> => {
     record.value = row
@@ -227,7 +227,7 @@
       place-items: center;
       color: var(--el-color-primary);
       background: color-mix(in srgb, var(--theme-color) 10%, var(--el-bg-color));
-      border-radius: 12px;
+      border-radius: var(--el-border-radius-base);
     }
 
     &__source-icon {
@@ -242,36 +242,6 @@
       justify-content: flex-end;
     }
 
-    &__attributes {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1px;
-      margin: 0;
-      overflow: hidden;
-      background: var(--el-border-color-lighter);
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: 10px;
-
-      > div {
-        min-width: 0;
-        padding: 12px 14px;
-        background: var(--el-bg-color);
-      }
-
-      dt {
-        margin-bottom: 4px;
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-      }
-
-      dd {
-        margin: 0;
-        font-size: 13px;
-        color: var(--el-text-color-primary);
-        overflow-wrap: anywhere;
-      }
-    }
-
     &__quality {
       gap: 12px;
       align-items: flex-start;
@@ -279,7 +249,7 @@
       color: var(--el-color-warning);
       background: var(--el-color-warning-light-9);
       border: 1px solid var(--el-color-warning-light-7);
-      border-radius: 10px;
+      border-radius: var(--el-border-radius-base);
 
       &.is-complete {
         color: var(--el-color-success);
@@ -321,10 +291,6 @@
 
       &__badges {
         justify-content: flex-start;
-      }
-
-      &__attributes {
-        grid-template-columns: 1fr;
       }
     }
   }

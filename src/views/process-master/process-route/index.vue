@@ -14,7 +14,7 @@
         primary-min="256px"
         primary-max="400px"
         :breakpoint="900"
-        stacked-primary-size="360px"
+        stacked-primary-size="auto"
       >
         <template #primary>
           <MasterGroupPanel
@@ -101,6 +101,7 @@
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { exportExcel } from '@/utils/file'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
@@ -137,7 +138,6 @@
   const { confirmAction, promptText } = useArtFeedback()
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   interface RouteDialogExpose {
     handleOpen: (row?: ProcessRoute, tenantId?: string) => Promise<void>
@@ -188,11 +188,9 @@
       icon: 'ri:history-line'
     }
   ])
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      ...item,
-      value: item.value === 'true' || item.value === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
   async function openRouteDialog(row?: ProcessRoute, tenantId?: string): Promise<void> {
     await routeDialog.value?.handleOpen(row, tenantId)
@@ -269,13 +267,16 @@
       prop: 'routeType',
       label: '类型',
       width: 100,
-      formatter: (row) => dictLabel('mdmProcessRouteType', row.routeType)
+      formatter: (row) =>
+        userStore.getDictItemByValue('mdmProcessRouteType', row.routeType)?.label || row.routeType
     },
     {
       prop: 'allocationMode',
       label: '分配方式',
       width: 110,
-      formatter: (row) => dictLabel('mdmProcessRouteAllocationMode', row.allocationMode)
+      formatter: (row) =>
+        userStore.getDictItemByValue('mdmProcessRouteAllocationMode', row.allocationMode)?.label ||
+        row.allocationMode
     },
     {
       prop: 'department',
@@ -317,7 +318,8 @@
       prop: 'source',
       label: '来源',
       width: 100,
-      formatter: (row) => dictLabel('mdmProcessRouteSource', row.source)
+      formatter: (row) =>
+        userStore.getDictItemByValue('mdmProcessRouteSource', row.source)?.label || row.source
     },
     {
       prop: 'enabled',
@@ -471,7 +473,7 @@
         { key: 'effectiveDate', title: '生效日期' },
         { key: 'expiryDate', title: '失效日期' }
       ],
-      importTransformer: (rows) =>
+      importRecordTransformer: (rows) =>
         rows.map((row) => ({
           ...row,
           tenantId: effectiveTenantId.value || '',
@@ -502,9 +504,7 @@
       label: `${tenant.tenantName || tenant.tenantCode}（${tenant.tenantCode}）`,
       value: tenant.id
     }))
-  function dictLabel(code: string, value: string): string {
-    return getDictMap.value[code]?.find((item) => item.value === value)?.label || value
-  }
+
   async function loadGroups() {
     groupState.loading = true
     groupState.error = ''

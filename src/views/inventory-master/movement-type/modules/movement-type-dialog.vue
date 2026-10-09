@@ -45,6 +45,7 @@
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     fetchMovementTypeOptions,
     saveMovementType,
@@ -63,7 +64,7 @@
   const emit = defineEmits<{ success: [] }>()
   const userStore = useUserStore()
   const tenantScopeStore = useTenantScopeStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const directionOptions = useDictionaryOptions('mdmStockMovementDirection')
   const { tenantOptions } = storeToRefs(tenantScopeStore)
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const dialogRef = ref<ArtDialogExpose<MovementTypeDialogOpenData>>()
@@ -129,7 +130,7 @@
       label: '出入库类型',
       type: 'segment',
       span: 24,
-      options: getDictMap.value.mdmStockMovementDirection ?? []
+      options: directionOptions
     },
     {
       key: 'reverseTypeId',

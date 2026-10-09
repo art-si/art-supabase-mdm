@@ -85,7 +85,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ColumnOption } from '@/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
@@ -100,8 +100,7 @@
     type CenterAdjustment
   } from '@mdm/api'
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  void userStore.ensureDictLoaded('mdmWorkCenterPersonnelAdjustmentKind')
+  const adjustmentKindOptions = useDictionaryOptions('mdmWorkCenterPersonnelAdjustmentKind')
   const dialogRef = ref<ArtDialogExpose>()
   const adjustmentDialog = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -125,8 +124,8 @@
     {
       key: 'kind',
       label: '临时调整',
-      type: 'radio',
-      options: userStore.getDictMap.mdmWorkCenterPersonnelAdjustmentKind ?? []
+      type: 'segment',
+      options: adjustmentKindOptions
     },
     {
       key: 'range',
@@ -136,7 +135,8 @@
         type: 'datetimerange',
         valueFormat: 'YYYY-MM-DDTHH:mm:ssZ',
         startPlaceholder: '开始时间',
-        endPlaceholder: '结束时间'
+        endPlaceholder: '结束时间',
+        class: 'w-full!'
       }
     }
   ])

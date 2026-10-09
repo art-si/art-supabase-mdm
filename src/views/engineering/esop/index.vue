@@ -305,7 +305,7 @@
   import { ElMessage, ElTag, type TreeNodeData } from 'element-plus'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { exportExcel, viewAttachment } from '@/utils/file'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
@@ -373,8 +373,7 @@
   }
 
   const { confirmAction } = useArtFeedback()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
   const tableRef = ref<ArtTableQueryExpose>()
@@ -472,11 +471,10 @@
       type: 'select',
       props: {
         clearable: true,
-        options: getDictMap.value.commonEnabledStatus ?? []
+        options: statusOptions
       }
     }
   ])
-  void userStore.ensureDictLoaded('commonEnabledStatus')
   const loadOptions = async (): Promise<void> => {
     loadingOptions.value = true
     optionsError.value = null

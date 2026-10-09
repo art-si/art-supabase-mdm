@@ -32,14 +32,19 @@
 </template>
 
 <script setup lang="tsx">
-  import dayjs from 'dayjs'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import { formatCurrencyValue } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatCurrencyValue } from '@/utils/ui/format'
   import type { ColumnOption } from '@/types'
   import { fetchInventoryBatches, type InventoryBatch } from '@mdm/api'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   export interface InventoryDetailContext {
     warehouseId: string
@@ -102,7 +107,7 @@
       prop: 'lastMovementAt',
       label: '最后出入库',
       width: 170,
-      formatter: (row) => dayjs(row.lastMovementAt).format('YYYY-MM-DD HH:mm')
+      formatter: (row) => formatTableDateTime(row.lastMovementAt)
     }
   ]
 

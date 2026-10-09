@@ -172,7 +172,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
   import {
     saveEsopDocument,
@@ -198,8 +198,7 @@
   }
 
   const emit = defineEmits<{ success: [] }>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const dialogRef = ref<ArtDialogExpose<EsopDocumentDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const activeTab = ref<'document' | 'scope'>('document')
@@ -292,7 +291,7 @@
       key: 'status',
       type: 'select',
       span: 4,
-      options: getDictMap.value.commonEnabledStatus ?? [],
+      options: statusOptions,
       props: { placeholder: '请选择状态' }
     },
     { label: '受控附件', key: 'attachmentUrl', type: 'text', span: 24 },
@@ -304,7 +303,6 @@
       props: { rows: 3, maxlength: 1000, showWordLimit: true, resize: 'none' }
     }
   ])
-  void userStore.ensureDictLoaded('commonEnabledStatus')
   const scopeItems: FormItem[] = [
     { label: '适用产品 / 物料', key: 'materialIds', type: 'text', span: 24 },
     { label: '适用工艺路线', key: 'routeIds', type: 'text', span: 24 }

@@ -169,7 +169,12 @@
               <span>{{ parameterError }}</span>
               <ElButton link type="primary" @click="loadParameters">重新加载</ElButton>
             </div>
-            <ElSkeleton v-else-if="loadingParameters" :rows="7" animated />
+            <ArtAsyncState
+              v-else-if="loadingParameters"
+              :loading="loadingParameters"
+              :min-height="240"
+              size="compact"
+            />
             <ArtEmptyState
               v-else-if="!parameterTree.length"
               class="parameter-panel__state"
@@ -473,6 +478,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
@@ -489,6 +495,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     deleteActivityFormulaParameter,
     fetchActivityFormulaParameters,
@@ -520,7 +527,9 @@
 
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const formulaPurposeOptions = useDictionaryOptions('mdmFormulaPurpose')
+  const activityTypeOptions = useDictionaryOptions('mdmActivityType')
+  const unitOptions = useDictionaryOptions('mdmActivityUnit')
   const { confirmDelete } = useArtFeedback()
   const dialogRef = ref<ArtDialogExpose<MasterDialogOpenData>>()
   const parameterDialogRef = ref<ArtDialogExpose>()
@@ -543,7 +552,7 @@
   })
 
   const purposeOptions = computed(() => {
-    const options = dictionaryOptions('mdmFormulaPurpose').map((item) => ({
+    const options = formulaPurposeOptions.map((item) => ({
       ...item,
       label: activityFormulaPurposeLabel(item.value, item.label)
     }))
@@ -556,8 +565,6 @@
     }
     return options
   })
-  const activityTypeOptions = computed(() => dictionaryOptions('mdmActivityType'))
-  const unitOptions = computed(() => dictionaryOptions('mdmActivityUnit'))
   const formulaExpression = computed(() => expressionOf(model.formulaTokens ?? []))
   const formulaTranslation = computed(() => translationOf(model.formulaTokens ?? []))
   const parameterTree = computed(() => buildActivityFormulaParameterTree(parameters.value))
@@ -632,13 +639,6 @@
     ]
   }
 
-  function dictionaryOptions(code: string) {
-    return (getDictMap.value[code] ?? []).map((item) => ({
-      label: item.label || item.value,
-      value: String(item.value)
-    }))
-  }
-
   function createEmptyModel(tenantId: string): OperationalMasterRecord {
     return {
       id: '',
@@ -680,7 +680,7 @@
   }
 
   function unitLabel(value: string): string {
-    return unitOptions.value.find((item) => item.value === value)?.label ?? value
+    return unitOptions.find((item) => item.value === value)?.label ?? value
   }
   function filterParameterNode(keyword: string, rawData: Record<string, unknown>): boolean {
     if (!keyword) return true

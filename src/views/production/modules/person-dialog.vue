@@ -45,7 +45,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     fetchProductionEmployeeReference,
@@ -65,7 +65,8 @@
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const selection = ref<EmployeeIntegrationItem[]>([])
-  const user = useUserStore()
+  const workTypeOptions = useDictionaryOptions('mdmProductionWorkType')
+  const genderOptions = useDictionaryOptions('sex')
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   let requestVersion = 0
@@ -139,7 +140,7 @@
       key: 'workType',
       label: '工作类型',
       type: 'select',
-      options: user.getDictMap.mdmProductionWorkType ?? []
+      options: workTypeOptions
     },
     { key: 'jobTitle', label: '职位', type: 'input' },
     { key: 'trade', label: '工种', type: 'input' },
@@ -147,7 +148,7 @@
       key: 'gender',
       label: '性别',
       type: 'select',
-      options: user.getDictMap.sex ?? [],
+      options: genderOptions,
       props: { clearable: true }
     },
     {

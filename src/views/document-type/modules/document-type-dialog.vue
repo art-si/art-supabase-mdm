@@ -108,7 +108,7 @@
                 <span class="document-type-dialog__extension-cell-label">字段类型</span>
                 <ElSelect v-model="field.valueType" :aria-label="`第 ${index + 1} 个字段类型`">
                   <ElOption
-                    v-for="option in getDictMap.mdmDocumentExtensionValueType ?? []"
+                    v-for="option in extensionValueTypeOptions"
                     :key="option.value"
                     :label="option.label"
                     :value="option.value"
@@ -167,6 +167,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
   import type { ComponentTypeRecord, DocumentTypeMenuNode, DocumentTypeRecord } from '@mdm/api'
   import {
@@ -222,6 +223,8 @@
   const userStore = useUserStore()
   const { confirmAction } = useArtFeedback()
   const { getDictMap } = storeToRefs(userStore)
+  const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
+  const extensionValueTypeOptions = useDictionaryOptions('mdmDocumentExtensionValueType')
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
   const componentTypeOptions = ref<ComponentTypeRecord[]>([])
@@ -253,11 +256,9 @@
     form.data.packingThicknessFieldKey = 'thickness'
   }
 
-  const booleanOptions = computed(() =>
-    (getDictMap.value.commonBoolean ?? []).map((item) => ({
-      label: item.label,
-      value: String(item.value) === 'true' || String(item.value) === '1'
-    }))
+  const booleanOptions = useDictionaryOptions(
+    'commonBoolean',
+    (value) => value === 'true' || value === '1'
   )
 
   const form: UnwrapNestedRefs<FormGroup> = reactive<FormGroup>({
@@ -343,7 +344,7 @@
           key: 'isDefault',
           type: 'segment',
           span: 8,
-          props: { options: booleanOptions.value, onChange: handleDefaultChange },
+          props: { options: booleanOptions, onChange: handleDefaultChange },
           description: '同一菜单功能只有一个默认项；保存时会提示并替换冲突的默认项。'
         },
         {
@@ -394,7 +395,7 @@
                 key: 'allowedIssueWarehouseTypes',
                 type: 'select',
                 span: 24,
-                options: getDictMap.value.mdmWarehouseType ?? [],
+                options: warehouseTypeOptions,
                 props: {
                   multiple: true,
                   filterable: true,

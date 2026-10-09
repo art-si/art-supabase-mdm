@@ -35,7 +35,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { createShelfBins, type StorageWarehouse, type StorageZone } from '@mdm/api'
   import { ElMessage } from 'element-plus'
-  import { formatWarehouseBinCode } from '../../../../utils/warehouse-bin-code'
+  import { formatWarehouseBinCode } from '../../../../domain/warehouse-bin-code'
 
   export interface ShelfGeneratorContext {
     warehouse: StorageWarehouse

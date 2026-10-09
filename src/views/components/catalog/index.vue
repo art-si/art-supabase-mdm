@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { computed, ref, type ComputedRef } from 'vue'
   import { useRoute } from 'vue-router'
   import CatalogSourceNavigator from './modules/catalog-source-navigator.vue'
@@ -60,7 +61,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -108,8 +109,8 @@
   }
 
   const route = useRoute()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('mdmCatalogStatus')
+  const qualityOptions = useDictionaryOptions('mdmCatalogQuality')
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const detailDrawerRef = ref<CatalogDetailDrawerExpose>()
   const emptySummary = (): MdmCatalogSummary => ({
@@ -206,7 +207,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: getDictMap.value.mdmCatalogStatus ?? []
+        options: statusOptions
       }
     },
     {
@@ -216,13 +217,10 @@
       props: {
         clearable: true,
         placeholder: '全部质量',
-        options: getDictMap.value.mdmCatalogQuality ?? []
+        options: qualityOptions
       }
     }
   ])
-  void Promise.all(
-    ['mdmCatalogStatus', 'mdmCatalogQuality'].map((code) => userStore.ensureDictLoaded(code))
-  )
 
   async function selectSource(sourceType: string | undefined) {
     searchQuery.value.sourceType = sourceType
@@ -301,11 +299,7 @@
     return labels[value] ?? value.toUpperCase()
   }
 
-  const formatDateTime = (value: string | null): string => {
-    if (!value) return '—'
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('zh-CN', { hour12: false })
-  }
+  const formatDateTime = createDateTimeFormatter({ emptyText: '—', invalidText: '—' })
 
   const renderSource = (row: MdmCatalogRecord) => (
     <div class="mdm-source-cell">

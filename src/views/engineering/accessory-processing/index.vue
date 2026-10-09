@@ -594,7 +594,15 @@
             { key: 'color', label: '材质与颜色', value: detailRow.materialColor },
             { key: 'remark', label: '备注', value: detailRow.remark },
             { key: 'type', label: '物料类型', value: detailRow.materialType?.typeName },
-            { key: 'source', label: '物料来源', value: sourceLabel(detailRow.materialSource) },
+            {
+              key: 'source',
+              label: '物料来源',
+              value:
+                userStore.getDictItemByValue('mdmMaterialSource', detailRow.materialSource)
+                  ?.label ||
+                detailRow.materialSource ||
+                '—'
+            },
             { key: 'category', label: '物料分类', value: detailRow.category?.categoryName },
             { key: 'strategy', label: '编码策略', value: detailRow.codeRule?.ruleName },
             {
@@ -911,10 +919,7 @@
   const visibleRows = computed(() =>
     filteredRows.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
   )
-  const sourceLabel = (value?: string): string =>
-    (getDictMap.value.mdmMaterialSource || []).find((item) => item.value === value)?.label ||
-    value ||
-    '—'
+
   const columns: ColumnOption<AccessoryRow>[] = [
     { type: 'selection', width: 48, fixed: 'left' },
     { type: 'globalIndex', label: '序号', width: 72, fixed: 'left' },

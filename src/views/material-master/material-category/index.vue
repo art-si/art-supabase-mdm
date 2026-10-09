@@ -55,12 +55,13 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -90,13 +91,18 @@
   import CategoryDialog, { type CategoryDialogOpenData } from './modules/category-dialog.vue'
   import CategoryTreePanel from './modules/category-tree-panel.vue'
 
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
+
   defineOptions({ name: 'MdmMaterialCategory' })
   interface DialogExpose {
     handleOpen: (data: CategoryDialogOpenData) => Promise<void>
   }
   const { confirmDelete } = useArtFeedback()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
   const tableRef = ref<ArtTableQueryExpose>()
@@ -144,11 +150,10 @@
       type: 'select',
       props: {
         clearable: true,
-        options: getDictMap.value.commonEnabledStatus ?? []
+        options: statusOptions
       }
     }
   ])
-  void userStore.ensureDictLoaded('commonEnabledStatus')
   const openDialog = (row?: MaterialCategory, copy = false, parentId?: string): void =>
     void dialogRef.value?.handleOpen({
       row,
@@ -293,7 +298,7 @@
       prop: 'updateTime',
       label: '更新时间',
       width: 168,
-      formatter: (row) => (row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—')
+      formatter: (row) => formatTableDateTime(row.updateTime)
     },
     {
       prop: 'operation',

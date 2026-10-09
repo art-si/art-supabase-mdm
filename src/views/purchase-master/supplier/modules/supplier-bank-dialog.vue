@@ -20,7 +20,7 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -43,8 +43,7 @@
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const currencyOptions = useDictionaryOptions('mdmCurrency')
   const editingId = ref('')
   const initial = (): FormModel => ({
     supplierId: '',
@@ -90,10 +89,7 @@
       type: 'select',
       props: {
         filterable: true,
-        options: (getDictMap.value.mdmCurrency ?? []).map((item) => ({
-          label: String(item.label || item.value),
-          value: String(item.value)
-        }))
+        options: currencyOptions
       }
     },
     { key: 'payee', label: '收款方联系信息', type: 'divider', span: 24 },
@@ -125,8 +121,7 @@
       title: data.row ? '编辑银行信息' : '新增银行信息',
       subtitle: '为当前供应商维护收款账户和收款方信息',
       confirmText: data.row ? '保存更改' : '添加账户',
-      onOpen: async () => {
-        await userStore.ensureDictLoaded('mdmCurrency')
+      onOpen: () => {
         formRef.value?.clearValidate()
       },
       onConfirm: async () => {

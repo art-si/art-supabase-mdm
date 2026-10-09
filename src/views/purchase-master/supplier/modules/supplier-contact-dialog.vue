@@ -20,7 +20,7 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -47,8 +47,7 @@
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const genderOptions = useDictionaryOptions('sex')
   const editingId = ref('')
   const initial = (): FormModel => ({
     supplierId: '',
@@ -75,10 +74,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: (getDictMap.value.sex ?? []).map((item) => ({
-          label: String(item.label || item.value),
-          value: String(item.value)
-        }))
+        options: genderOptions
       }
     },
     { key: 'position', label: '职务', type: 'input', props: { maxlength: 80 } },
@@ -109,8 +105,7 @@
       title: data.row ? '编辑联系人' : '新增联系人',
       subtitle: '联系方式将作为供应商主数据统一维护',
       confirmText: data.row ? '保存更改' : '添加联系人',
-      onOpen: async () => {
-        await userStore.ensureDictLoaded('sex')
+      onOpen: () => {
         formRef.value?.clearValidate()
       },
       onConfirm: async () => {

@@ -6,7 +6,7 @@
     :show-footer="false"
     show-fullscreen-button
   >
-    <div v-if="record" class="supplier-detail">
+    <div v-if="record" class="supplier-detail grid min-w-0 gap-4">
       <ArtEntitySummary
         icon="ri:store-2-line"
         eyebrow="SUPPLIER MASTER DATA"
@@ -14,8 +14,8 @@
         :description="`${record.supplierCode} · ${groupName}`"
       />
 
-      <ElTabs v-model="activeTab" class="supplier-detail__tabs">
-        <ElTabPane label="基本信息" name="overview">
+      <ElTabs v-model="activeTab" class="min-w-0">
+        <ElTabPane label="基本信息" name="overview" class="grid min-w-0 gap-3.5">
           <ArtSectionCard title="单位信息" subtitle="统一身份与业务分类" preserve-content-structure>
             <ArtDescriptions
               :data="record"
@@ -42,7 +42,7 @@
           </ArtSectionCard>
         </ElTabPane>
 
-        <ElTabPane label="银行信息" name="banks">
+        <ElTabPane label="银行信息" name="banks" class="grid min-w-0 gap-3.5">
           <ArtSectionCard
             title="银行信息"
             :subtitle="`共 ${banks.length} 个收款账户`"
@@ -77,7 +77,7 @@
           </ArtSectionCard>
         </ElTabPane>
 
-        <ElTabPane label="联系人" name="contacts">
+        <ElTabPane label="联系人" name="contacts" class="grid min-w-0 gap-3.5">
           <ArtSectionCard
             title="联系人"
             :subtitle="`共 ${contacts.length} 位联系人`"
@@ -120,7 +120,6 @@
 
 <script setup lang="tsx">
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -146,8 +145,6 @@
   const props = defineProps<{ groups: MasterGroup[] }>()
   const emit = defineEmits<{ changed: [] }>()
   const { confirmDelete } = useArtFeedback()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const drawerRef = ref<ArtDrawerExpose<PurchaseSupplier>>()
   const bankDialogRef = ref<{
     handleOpen: (data: { supplierId: string; row?: SupplierBank }) => Promise<void>
@@ -166,8 +163,7 @@
   const groupName = computed(
     () => props.groups.find((group) => group.id === record.value?.groupId)?.name || '未分组'
   )
-  const dictLabel = (code: string, value?: string | null) =>
-    getDictMap.value[code]?.find((item) => item.value === value)?.label || value || '—'
+
   const overviewItems = computed<ArtDescriptionItem<PurchaseSupplier>[]>(() => [
     { key: 'supplierCode', label: '供应商编码', field: 'supplierCode' },
     { key: 'supplierName', label: '供应商名称', field: 'supplierName' },
@@ -175,22 +171,30 @@
     {
       key: 'supplierCategory',
       label: '供应商类别',
-      formatter: () => dictLabel('supplierCategory', record.value?.supplierCategory)
+      field: 'supplierCategory',
+      dictCode: 'supplierCategory',
+      dictDisplay: 'text'
     },
     {
       key: 'supplierType',
       label: '供应商类型',
-      formatter: () => dictLabel('supplierType', record.value?.supplierType)
+      field: 'supplierType',
+      dictCode: 'supplierType',
+      dictDisplay: 'text'
     },
     {
       key: 'enterpriseNature',
       label: '企业性质',
-      formatter: () => dictLabel('enterpriseNature', record.value?.enterpriseNature)
+      field: 'enterpriseNature',
+      dictCode: 'enterpriseNature',
+      dictDisplay: 'text'
     },
     {
       key: 'industry',
       label: '行业',
-      formatter: () => dictLabel('supplierIndustry', record.value?.industry)
+      field: 'industry',
+      dictCode: 'supplierIndustry',
+      dictDisplay: 'text'
     },
     { key: 'remark', label: '备注', field: 'remark', span: 2 }
   ])
@@ -243,7 +247,7 @@
       prop: 'gender',
       label: '性别',
       width: 75,
-      formatter: (row) => dictLabel('sex', row.gender)
+      dict: { code: 'sex', display: 'text' }
     },
     { prop: 'position', label: '职务', minWidth: 115, showOverflowTooltip: true },
     { prop: 'department', label: '部门', minWidth: 115, showOverflowTooltip: true },
@@ -328,25 +332,7 @@
       subtitle: `${row.supplierCode} · 供应商主档`,
       size: 'xl'
     })
-    await Promise.all([userStore.ensureDictLoaded('sex'), loadRelated()])
+    await loadRelated()
   }
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .supplier-detail {
-    display: grid;
-    gap: 16px;
-    min-width: 0;
-
-    &__tabs {
-      min-width: 0;
-    }
-
-    :deep(.el-tab-pane) {
-      display: grid;
-      gap: 14px;
-      min-width: 0;
-    }
-  }
-</style>

@@ -34,16 +34,18 @@
 </template>
 
 <script setup lang="tsx">
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -68,6 +70,12 @@
     type UnitOfMeasure
   } from '@mdm/api'
   import ReferenceDialog, { type ReferenceDialogOpenData } from './modules/reference-dialog.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
 
   interface DialogExpose {
     handleOpen: (data: ReferenceDialogOpenData) => Promise<void>
@@ -169,11 +177,9 @@
   )
   defineOptions({ name: 'MdmMaterialReference' })
   const { confirmDelete } = useArtFeedback()
-  const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
+  const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
-  void userStore.ensureDictLoaded('commonEnabledStatus')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const overview = reactive({ total: 0, enabled: 0 })
@@ -227,7 +233,7 @@
         props: {
           clearable: true,
           placeholder: '全部状态',
-          options: getDictMap.value.commonEnabledStatus ?? []
+          options: statusOptions
         }
       }
     ]),
@@ -293,12 +299,6 @@
       }
     ])
   })
-  const identity = (title: string, code: string) => (
-    <div class="material-reference-page__identity">
-      <strong title={title}>{title}</strong>
-      <small title={code}>{code}</small>
-    </div>
-  )
   const columnsFactory = (): ColumnOption<MaterialReferenceRecord>[] => {
     const shared: ColumnOption<MaterialReferenceRecord>[] = [
       { type: 'selection', width: 48 },
@@ -311,8 +311,12 @@
           label: '计量单位',
           minWidth: 190,
           fixed: 'left',
-          formatter: (row) =>
-            identity((row as UnitOfMeasure).unitName, (row as UnitOfMeasure).unitCode)
+          formatter: (row) => (
+            <BusinessTableIdentityCell
+              primary={(row as UnitOfMeasure).unitName}
+              secondary={(row as UnitOfMeasure).unitCode}
+            />
+          )
         },
         {
           prop: 'symbol',
@@ -338,8 +342,12 @@
           label: '物料类型',
           minWidth: 220,
           fixed: 'left',
-          formatter: (row) =>
-            identity((row as MaterialType).typeName, (row as MaterialType).typeCode)
+          formatter: (row) => (
+            <BusinessTableIdentityCell
+              primary={(row as MaterialType).typeName}
+              secondary={(row as MaterialType).typeCode}
+            />
+          )
         },
         {
           prop: 'codePrefix',
@@ -372,11 +380,12 @@
           label: '属性组',
           minWidth: 230,
           fixed: 'left',
-          formatter: (row) =>
-            identity(
-              (row as MaterialAttributeGroup).groupName,
-              (row as MaterialAttributeGroup).groupCode
-            )
+          formatter: (row) => (
+            <BusinessTableIdentityCell
+              primary={(row as MaterialAttributeGroup).groupName}
+              secondary={(row as MaterialAttributeGroup).groupCode}
+            />
+          )
         },
         {
           prop: 'attributeCount',
@@ -402,8 +411,12 @@
           label: '编码规则',
           minWidth: 230,
           fixed: 'left',
-          formatter: (row) =>
-            identity((row as MaterialCodeRule).ruleName, (row as MaterialCodeRule).ruleCode)
+          formatter: (row) => (
+            <BusinessTableIdentityCell
+              primary={(row as MaterialCodeRule).ruleName}
+              secondary={(row as MaterialCodeRule).ruleCode}
+            />
+          )
         },
         {
           prop: 'strategy',
@@ -438,8 +451,7 @@
         prop: 'updateTime',
         label: '更新时间',
         width: 168,
-        formatter: (row) =>
-          row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—'
+        formatter: (row) => formatTableDateTime(row.updateTime)
       },
       {
         prop: 'operation',
@@ -497,27 +509,5 @@
     flex-direction: column;
     gap: 14px;
     min-height: 0;
-
-    :deep(.material-reference-page__identity) {
-      display: grid;
-      min-width: 0;
-
-      strong,
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      strong {
-        color: var(--el-text-color-primary);
-      }
-
-      small {
-        margin-top: 3px;
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-    }
   }
 </style>

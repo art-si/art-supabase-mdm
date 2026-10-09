@@ -1,0 +1,1 @@
+import{t as e}from"./_baseIteratee-Od8ivFsV.js";function t(e,t){for(var n,r=-1,i=e.length;++r<i;){var a=t(e[r]);a!==void 0&&(n=n===void 0?a:n+a)}return n}function n(n,r){return n&&n.length?t(n,e(r,2)):0}export{n as t};

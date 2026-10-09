@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <div class="holiday-dialog">
+    <div>
       <ArtEntitySummary spaced>
         <template #icon><ArtSvgIcon icon="ri:calendar-event-line" /></template>
         <strong>组织假期日历</strong>
@@ -21,7 +21,7 @@
         <template #organizationId>
           <ElTreeSelect
             v-model="form.model.organizationId"
-            class="holiday-dialog__full-control"
+            class="w-full"
             :data="organizationTree"
             :props="organizationTreeProps"
             node-key="id"
@@ -39,20 +39,16 @@
 </template>
 
 <script setup lang="ts">
-  import { toDictionaryOption } from '@/utils/form/option'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref, shallowRef, nextTick, type ComputedRef } from 'vue'
-  import { storeToRefs } from 'pinia'
   import dayjs from 'dayjs'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import ArtForm, {
-    type FormItem,
-    type FormItemOption
-  } from '@/components/core/forms/art-form/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -86,7 +82,6 @@
 
   const emit = defineEmits<{ success: [type: 'add' | 'edit'] }>()
   const userStore = useUserStore()
-  const { getDictMap } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<StatutoryHolidayDialogOpenData>>()
   const formRef = ref<FormExpose>()
   const organizationTree = shallowRef<Organization[]>([])
@@ -101,9 +96,7 @@
     remark: ''
   })
 
-  const holidayTypeOptions = computed<FormItemOption[]>(() =>
-    (getDictMap.value.smisHolidayType ?? []).map(toDictionaryOption)
-  )
+  const holidayTypeOptions = useDictionaryOptions('smisHolidayType')
 
   const validateDateRange = (
     _rule: unknown,
@@ -128,7 +121,7 @@
         label: '假期类型',
         key: 'holidayType',
         type: 'select',
-        options: holidayTypeOptions.value,
+        options: holidayTypeOptions,
         props: { filterable: true, clearable: true, placeholder: '请选择假期类型' }
       },
       {
@@ -242,11 +235,3 @@
 
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .holiday-dialog {
-    &__full-control {
-      width: 100%;
-    }
-  }
-</style>

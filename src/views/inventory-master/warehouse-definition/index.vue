@@ -69,10 +69,11 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -106,6 +107,12 @@
     type WarehouseGroupDialogOpenData
   } from './modules/warehouse-group-dialog.vue'
   import WarehouseGroupPanel from './modules/warehouse-group-panel.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '—',
+    invalidText: '—'
+  })
 
   const commonEnabledDisabledStatusOptions = useDictionaryOptions('commonEnabledDisabledStatus')
 
@@ -348,7 +355,7 @@
       prop: 'updateTime',
       label: '更新时间',
       width: 168,
-      formatter: (row) => (row.updateTime ? dayjs(row.updateTime).format('YYYY-MM-DD HH:mm') : '—')
+      formatter: (row) => formatTableDateTime(row.updateTime)
     },
     {
       prop: 'operation',

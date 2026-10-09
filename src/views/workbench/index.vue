@@ -49,12 +49,12 @@
               ><small>{{ domain.description }}</small></span
             >
             <span class="domain-list__count"
-              ><strong>{{ domain.recordCount.toLocaleString() }}</strong
+              ><strong>{{ formatNumberValue(domain.recordCount) }}</strong
               ><small>{{ domain.sourceCount }} 类治理对象</small
               ><em :class="{ 'is-complete': !domain.attentionCount }">
                 {{
                   domain.attentionCount
-                    ? `${domain.attentionCount.toLocaleString()} 条待完善`
+                    ? `${formatNumberValue(domain.attentionCount)} 条待完善`
                     : '关键资料完整'
                 }}
               </em></span
@@ -84,11 +84,13 @@
           </div>
           <div class="coverage-legend">
             <div
-              ><span></span><strong>{{ totalRecords - attentionCount }} 条</strong
+              ><span></span
+              ><strong>{{ formatNumberValue(totalRecords - attentionCount) }} 条</strong
               ><small>资料完整</small></div
             >
             <div
-              ><span></span><strong>{{ attentionCount }} 条</strong><small>待完善</small></div
+              ><span></span><strong>{{ formatNumberValue(attentionCount) }} 条</strong
+              ><small>待完善</small></div
             >
           </div>
         </ArtSectionCard>
@@ -127,6 +129,8 @@
 <script setup lang="ts">
   import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import { sumBy } from 'lodash-es'
+  import { formatNumberValue } from '@/utils/ui/format'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -150,12 +154,8 @@
   const errorMessage = ref('')
   let requestController: AbortController | undefined
 
-  const totalRecords = computed(() =>
-    domains.value.reduce((total, domain) => total + domain.recordCount, 0)
-  )
-  const attentionCount = computed(() =>
-    domains.value.reduce((total, domain) => total + domain.attentionCount, 0)
-  )
+  const totalRecords = computed(() => sumBy(domains.value, 'recordCount'))
+  const attentionCount = computed(() => sumBy(domains.value, 'attentionCount'))
   const coveragePercent = computed(() =>
     totalRecords.value
       ? Math.round(((totalRecords.value - attentionCount.value) / totalRecords.value) * 100)
@@ -164,7 +164,7 @@
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '主数据记录',
-      value: errorMessage.value ? '—' : totalRecords.value.toLocaleString(),
+      value: errorMessage.value ? '—' : formatNumberValue(totalRecords.value),
       description: errorMessage.value ? '概览加载失败，请重试' : '当前租户可见记录',
       icon: 'ri:file-list-3-line',
       tone: 'primary',
@@ -188,7 +188,7 @@
     },
     {
       label: '待完善记录',
-      value: errorMessage.value ? '—' : attentionCount.value.toLocaleString(),
+      value: errorMessage.value ? '—' : formatNumberValue(attentionCount.value),
       description: errorMessage.value
         ? '概览加载失败，请重试'
         : attentionCount.value
