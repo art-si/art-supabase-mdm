@@ -113,7 +113,7 @@
               <span v-else class="material-reference-dialog__segment-note">
                 {{ segmentSourceDescription(segment.source) }}
               </span>
-              <div class="material-reference-dialog__row-actions">
+              <BusinessTableRowActions>
                 <ArtIconButton
                   icon="ri:arrow-up-line"
                   label="上移号段"
@@ -131,7 +131,7 @@
                   label="删除号段"
                   @click="formModel.segments.splice(Number(index), 1)"
                 />
-              </div>
+              </BusinessTableRowActions>
             </div>
             <ElButton plain :disabled="formModel.segments.length >= 5" @click="addSegment"
               ><ArtSvgIcon icon="ri:add-line" />添加号段</ElButton
@@ -167,6 +167,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
@@ -955,12 +956,6 @@
         overflow: visible;
         white-space: normal;
       }
-    }
-
-    &__row-actions {
-      display: flex;
-      gap: 4px;
-      align-items: center;
     }
 
     &__builder-row {

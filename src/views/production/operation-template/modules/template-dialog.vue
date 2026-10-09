@@ -67,6 +67,7 @@
   import { ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
@@ -236,13 +237,13 @@
           {
             prop: 'operation',
             label: '操作',
-            width: 96,
+            width: 112,
             align: 'center',
             fixed: 'right' as const,
             formatter: (row: OperationTask) => {
               const index = taskIndex(row)
               return (
-                <div class="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
+                <BusinessTableRowActions>
                   <ArtIconButton
                     icon="ri:file-copy-line"
                     label={`复制任务项 ${index + 1}`}
@@ -251,10 +252,10 @@
                   <ArtIconButton
                     icon="ri:delete-bin-6-line"
                     label={`删除任务项 ${index + 1}`}
-                    class="text-[var(--el-color-danger)]!"
+                    tone="danger"
                     onClick={() => form.model.items.splice(index, 1)}
                   />
-                </div>
+                </BusinessTableRowActions>
               )
             }
           }

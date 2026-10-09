@@ -315,6 +315,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
   } from '@/components/core/forms/art-button-more/index.vue'
@@ -725,7 +726,7 @@
       width: 176,
       fixed: 'right',
       formatter: (row) => (
-        <div class="esop-page__row-actions">
+        <BusinessTableRowActions>
           <ArtButtonTable
             permission="MdmEsop:View"
             type="view"
@@ -740,7 +741,7 @@
             list={() => moreActions(row)}
             onClick={(item) => void handleMore(item, row)}
           />
-        </div>
+        </BusinessTableRowActions>
       )
     }
   ]
@@ -1193,11 +1194,6 @@
       }
     }
 
-    :deep(.esop-page__row-actions) {
-      display: flex;
-      gap: var(--art-space-1);
-      align-items: center;
-    }
 
     @media (width <= 720px) {
       &__scope-bar {
