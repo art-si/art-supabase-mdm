@@ -308,6 +308,7 @@
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { exportExcel, viewAttachment } from '@/utils/file'
+  import { formatSize } from '@/utils/file/format-size'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import TreeUtils from '@/utils/tree'
@@ -581,11 +582,6 @@
   }
   const formatDateTime = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm', emptyText: '—' })
   const formatDate = createDateTimeFormatter({ format: 'YYYY-MM-DD', emptyText: '—' })
-  const formatSize = (value?: number | null): string => {
-    if (value == null) return '大小未知'
-    if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`
-    return `${Math.max(1, Math.ceil(value / 1024))} KB`
-  }
   const fileIcon = (type?: string | null): string => {
     const value = String(type || '').toLowerCase()
     if (value.includes('pdf')) return 'ri:file-pdf-2-line'
@@ -596,7 +592,10 @@
     return 'ri:file-text-line'
   }
   const attachmentMeta = (row: EsopDocument): string =>
-    [String(row.attachmentType || '').toUpperCase(), formatSize(row.attachmentSize)]
+    [
+      String(row.attachmentType || '').toUpperCase(),
+      formatSize(row.attachmentSize, { precision: 1, emptyText: '大小未知' })
+    ]
       .filter(Boolean)
       .join(' · ')
   const previewDocument = (row: EsopDocument): void => {
@@ -1193,7 +1192,6 @@
         color: var(--theme-color);
       }
     }
-
 
     @media (width <= 720px) {
       &__scope-bar {
