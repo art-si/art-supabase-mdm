@@ -3,6 +3,7 @@
     <section class="operational-master-detail__section">
       <ArtSectionTitle title="主档信息" />
       <ArtDescriptions
+        :label-width="132"
         :data="record"
         :items="primaryItems"
         :columns="2"
@@ -15,6 +16,7 @@
     <section class="operational-master-detail__section">
       <ArtSectionTitle title="补充与审计" />
       <ArtDescriptions
+        :label-width="132"
         :data="record"
         :items="auditItems"
         :columns="2"
@@ -130,10 +132,6 @@
 
     &__section {
       min-width: 0;
-    }
-
-    :deep(.el-descriptions__label) {
-      width: 132px;
     }
   }
 </style>

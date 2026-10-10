@@ -1,7 +1,7 @@
 <template>
   <ArtPermissionGuard permission="MdmDocumentType:View" resource-name="单据类型">
     <div class="document-type-page business-workspace-page art-full-height">
-      <MasterDeleteProcessingNotice />
+      <MasterDeleteProcessingNotice :table="tableRef" />
       <BusinessWorkspaceHeader
         density="compact"
         eyebrow="DOCUMENT TYPE GOVERNANCE"

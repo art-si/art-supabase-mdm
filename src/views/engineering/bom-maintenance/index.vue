@@ -2,8 +2,9 @@
   <ArtPermissionGuard permission="MdmBomMaintenance:View" resource-name="BOM 维护">
     <div class="bom-maintenance-page business-workspace-page art-full-height">
       <MasterDeleteProcessingNotice
+        :table="tableRef"
         v-if="targetBomId"
-        action-hint="当前列表已定位到关联的 BOM。请核对组件并处理引用，完成后返回原页面继续删除。"
+        action-hint="请核对关联的 BOM。请核对组件并处理引用，完成后返回原页面继续删除。"
       />
       <BusinessWorkspaceHeader
         eyebrow="ENGINEERING MASTER"

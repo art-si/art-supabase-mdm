@@ -2575,8 +2575,8 @@
         margin-bottom: var(--art-space-2);
       }
 
-      :deep(.art-section-card__identity p) {
-        margin-left: 0;
+      :deep(.art-section-card__subtitle) {
+        padding-left: 0;
       }
     }
 

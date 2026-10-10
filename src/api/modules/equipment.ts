@@ -1,5 +1,5 @@
 import { omit } from 'lodash-es'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import type {

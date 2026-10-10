@@ -1,0 +1,1 @@
+import{B as e,R as t,V as n,q as r}from"./_baseForOwn-DO2ayczJ.js";function i(i,a,o){if(!r(o))return!1;var s=typeof a;return(s==`number`?t(o)&&n(a,o.length):s==`string`&&a in o)?e(o[a],i):!1}export{i as t};

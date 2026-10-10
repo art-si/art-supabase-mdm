@@ -19,7 +19,7 @@
         :preserve-content-structure="true"
       >
         <template #actions>
-          <ElButton @click="downloadTemplate">
+          <ElButton @click="downloadFile(templateUrl, '配件加工清单模板.docx')">
             <template #icon><ArtSvgIcon icon="ri:download-2-line" /></template>
             下载统一模板
           </ElButton>
@@ -557,6 +557,7 @@
 
 <script setup lang="ts">
   import { getScrollBehavior } from '@/utils/ui/scroll'
+  import { downloadFile } from '@/utils/file'
   import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { ElCollapse, ElCollapseItem, ElMessage } from 'element-plus'
@@ -941,13 +942,6 @@
     draft.items.splice(index, 1)
     workspace.sketchUrls.splice(index, 1)
     editingIndex.value = null
-  }
-
-  function downloadTemplate(): void {
-    const link = document.createElement('a')
-    link.href = templateUrl
-    link.download = '配件加工清单模板.docx'
-    link.click()
   }
 
   function resetUpload(): void {

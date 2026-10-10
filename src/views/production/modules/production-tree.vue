@@ -306,7 +306,7 @@
         width: auto;
       }
 
-      :deep(.art-section-card__identity p) {
+      :deep(.art-section-card__subtitle) {
         display: none;
       }
     }

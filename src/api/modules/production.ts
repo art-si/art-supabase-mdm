@@ -3,7 +3,7 @@ import type {
   EmployeeSelectorContractParams,
   EmployeeSelectorContractResult
 } from '@/api/integration/employees'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { parseProductionShifts } from './production-shifts'
 import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'

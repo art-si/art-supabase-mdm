@@ -1,5 +1,5 @@
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import { uniqBy } from 'lodash-es'
 import { mapWithConcurrency } from '@/utils/async'

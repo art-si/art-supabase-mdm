@@ -26,7 +26,7 @@
           @refresh="loadOptions"
         />
         <div class="material-archive-page__table">
-          <MasterDeleteProcessingNotice :location-ready="deleteLocationReady" />
+          <MasterDeleteProcessingNotice :table="tableRef" />
           <ArtTableQuery
             ref="tableRef"
             :model-value="search"
@@ -309,7 +309,7 @@
   const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   const deleteProcessing = useMasterDataDeleteProcessingContext()
   const route = useRoute()
-  const deleteLocationReady = computed(
+  const hasDeleteLocationParameters = computed(
     () =>
       Boolean(deleteProcessing.value.recordId) &&
       (route.query.resourceType !== 'mdm_supplier' || Boolean(deleteProcessing.value.resourceId))
@@ -950,7 +950,7 @@
   })
   const fetchData = async (params: QueryParams) => {
     const context = deleteProcessing.value
-    if (context.active && !deleteLocationReady.value) {
+    if (context.active && !hasDeleteLocationParameters.value) {
       replaceReactiveModel(overview, { total: 0, enabled: 0, purchase: 0 })
       return { records: [], total: 0 }
     }

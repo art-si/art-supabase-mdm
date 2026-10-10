@@ -1,5 +1,5 @@
 import type { EmployeeSelectorContractParams } from '@/api/integration/employees'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import type { ProductionDepartment, ShiftPattern } from './production.types'
 

@@ -1,4 +1,5 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
+import { clamp } from 'lodash-es'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { mdmCatalogSourceDefinitions, type MdmCatalogScope } from './catalog-source-definitions'
@@ -186,7 +187,7 @@ const normalizeRecord = (value: unknown): MdmCatalogRecord => {
     sourceType: asString(item.sourceType),
     sourceLabel: asString(item.sourceLabel, '未识别来源'),
     sourceApp: asString(item.sourceApp, 'platform'),
-    qualityScore: Math.min(100, Math.max(0, asNumber(item.qualityScore))),
+    qualityScore: clamp(asNumber(item.qualityScore), 0, 100),
     qualityIssues: Array.isArray(item.qualityIssues)
       ? item.qualityIssues.map((issue) => asString(issue)).filter(Boolean)
       : [],

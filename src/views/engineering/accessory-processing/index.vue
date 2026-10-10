@@ -5,8 +5,12 @@
       :class="{ 'is-focus-mode': focusMode }"
     >
       <MasterDeleteProcessingNotice
+        :record-rows="lists"
+        :record-loading="loading"
+        :record-error="Boolean(error)"
+        :record-id="targetListId"
         v-if="targetListId"
-        action-hint="当前已定位到关联的加工清单，请核对关联，处理完成后返回原页面重试删除。"
+        action-hint="请核对关联加工清单，处理完成后返回原页面重试删除。"
       />
       <BusinessWorkspaceHeader
         v-show="!focusMode"
