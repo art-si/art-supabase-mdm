@@ -66,7 +66,7 @@
               :show-table-header="false"
               table-layout="fixed"
               height="auto"
-              scrollbar-always-on
+              :scrollbar-always-on="false"
               empty-height="220px"
               empty-text="尚未添加属性"
               empty-description="点击右上角的“新增属性”，再维护属性名与候选值。"

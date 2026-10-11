@@ -157,7 +157,6 @@
                 >
                   <ArtSvgIcon
                     :icon="selectionMode ? 'ri:close-line' : 'ri:checkbox-multiple-line'"
-                    class="mr-1"
                     aria-hidden="true"
                   />
                   {{ selectionMode ? '退出多选' : '批量删除' }}
@@ -171,7 +170,7 @@
                   :loading="deleteBusy"
                   @click="removeSelectedBins"
                 >
-                  <ArtSvgIcon icon="ri:delete-bin-line" class="mr-1" aria-hidden="true" />
+                  <ArtSvgIcon icon="ri:delete-bin-line" aria-hidden="true" />
                   删除选中（{{ selectedBinIds.length }}）
                 </ElButton>
                 <ElButton
@@ -179,7 +178,7 @@
                   :disabled="!canCreate"
                   @click="openShelfGenerator"
                 >
-                  <ArtSvgIcon icon="ri:layout-grid-line" class="mr-1" aria-hidden="true" />
+                  <ArtSvgIcon icon="ri:layout-grid-line" aria-hidden="true" />
                   生成货架
                 </ElButton>
                 <ElButton
@@ -189,7 +188,7 @@
                   :disabled="!canCreate"
                   @click="openBinDialog()"
                 >
-                  <ArtSvgIcon icon="ri:add-line" class="mr-1" aria-hidden="true" />
+                  <ArtSvgIcon icon="ri:add-line" aria-hidden="true" />
                   新增库位
                 </ElButton>
               </div>

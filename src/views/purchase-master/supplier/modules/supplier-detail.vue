@@ -70,7 +70,7 @@
               row-key="id"
               :pagination="false"
               table-layout="fixed"
-              scrollbar-always-on
+              :scrollbar-always-on="false"
               :max-height="480"
               empty-text="暂无银行信息"
             />
@@ -105,7 +105,7 @@
               row-key="id"
               :pagination="false"
               table-layout="fixed"
-              scrollbar-always-on
+              :scrollbar-always-on="false"
               :max-height="480"
               empty-text="暂无联系人"
             />

@@ -1,1 +1,0 @@
-import{Cr as e,Xr as t,jr as n}from"./supabase-CH7imMya.js";import{t as r}from"./operational-master-DWDW58m7.js";var i=n({name:`MdmSalesProject`,__name:`index`,setup(n){return(n,i)=>(t(),e(r))}});export{i as default};

@@ -1,1 +1,0 @@
-import{$r as e,Tr as t,Xr as n,jr as r}from"./supabase-CH7imMya.js";import{t as i}from"./_plugin-vue_export-helper-Cfi6Ci9k.js";var a={class:`business-table-row-actions`},o=i(r({name:`BusinessTableRowActions`,__name:`index`,setup(r){return(r,i)=>(n(),t(`div`,a,[e(r.$slots,`default`,{},void 0,!0)]))}}),[[`__scopeId`,`data-v-63736961`]]);export{o as t};

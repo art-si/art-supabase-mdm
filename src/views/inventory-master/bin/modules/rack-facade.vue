@@ -33,7 +33,7 @@
         plain
         @click="emit('editShelf')"
       >
-        <ArtSvgIcon icon="ri:edit-line" class="mr-1" aria-hidden="true" />
+        <ArtSvgIcon icon="ri:edit-line" aria-hidden="true" />
         编辑货架
       </ElButton>
     </header>

@@ -22,7 +22,7 @@
         :pagination="pagination"
         row-key="id"
         table-layout="fixed"
-        scrollbar-always-on
+        :scrollbar-always-on="false"
         :max-height="480"
         @pagination:current-change="changePage"
         @pagination:size-change="changeSize"

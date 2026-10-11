@@ -70,7 +70,9 @@
                 :class="{ 'is-active': !selectedCategoryId }"
                 @click="selectCategory()"
               >
-                <span><ArtSvgIcon icon="ri:folder-open-line" />全部文档</span>
+                <span class="art-icon-label"
+                  ><ArtSvgIcon icon="ri:folder-open-line" />全部文档</span
+                >
                 <strong>{{ overview.total }}</strong>
               </button>
               <ArtAsyncState
@@ -112,7 +114,7 @@
                   >
                     <template #default="{ data }">
                       <span class="esop-page__tree-node">
-                        <span>
+                        <span class="art-icon-label">
                           <ArtSvgIcon
                             :icon="data.children?.length ? 'ri:folder-3-line' : 'ri:folder-line'"
                           />

@@ -60,7 +60,7 @@
           row-key="id"
           :pagination="false"
           table-layout="fixed"
-          scrollbar-always-on
+          :scrollbar-always-on="false"
           :max-height="360"
           empty-text="暂无 BOM 组件"
           empty-description="当前 BOM 尚未维护组件明细。"

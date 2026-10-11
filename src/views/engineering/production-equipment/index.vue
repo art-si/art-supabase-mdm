@@ -49,7 +49,7 @@
                 :class="{ 'is-active': !activeScopeId }"
                 @click="clearScope"
               >
-                <span><ArtSvgIcon icon="ri:apps-2-line" />全部设备</span>
+                <span class="art-icon-label"><ArtSvgIcon icon="ri:apps-2-line" />全部设备</span>
                 <strong>{{ overview.total }}</strong>
               </button>
               <ArtAsyncState

@@ -206,7 +206,7 @@
               row-key="nodeId"
               table-layout="fixed"
               :pagination="false"
-              scrollbar-always-on
+              :scrollbar-always-on="false"
               :empty-text="tableEmptyText"
               :empty-description="tableEmptyDescription"
             />

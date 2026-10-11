@@ -66,7 +66,7 @@
         </template>
 
         <div class="code-rule-dialog__preview" aria-live="polite">
-          <span><ArtSvgIcon icon="ri:eye-line" />编码示例</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:eye-line" />编码示例</span>
           <strong>{{ preview || '请选择编码属性' }}</strong>
           <small>{{ preview.length }} 位</small>
         </div>

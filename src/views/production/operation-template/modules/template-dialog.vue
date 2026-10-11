@@ -39,7 +39,9 @@
           </ElButton>
         </template>
         <div class="template-editor__summary">
-          <span><ArtSvgIcon icon="ri:list-check-3" />完成每个任务项后累计模板分数</span>
+          <span class="art-icon-label"
+            ><ArtSvgIcon icon="ri:list-check-3" />完成每个任务项后累计模板分数</span
+          >
           <strong
             >总记分 <b>{{ total }}</b></strong
           >

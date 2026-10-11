@@ -359,7 +359,7 @@
         label: '复制',
         icon: 'ri:file-copy-line',
         permission: 'MdmDocumentType:Copy',
-        selectionRequired: false,
+        selectionRequired: true,
         disabled: ({ selectedCount }: ArtTableQueryHeaderActionContext) => selectedCount !== 1,
         onClick: ({ selectedRows }) => openDialog('copy', selectedRows[0] as DocumentTypeRecord)
       },

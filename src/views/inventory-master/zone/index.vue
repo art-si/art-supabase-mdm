@@ -93,7 +93,7 @@
                 "
                 @click="openZoneDialog()"
               >
-                <ArtSvgIcon icon="ri:add-line" class="mr-1" aria-hidden="true" />
+                <ArtSvgIcon icon="ri:add-line" aria-hidden="true" />
                 新增库区
               </ElButton>
             </div>

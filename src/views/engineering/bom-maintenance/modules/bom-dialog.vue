@@ -141,7 +141,7 @@
           row-key="componentMaterialId"
           :pagination="false"
           table-layout="fixed"
-          scrollbar-always-on
+          :scrollbar-always-on="false"
           :max-height="360"
           empty-text="暂无 BOM 组件"
           empty-description="组件为选填，可直接保存；后续可通过“参选物料”补充装配关系。"

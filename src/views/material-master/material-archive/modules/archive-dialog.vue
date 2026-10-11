@@ -103,7 +103,7 @@
                 aria-label="自动生成的物料描述"
               />
               <div class="material-archive-dialog__description-rule">
-                <span><ArtSvgIcon icon="ri:magic-line" />分类描述规则</span>
+                <span class="art-icon-label"><ArtSvgIcon icon="ri:magic-line" />分类描述规则</span>
                 <template v-if="descriptionRuleLabels.length">
                   <ElTag
                     v-for="(label, index) in descriptionRuleLabels"

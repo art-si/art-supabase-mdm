@@ -13,7 +13,7 @@
       <template #shifts>
         <div class="pattern-dialog__shifts">
           <div class="pattern-dialog__summary">
-            <span
+            <span class="art-icon-label"
               ><ArtSvgIcon icon="ri:time-line" />已配置 {{ form.model.shifts.length }} 个班次</span
             >
             <strong>日生产时长 {{ totalWorkMinutes }} 分钟</strong>
