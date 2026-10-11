@@ -76,6 +76,8 @@
     <RouteDialog ref="routeDialog" @success="refresh" />
     <StepsDialog ref="stepsDialog" />
     <GroupDialog ref="groupDialog" @success="handleGroupSaved" />
+    <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
+    <MasterDataDeleteGuard ref="routeDeleteGuardRef" />
   </div>
 </template>
 <script setup lang="tsx">
@@ -98,7 +100,11 @@
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import type { BusinessWorkspaceMetric } from '@/components/business/business-workspace-header/index.vue'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
+  import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -107,8 +113,10 @@
   import TreeUtils from '@/utils/tree'
   import {
     fetchProcessRoutes,
+    fetchProcessRouteById,
     copyProcessRoute,
     deleteProcessRoute,
+    fetchProcessRouteOwnedDeleteDependencies,
     importProcessRoutes,
     fetchMasterGroups,
     deleteMasterGroup,
@@ -135,7 +143,49 @@
     'MdmProcessRoute:ManageGroup'
   ] as const
   void declaredPermissions
-  const { confirmAction, promptText } = useArtFeedback()
+  const { promptText } = useArtFeedback()
+  const { hasAuth } = useAuth()
+  const { deleteGuardRef: groupDeleteGuardRef, deleteRecords: deleteGroups } = useRecordDeleteGuard(
+    'mdm_master_group',
+    '工艺路线分组',
+    {
+      mdm_master_group: {
+        label: '下级工艺路线分组',
+        routeName: 'MdmProcessRoute',
+        actionLabel: '查看分组',
+        canNavigate: () => hasAuth('MdmProcessRoute:View')
+      },
+      mdm_process_route: {
+        label: '工艺路线',
+        routeName: 'MdmProcessRoute',
+        actionLabel: '查看路线',
+        canNavigate: () => hasAuth('MdmProcessRoute:View')
+      }
+    }
+  )
+  const {
+    deleteGuardRef: routeDeleteGuardRef,
+    deleteRecord: deleteRoute,
+    deleteBusy: routeDeleteBusy
+  } = useRecordDeleteGuard(
+    'mdm_process_route',
+    '工艺路线',
+    {
+      mdm_process_route_sequence: {
+        routeName: 'MdmProcessRoute',
+        actionLabel: '查看所属路线',
+        canNavigate: () => hasAuth('MdmProcessRoute:View'),
+        routeQuery: (record) => ({ routeId: record.resourceId })
+      },
+      mdm_process_route_step: {
+        routeName: 'MdmProcessRoute',
+        actionLabel: '查看所属路线',
+        canNavigate: () => hasAuth('MdmProcessRoute:View'),
+        routeQuery: (record) => ({ routeId: record.resourceId })
+      }
+    },
+    (context) => fetchProcessRouteOwnedDeleteDependencies(context.ids)
+  )
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
@@ -374,7 +424,8 @@
                 label: '删除',
                 icon: 'ri:delete-bin-6-line',
                 color: 'var(--el-color-danger)',
-                auth: 'MdmProcessRoute:Delete'
+                auth: 'MdmProcessRoute:Delete',
+                disabled: routeDeleteBusy.value
               }
             ]}
             onClick={(item) => handleMore(r, String(item.key))}
@@ -384,15 +435,20 @@
     }
   ]
   async function remove(row: ProcessRoute) {
-    try {
-      await confirmAction('确认删除路线及其全部工序和模板绑定？', '删除工艺路线', {
-        type: 'warning'
-      })
-      await deleteProcessRoute(row.id)
-      await refresh()
-    } catch {
-      /* API owns feedback. */
-    }
+    await deleteRoute({
+      resource: { id: row.id, label: `${row.code} · ${row.name}` },
+      permission: 'MdmProcessRoute:Delete',
+      remove: () =>
+        deleteProcessRoute(row.id, {
+          showMessage: false,
+          showErrorMessage: false,
+          showReferenceFeedback: false
+        }),
+      onDeleted: async () => {
+        ElMessage.success('工艺路线已删除')
+        await refresh()
+      }
+    })
   }
   async function copyRoute(row: ProcessRoute) {
     try {
@@ -539,16 +595,84 @@
     })
   }
   async function removeGroup(row: MasterGroup) {
+    const resource = { id: row.id, label: `${row.name} · ${row.code}` }
+    await deleteGroups({
+      resources: [resource],
+      permission: 'MdmProcessRoute:ManageGroup',
+      remove: () =>
+        deleteMasterGroup(resource.id, {
+          showMessage: false,
+          showErrorMessage: false,
+          showReferenceFeedback: false
+        }),
+      onDeleted: async () => {
+        ElMessage.success('工艺路线分组已删除')
+        if (groupState.selectedId === resource.id) groupState.selectedId = ''
+        await loadGroups()
+        await refresh()
+      }
+    })
+  }
+  let routeNavigationRequest = 0
+  async function locateReferencedRoute(id: string) {
+    const request = ++routeNavigationRequest
+    const assertScope = createTenantScopeReadGuard()
+    if (!hasAuth('MdmProcessRoute:View')) return
     try {
-      await confirmAction(`确认删除路线分组“${row.name}”？`, '删除路线分组', { type: 'warning' })
-      await deleteMasterGroup(row.id)
-      if (groupState.selectedId === row.id) groupState.selectedId = ''
-      await loadGroups()
+      const row = await fetchProcessRouteById(id)
+      assertScope()
+      if (request !== routeNavigationRequest) return
+      if (!hasAuth('MdmProcessRoute:View')) {
+        ElMessage.warning('查看权限已变化，请刷新页面后重试')
+        return
+      }
+      if (!row) {
+        ElMessage.warning('所属路线已不存在或当前账号无权查看，请重新检查关联')
+        return
+      }
+      groupState.selectedId = ''
+      Object.assign(search, { keyword: row.code, enabled: undefined })
       await refresh()
-    } catch {
-      /* API owns feedback. */
+    } catch (error) {
+      notifyFriendlyError(error, '所属路线定位失败，请重试')
     }
   }
+  const navigationRoute = useRoute()
+  watch(
+    () => navigationRoute.query,
+    (query) => {
+      routeNavigationRequest++
+      if (query.fromMasterDelete !== '1') return
+      if (
+        typeof query.routeId === 'string' &&
+        ['mdm_process_route_sequence', 'mdm_process_route_step'].includes(
+          String(query.dependencyCode)
+        )
+      ) {
+        void locateReferencedRoute(query.routeId)
+        return
+      }
+    },
+    { immediate: true }
+  )
+  watch(
+    [() => navigationRoute.query, () => groupState.rows],
+    ([query]) => {
+      if (query.fromMasterDelete !== '1') return
+      if (query.dependencyCode === 'mdm_master_group' && typeof query.recordId === 'string') {
+        if (groupState.rows.some((group) => group.id === query.recordId))
+          selectGroup(query.recordId)
+      } else if (
+        query.dependencyCode === 'mdm_process_route' &&
+        typeof query.recordNo === 'string'
+      ) {
+        groupState.selectedId = ''
+        Object.assign(search, { keyword: query.recordNo, enabled: undefined })
+        void refresh()
+      }
+    },
+    { immediate: true }
+  )
   async function handleGroupSaved() {
     await loadGroups()
     await refresh()

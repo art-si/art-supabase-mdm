@@ -69,14 +69,14 @@
     {
       key: 'reversal',
       label: '冲销标志',
-      value: (row: MovementTypeRecord) => String(row.reversal),
+      value: (row: MovementTypeRecord) => String(row.reversal ?? ''),
       dictCode: 'commonBoolean',
       dictDisplay: 'text'
     },
     {
       key: 'otherIo',
       label: '其他出入库',
-      value: (row: MovementTypeRecord) => String(row.otherIo),
+      value: (row: MovementTypeRecord) => String(row.otherIo ?? ''),
       dictCode: 'commonBoolean',
       dictDisplay: 'text'
     },

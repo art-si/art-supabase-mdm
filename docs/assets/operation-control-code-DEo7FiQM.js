@@ -1,0 +1,1 @@
+import{Cr as e,Xr as t,jr as n}from"./supabase-CH7imMya.js";import{t as r}from"./operational-master-CwHU-f07.js";var i=n({name:`MdmOperationControlCode`,__name:`index`,setup(n){return(n,i)=>(t(),e(r))}});export{i as default};

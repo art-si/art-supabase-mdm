@@ -73,25 +73,10 @@
               <strong :title="data.name">{{ data.name }}</strong>
               <small>{{ data.code }}</small>
             </span>
-            <span class="bom-group-panel__node-actions">
-              <ArtIconButton
-                v-auth="'MdmBomMaintenance:ManageGroup'"
-                icon="ri:add-line"
-                label="新增下级分组"
-                @click.stop="$emit('add', data)"
-              />
-              <ArtIconButton
-                v-auth="'MdmBomMaintenance:ManageGroup'"
-                icon="ri:edit-line"
-                label="编辑分组"
-                @click.stop="$emit('edit', data)"
-              />
-              <ArtIconButton
-                v-auth="'MdmBomMaintenance:ManageGroup'"
-                icon="ri:delete-bin-6-line"
-                label="删除分组"
-                tone="danger"
-                @click.stop="$emit('remove', data)"
+            <span class="bom-group-panel__node-actions" @click.stop>
+              <ArtButtonMore
+                :list="groupActions"
+                @click="(item) => handleGroupAction(item, data)"
               />
             </span>
           </div>
@@ -114,6 +99,9 @@
   import type { ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -124,14 +112,37 @@
     selectedId: string
     loading: boolean
     error: Error | null
+    deleteBusy?: boolean
   }>()
-  defineEmits<{
+  const emit = defineEmits<{
     select: [group?: BomGroup]
     refresh: []
     add: [parent?: BomGroup]
     edit: [row: BomGroup]
     remove: [row: BomGroup]
   }>()
+  const groupActions = computed<ButtonMoreItem[]>(() => [
+    {
+      key: 'add',
+      label: '新增下级分组',
+      icon: 'ri:add-line',
+      auth: 'MdmBomMaintenance:ManageGroup'
+    },
+    { key: 'edit', label: '编辑分组', icon: 'ri:edit-line', auth: 'MdmBomMaintenance:ManageGroup' },
+    {
+      key: 'delete',
+      label: '删除分组',
+      icon: 'ri:delete-bin-6-line',
+      color: 'var(--el-color-danger)',
+      auth: 'MdmBomMaintenance:ManageGroup',
+      disabled: props.deleteBusy
+    }
+  ])
+  const handleGroupAction = (item: ButtonMoreItem, group: BomGroup) => {
+    if (item.key === 'add') emit('add', group)
+    else if (item.key === 'edit') emit('edit', group)
+    else if (item.key === 'delete') emit('remove', group)
+  }
 
   const keyword = ref('')
   const treeRef = ref<InstanceType<typeof ElTree>>()
@@ -154,6 +165,13 @@
     async (id) => {
       await nextTick()
       treeRef.value?.setCurrentKey(id || undefined)
+      if (id) {
+        let parent = treeRef.value?.getNode(id)?.parent
+        while (parent) {
+          parent.expanded = true
+          parent = parent.parent
+        }
+      }
     },
     { immediate: true }
   )

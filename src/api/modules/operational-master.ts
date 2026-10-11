@@ -1,4 +1,5 @@
-import { useSupabase } from '@/hooks/core/useSupabase'
+import { useSupabase, type RunQueryOptions } from '@/hooks/core/useSupabase'
+import { uniq } from 'lodash-es'
 export { fetchMasterGroups } from '@/api/master-groups'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
@@ -79,6 +80,7 @@ const readOptions = {
   showErrorMessage: true,
   errorMessage: '主数据加载失败，请重试'
 }
+export const operationalMasterTable = (kind: OperationalMasterKind): string => resources[kind].table
 const writeOptions = {
   breakReturn: true,
   showErrorMessage: true,
@@ -153,12 +155,26 @@ export async function importOperationalMasters(
   )
 }
 
-export async function deleteOperationalMasters(kind: OperationalMasterKind, ids: string[]) {
+export async function deleteOperationalMasters(
+  kind: OperationalMasterKind,
+  ids: string[],
+  options: Pick<RunQueryOptions, 'showMessage' | 'showErrorMessage' | 'showReferenceFeedback'> = {}
+): Promise<void> {
+  const targets = uniq(ids.filter(Boolean))
+  if (!targets.length) throw new Error('请选择需要删除的主数据')
   const definition = resources[kind]
-  await responseHandle(
-    () => supabase.from(definition.table).delete({ count: 'exact' }).in('id', ids).select('id'),
-    { ...writeOptions, message: '删除成功', errorMessage: '删除失败，请先解除业务引用' }
+  const { total } = await responseHandle(
+    () => supabase.from(definition.table).delete({ count: 'exact' }).in('id', targets).select('id'),
+    {
+      ...writeOptions,
+      ...options,
+      showMessage: false,
+      noAffectedMessage: '主数据未删除，请刷新后核对当前权限和记录状态',
+      errorMessage: '删除失败，请先解除业务引用'
+    }
   )
+  if (total !== targets.length) throw new Error('删除结果不完整，请刷新后核对实际删除记录')
+  if (options.showMessage !== false) ElMessage.success('删除成功')
 }
 
 export async function fetchActivityFormulaParameters(
@@ -227,11 +243,22 @@ export async function saveMasterGroup(input: MasterGroupInput, id?: string) {
   )
 }
 
-export async function deleteMasterGroup(id: string) {
-  await responseHandle(
+export async function deleteMasterGroup(
+  id: string,
+  options: Pick<RunQueryOptions, 'showMessage' | 'showErrorMessage' | 'showReferenceFeedback'> = {}
+): Promise<void> {
+  const { total } = await responseHandle(
     () => supabase.from('mdm_master_group').delete({ count: 'exact' }).eq('id', id).select('id'),
-    { ...writeOptions, message: '分组已删除', errorMessage: '分组仍有下级或主数据引用，无法删除' }
+    {
+      ...writeOptions,
+      ...options,
+      showMessage: false,
+      noAffectedMessage: '分组未删除，请刷新后核对当前权限和记录状态',
+      errorMessage: '分组仍有下级或主数据引用，无法删除'
+    }
   )
+  if (total !== 1) throw new Error('分组删除结果不完整，请刷新后核对记录状态')
+  if (options.showMessage !== false) ElMessage.success('分组已删除')
 }
 
 async function fetchReference(

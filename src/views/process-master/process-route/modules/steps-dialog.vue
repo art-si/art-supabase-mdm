@@ -874,7 +874,7 @@
             dict: {
               code: 'commonBoolean',
               display: 'text' as const,
-              value: (row: ActivityRow) => String(row.backflush)
+              value: (row: ActivityRow) => String(row.backflush ?? '')
             }
           }
         : {

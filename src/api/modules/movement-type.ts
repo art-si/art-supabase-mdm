@@ -127,6 +127,12 @@ export async function saveMovementType(payload: MovementTypeInput, id?: string):
 export async function deleteMovementTypes(ids: string[]): Promise<void> {
   await responseHandle(
     () => supabase.rpc('mdm_delete_stock_movement_types_secure', { p_ids: ids }),
-    { ...writeOptions, message: '出入库类型已删除' }
+    {
+      ...writeOptions,
+      showErrorMessage: false,
+      requireAffected: true,
+      noAffectedMessage: '所选出入库类型未删除，请刷新列表核对权限和数据状态后重试',
+      message: '出入库类型已删除'
+    }
   )
 }

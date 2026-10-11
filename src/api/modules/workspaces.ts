@@ -1,4 +1,5 @@
-import { useSupabase } from '@/hooks/core/useSupabase'
+import type { RecordDeleteDependency } from '@/api/master-data-delete'
+import { useSupabase, type RunQueryOptions } from '@/hooks/core/useSupabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import {
@@ -396,10 +397,30 @@ export async function saveWorkstation(input: WorkstationInput, id?: string) {
 }
 
 export async function deleteWorkstations(ids: string[]) {
-  await responseHandle(
-    () => supabase.from('mdm_workstation').delete({ count: 'exact' }).in('id', ids).select('id'),
-    { ...write, message: '工位已删除', errorMessage: '删除失败，请先解除工位的业务引用' }
+  const targets = uniq(ids)
+  if (!targets.length || targets.some((id) => !id.trim())) {
+    throw new Error('请选择有效工位后重试')
+  }
+  const { data } = await responseHandle<number>(
+    () =>
+      supabase
+        .from('mdm_workstation')
+        .delete({ count: 'exact' })
+        .in('id', targets)
+        .then((result) => ({ ...result, data: result.count })),
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      requireAffected: true,
+      noAffectedMessage: '所选工位未删除，请刷新列表核对权限和记录状态后重试',
+      errorMessage: '删除失败，请先解除工位的业务引用'
+    }
   )
+  if (data !== targets.length) {
+    throw new Error('删除数量与所选工位不一致，请刷新列表核对权限和记录状态后重试')
+  }
 }
 export async function fetchCenterAdjustments(centerId: string) {
   const { data } = await responseHandle<Omit<CenterAdjustment, 'person'>[]>(
@@ -703,11 +724,78 @@ export async function saveProcessRoutes(inputs: ProcessRouteInput[]) {
     { ...write, message: `已创建 ${inputs.length} 条工艺路线` }
   )
 }
-export async function deleteProcessRoute(id: string) {
-  await responseHandle(
-    () => supabase.from('mdm_process_route').delete().eq('id', id).select('id'),
-    write
+export async function fetchProcessRouteById(id: string): Promise<ProcessRoute | null> {
+  const { data } = await responseHandle<ProcessRoute>(
+    () => supabase.from('mdm_process_route').select('*').eq('id', id).maybeSingle(),
+    read
   )
+  return data ?? null
+}
+
+/** Include CASCADE-owned configuration so root deletion cannot silently remove it. */
+export async function fetchProcessRouteOwnedDeleteDependencies(
+  ids: string[]
+): Promise<RecordDeleteDependency[]> {
+  const targets = uniq(ids.filter(Boolean))
+  if (!targets.length) throw new Error('请选择需要校验的工艺路线')
+  const tables = ['mdm_process_route_sequence', 'mdm_process_route_step'] as const
+  const results = await Promise.all(
+    tables.map(async (table) => {
+      const { data, error } = await fetchAllRangePages<{
+        id: string
+        routeId: string
+        code?: string
+        name?: string
+        sequenceNo?: number
+        createdAt: string | null
+      }>(({ from, to }) =>
+        responseHandle(
+          () =>
+            supabase
+              .from(table)
+              .select(
+                table === 'mdm_process_route_step'
+                  ? 'id,routeId:route_id,code,name,createdAt:create_time'
+                  : 'id,routeId:route_id,sequenceNo:sequence_no,createdAt:create_time'
+              )
+              .in('route_id', targets)
+              .order('id')
+              .range(from, to),
+          { ...read, errorMessage: '工艺路线子记录检查失败，请重试' }
+        )
+      )
+      if (error || !data) throw new Error('工艺路线子记录检查失败，请重试', { cause: error })
+      return data.map((row): RecordDeleteDependency => ({
+        resourceId: row.routeId,
+        sourceTable: table,
+        recordId: row.id,
+        targetId: row.id,
+        recordNo: row.code || `序列 ${row.sequenceNo ?? '待核对'}`,
+        recordSummary: row.name || '路线序列配置',
+        recordStatus: '需核对配置',
+        createdAt: row.createdAt
+      }))
+    })
+  )
+  return results.flat()
+}
+
+export async function deleteProcessRoute(
+  id: string,
+  options: Pick<RunQueryOptions, 'showMessage' | 'showErrorMessage' | 'showReferenceFeedback'> = {}
+) {
+  if (!id) throw new Error('请选择需要删除的工艺路线')
+  const { total } = await responseHandle(
+    () => supabase.from('mdm_process_route').delete({ count: 'exact' }).eq('id', id).select('id'),
+    {
+      ...write,
+      ...options,
+      showMessage: false,
+      noAffectedMessage: '工艺路线未删除，请刷新核对权限和状态'
+    }
+  )
+  if (total !== 1) throw new Error('工艺路线未完整删除，请刷新核对权限和状态')
+  if (options.showMessage !== false) ElMessage.success('工艺路线已删除')
 }
 export async function importProcessRoutes(inputs: ProcessRouteInput[]) {
   await responseHandle(

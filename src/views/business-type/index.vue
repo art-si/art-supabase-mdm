@@ -101,7 +101,6 @@
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
-  import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric,
@@ -116,7 +115,6 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -205,12 +203,10 @@
   const { effectiveTenantId, isAllTenants, scopeLabel, tenantOptions } =
     storeToRefs(tenantScopeStore)
   const { hasAuth, hasAnyAuth } = useAuth()
-  const { confirmDelete } = useArtFeedback()
-  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
     'mdm_business_type',
     '业务类型'
   )
-  const deleteBusy = ref(false)
   const canManage = computed(() =>
     hasAnyAuth([
       'MdmBusinessType:Add',
@@ -546,7 +542,7 @@
       formatter: (row) => (
         <ArtDictDisplay
           dictCode="commonBoolean"
-          value={String(row.inventoryAccounting)}
+          value={String(row.inventoryAccounting ?? '')}
           display="tag"
         />
       )
@@ -586,7 +582,11 @@
       label: '默认类型',
       width: 96,
       formatter: (row) => (
-        <ArtDictDisplay dictCode="commonBoolean" value={String(row.isDefault)} display="tag" />
+        <ArtDictDisplay
+          dictCode="commonBoolean"
+          value={String(row.isDefault ?? '')}
+          display="tag"
+        />
       )
     },
     { prop: 'sortOrder', label: '排序', width: 82, sortable: true },
@@ -595,7 +595,7 @@
       label: '状态',
       width: 88,
       formatter: (row) => (
-        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled ?? '')} display="tag" />
       )
     },
     { prop: 'remark', label: '备注', minWidth: 190 },
@@ -665,39 +665,20 @@
   }
 
   const removeRows = async (rows: BusinessTypeRecord[]): Promise<void> => {
-    if (deleteBusy.value || !rows.length) return
-    if (!hasAuth('MdmBusinessType:Delete') || rows.some((row) => !row.id)) {
-      ElMessage.error('当前账号无权删除所选业务类型，或记录已变化，请刷新后重试')
-      return
-    }
     const resources = rows.map((row) => ({
       id: row.id,
       label: `${row.businessTypeName} · ${row.businessTypeCode}`
     }))
-    deleteBusy.value = true
-    try {
-      if (await inspectDeleteReferences(resources)) return
-      await confirmDelete(
-        rows.length === 1
-          ? `确定删除业务类型“${resources[0].label}”吗？`
-          : `确定删除选中的 ${rows.length} 条业务类型吗？`
-      )
-      try {
-        await deleteBusinessTypes(resources.map((row) => row.id))
-      } catch (error) {
-        if (error instanceof DeleteReferenceBlockedError) return
-        if (await inspectDeleteReferences(resources)) return
-        throw error
-      }
-      ElMessage.success(`已删除 ${rows.length} 条业务类型`)
-      tableRef.value?.clearSelection()
-      await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
-    } catch (error) {
-      if (error !== 'cancel' && error !== 'close')
-        notifyFriendlyError(error, '业务类型删除失败，请检查网络后重试')
-    } finally {
-      deleteBusy.value = false
-    }
+    await deleteRecords({
+      resources,
+      permission: 'MdmBusinessType:Delete',
+      remove: () => deleteBusinessTypes(resources.map((row) => row.id)),
+      onDeleted: async () => {
+        ElMessage.success(`已删除 ${resources.length} 条业务类型`)
+        await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
+      },
+      failureMessage: '业务类型删除失败，请检查网络后重试'
+    })
   }
 
   const loadStats = async (): Promise<void> => {

@@ -1,0 +1,1 @@
+import{Cr as e,Xr as t,jr as n}from"./supabase-CH7imMya.js";import{t as r}from"./material-reference-DEgA2_9l.js";var i=n({name:`MdmUnitOfMeasure`,__name:`index`,setup(n){return(n,i)=>(t(),e(r))}});export{i as default};

@@ -72,6 +72,8 @@
       />
       <MasterDialog v-else ref="dialogRef" @success="handleSaved" />
       <GroupDialog ref="groupDialogRef" @success="handleGroupSaved" />
+      <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
+      <MasterDataDeleteGuard ref="recordDeleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -83,7 +85,9 @@
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
@@ -107,6 +111,7 @@
   import {
     deleteMasterGroup,
     deleteOperationalMasters,
+    operationalMasterTable,
     fetchMasterGroups,
     fetchOperationalMaster,
     fetchOperationalMasterReferences,
@@ -184,12 +189,35 @@
   const route = useRoute()
   const isDocumentTypeRoute = computed(() => route.path.endsWith('/document-type'))
   const isBusinessTypeRoute = computed(() => route.path.endsWith('/business-type'))
-  const { confirmDelete } = useArtFeedback()
   const userStore = useUserStore()
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   const config = computed(() => resolveMasterConfig(route.path))
+  const {
+    deleteGuardRef: recordDeleteGuardRef,
+    deleteBusy: recordDeleteBusy,
+    deleteRecords
+  } = useRecordDeleteGuard(
+    () => operationalMasterTable(config.value.kind),
+    () => config.value.title
+  )
+  const { hasAuth } = useAuth()
+  const groupNavigation = {
+    routeNames: ['MdmSalesCustomer', 'MdmSalesProject', 'MdmOperationSet'],
+    resolveRouteName: async () => config.value.routeName,
+    canNavigate: () => hasAuth(`${config.value.routeName}:View`)
+  }
+  const { deleteGuardRef: groupDeleteGuardRef, deleteRecords: deleteGroups } = useRecordDeleteGuard(
+    'mdm_master_group',
+    () => config.value.groupTitle || '主数据分组',
+    {
+      mdm_master_group: { ...groupNavigation, label: '下级分组', actionLabel: '查看分组' },
+      mdm_customer: { ...groupNavigation, label: '客户', actionLabel: '查看客户' },
+      mdm_project: { ...groupNavigation, label: '项目', actionLabel: '查看项目' },
+      mdm_operation: { ...groupNavigation, label: '工序', actionLabel: '查看工序' }
+    }
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<{ handleOpen: (data: MasterDialogOpenData) => Promise<void> }>()
   const activityFormulaDialogRef = ref<{
@@ -339,15 +367,15 @@
     selectionActions: computed<ArtTableQueryHeaderAction[]>(() => [
       {
         type: 'delete',
+        confirm: false,
+        disabled: () => recordDeleteBusy.value,
         permission: `${config.value.routeName}:Delete`,
         content: (context: ArtTableQueryHeaderActionContext) =>
           `确定删除选中的 ${context.selectedCount} 条${config.value.title}吗？`,
         onClick: async (context: ArtTableQueryHeaderActionContext) => {
-          await deleteOperationalMasters(
-            config.value.kind,
-            context.selectedRows.map((row) => String(row.id))
+          await removeRows(context.selectedRows as OperationalMasterRecord[], () =>
+            context.api.refreshRemove()
           )
-          await context.api.refreshRemove()
         }
       }
     ])
@@ -501,7 +529,8 @@
                   label: '删除',
                   icon: 'ri:delete-bin-6-line',
                   color: 'var(--el-color-danger)',
-                  auth: `${config.value.routeName}:Delete`
+                  auth: `${config.value.routeName}:Delete`,
+                  disabled: recordDeleteBusy.value
                 }
               ]}
               onClick={(item) =>
@@ -588,18 +617,74 @@
   }
 
   async function removeRow(row: OperationalMasterRecord): Promise<void> {
-    await confirmDelete(`确定删除“${displayValue(row, config.value.nameKey)}”吗？`)
-    await deleteOperationalMasters(config.value.kind, [row.id])
-    await tableRef.value?.refreshRemove()
+    await removeRows([row], () => tableRef.value?.refreshRemove())
+  }
+  async function removeRows(
+    rows: OperationalMasterRecord[],
+    onDeleted: () => unknown
+  ): Promise<void> {
+    const current = config.value
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${displayValue(row, current.nameKey)} · ${displayValue(row, current.codeKey)}`
+    }))
+    await deleteRecords({
+      resources,
+      permission: `${current.routeName}:Delete`,
+      remove: () =>
+        deleteOperationalMasters(
+          current.kind,
+          resources.map((row) => row.id),
+          {
+            showMessage: false,
+            showErrorMessage: false,
+            showReferenceFeedback: false
+          }
+        ),
+      onDeleted: async () => {
+        ElMessage.success(`${current.title}已删除`)
+        await onDeleted()
+      }
+    })
   }
 
   async function removeGroup(row: MasterGroup): Promise<void> {
-    await confirmDelete(`确定删除分组“${row.name}”吗？`)
-    await deleteMasterGroup(row.id)
-    if (groupState.selectedId === row.id) groupState.selectedId = ''
-    await loadGroups()
-    await tableRef.value?.refreshData()
+    const resource = { id: row.id, label: `${row.name} · ${row.code}` }
+    await deleteGroups({
+      resources: [resource],
+      permission: `${config.value.routeName}:ManageGroup`,
+      remove: () =>
+        deleteMasterGroup(resource.id, {
+          showMessage: false,
+          showErrorMessage: false,
+          showReferenceFeedback: false
+        }),
+      onDeleted: async () => {
+        ElMessage.success(`${config.value.groupTitle || '主数据分组'}已删除`)
+        if (groupState.selectedId === resource.id) groupState.selectedId = ''
+        await loadGroups()
+        await tableRef.value?.refreshData()
+      }
+    })
   }
+  watch(
+    [() => route.query, () => groupState.rows],
+    ([query]) => {
+      if (query.fromMasterDelete !== '1') return
+      if (query.dependencyCode === 'mdm_master_group' && typeof query.recordId === 'string') {
+        if (groupState.rows.some((group) => group.id === query.recordId))
+          selectGroup(query.recordId)
+      } else if (
+        ['mdm_customer', 'mdm_project', 'mdm_operation'].includes(String(query.dependencyCode)) &&
+        typeof query.recordNo === 'string'
+      ) {
+        groupState.selectedId = ''
+        Object.assign(table.search, { keyword: query.recordNo, enabled: undefined })
+        void tableRef.value?.getData()
+      }
+    },
+    { immediate: true }
+  )
 
   async function loadGroups(): Promise<void> {
     if (!config.value.groupDomain) {

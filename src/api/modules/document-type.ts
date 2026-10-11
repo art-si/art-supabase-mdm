@@ -5,7 +5,7 @@ import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import TreeUtils from '@/utils/tree'
-import { chunk } from 'lodash-es'
+import { chunk, uniq } from 'lodash-es'
 import type {
   DocumentTypeExportQuery,
   DocumentTypeExportRecord,
@@ -212,14 +212,29 @@ export async function copyDocumentType(sourceId: string, input: DocumentTypeUpda
 }
 
 export async function deleteDocumentTypes(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from('mdm_document_type').delete({ count: 'exact' }).in('id', ids).select('id'),
+  const targets = uniq(ids)
+  if (!targets.length || targets.some((id) => !id.trim())) {
+    throw new Error('请选择有效的单据类型后重试')
+  }
+  const { data } = await responseHandle<number>(
+    () =>
+      supabase
+        .from('mdm_document_type')
+        .delete({ count: 'exact' })
+        .in('id', targets)
+        .then((result) => ({ ...result, data: result.count })),
     {
       ...writeOptions,
-      message: ids.length > 1 ? `已删除 ${ids.length} 条单据类型` : '单据类型已删除',
+      showMessage: false,
+      showErrorMessage: false,
+      noAffectedMessage: '所选单据类型未删除，请刷新列表核对权限和记录状态后重试',
+      showReferenceFeedback: false,
       errorMessage: '删除失败，请先解除业务单据对该类型的引用'
     }
   )
+  if (data !== targets.length) {
+    throw new Error('删除数量与所选单据类型不一致，请刷新列表核对权限和记录状态后重试')
+  }
 }
 
 export async function fetchDocumentTypeBusinessReferenceStatuses(

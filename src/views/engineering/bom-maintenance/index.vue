@@ -26,6 +26,7 @@
           :selected-id="selectedGroupId"
           :loading="groupLoading"
           :error="groupError"
+          :delete-busy="groupDeleteBusy"
           @select="selectGroup"
           @refresh="loadGroups"
           @add="openGroupDialog"
@@ -57,6 +58,7 @@
       <BomGroupDialog ref="groupDialogRef" @success="handleGroupSaved" />
       <BomDetailDialog ref="detailDialogRef" />
       <MasterDataDeleteGuard ref="deleteGuardRef" />
+      <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -69,9 +71,10 @@
   import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
   import { replaceReactiveModel } from '@/utils/form/model'
   import MasterDataDeleteGuard, {
-    type MasterDataDeleteGuardOpenOptions
+    type MasterDataDeleteGuardOpenOptions,
+    type MasterDataDeleteResource
   } from '@/components/business/master-data-delete-guard/index.vue'
-  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import type { ColumnOption } from '@/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -139,7 +142,9 @@
   const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   const route = useRoute()
   const targetBomId = computed(() =>
-    route.query.fromMasterDelete === '1' && typeof route.query.recordId === 'string'
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode !== 'mdm_master_group' &&
+    typeof route.query.recordId === 'string'
       ? route.query.recordId
       : ''
   )
@@ -147,8 +152,31 @@
   const dialogRef = ref<InstanceType<typeof BomDialog>>()
   const groupDialogRef = ref<InstanceType<typeof BomGroupDialog>>()
   const detailDialogRef = ref<InstanceType<typeof BomDetailDialog>>()
-  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
-  const deleteBusy = ref(false)
+  const { deleteGuardRef, deleteBusy, deleteRecords } = useRecordDeleteGuard('mdm_bom', 'BOM')
+  const {
+    deleteGuardRef: groupDeleteGuardRef,
+    deleteBusy: groupDeleteBusy,
+    deleteRecords: deleteGroups
+  } = useRecordDeleteGuard('mdm_master_group', 'BOM 分组', {
+    mdm_master_group: {
+      label: '下级 BOM 分组',
+      routeName: 'MdmBomMaintenance',
+      actionLabel: '查看分组',
+      canNavigate: () => hasAuth('MdmBomMaintenance:View')
+    },
+    mdm_bom: {
+      routeName: 'MdmBomMaintenance',
+      actionLabel: '查看 BOM',
+      canNavigate: () => hasAuth('MdmBomMaintenance:View')
+    }
+  })
+  const targetGroupId = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode === 'mdm_master_group' &&
+    typeof route.query.recordId === 'string'
+      ? route.query.recordId
+      : ''
+  )
   const units = ref<UnitOfMeasure[]>([])
   const {
     detail: loadedGroups,
@@ -263,13 +291,18 @@
     refresh()
   }
   const removeGroup = async (row: BomGroup) => {
-    await confirmAction(`确定删除 BOM 分组“${row.name}”吗？`, '删除 BOM 分组', {
-      type: 'warning'
+    const resource = { id: row.id, label: `${row.name} · ${row.code}` }
+    await deleteGroups({
+      resources: [resource],
+      permission: 'MdmBomMaintenance:ManageGroup',
+      remove: () => deleteBomGroup(resource.id),
+      onDeleted: async () => {
+        ElMessage.success('BOM 分组已删除')
+        if (selectedGroupId.value === resource.id) selectedGroupId.value = ''
+        await loadGroups()
+        refresh()
+      }
     })
-    await deleteBomGroup(row.id)
-    if (selectedGroupId.value === row.id) selectedGroupId.value = ''
-    await loadGroups()
-    refresh()
   }
   const descendantIds = (id: string) =>
     groupTreeUtils.getDescendants(groupTree.value, id, true).map((group) => group.id)
@@ -342,10 +375,10 @@
       }
     }
   ]
-  const inspectBomReferences = (rows: Array<Pick<BomRecord, 'id' | 'bomCode'>>) => {
+  const inspectBomReferences = (resources: MasterDataDeleteResource[]) => {
     const options: MasterDataDeleteGuardOpenOptions = {
       resourceLabel: 'BOM',
-      resources: rows.map((row) => ({ id: row.id, label: row.bomCode })),
+      resources,
       navigationResource: { type: 'bom', queryKey: 'bomId' },
       dependencyMeta: {
         bom_accessory_processing_list: {
@@ -365,41 +398,36 @@
         return fetchBomDeleteDependencies(ids)
       }
     }
-    return deleteGuardRef.value?.inspect(options) ?? Promise.resolve(true)
+    if (!deleteGuardRef.value) {
+      ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
+      return Promise.resolve(true)
+    }
+    return deleteGuardRef.value.inspect(options)
   }
   const removeBoms = async (rows: Array<Pick<BomRecord, 'id' | 'bomCode'>>): Promise<void> => {
-    if (deleteBusy.value || !rows.length) return
-    deleteBusy.value = true
-    try {
-      if (await inspectBomReferences(rows)) return
-      await confirmAction(
-        rows.length === 1
-          ? `确定删除 BOM“${rows[0].bomCode}”及其全部组件吗？删除后无法恢复。`
-          : `确定删除选中的 ${rows.length} 个设计状态 BOM 及其全部组件吗？删除后无法恢复。`,
-        rows.length === 1 ? '删除 BOM' : '批量删除 BOM'
-      )
-      try {
-        if (rows.length === 1) await deleteBom(rows[0].id, { showErrorMessage: false })
-        else
-          await deleteBoms(
-            rows.map((row) => row.id),
-            { showErrorMessage: false }
-          )
-      } catch (cause) {
-        // References can be added after preflight; re-read before reporting the server failure.
-        if (!(await inspectBomReferences(rows))) {
-          ElMessage.error(getFriendlySupabaseErrorMessage(cause, 'BOM 删除失败，请刷新列表后重试'))
-        }
-        return
+    const resources = rows.map((row) => ({ id: row.id, label: row.bomCode }))
+    await deleteRecords({
+      resources,
+      permission: 'MdmBomMaintenance:Delete',
+      inspectReferences: inspectBomReferences,
+      confirmMessage:
+        resources.length === 1
+          ? `确定删除 BOM“${resources[0].label}”及其全部组件吗？删除后无法恢复。`
+          : `确定删除选中的 ${resources.length} 个设计状态 BOM 及其全部组件吗？删除后无法恢复。`,
+      remove: () =>
+        resources.length === 1
+          ? deleteBom(resources[0].id, { showErrorMessage: false, showMessage: false })
+          : deleteBoms(
+              resources.map((row) => row.id),
+              { showErrorMessage: false, showMessage: false }
+            ),
+      onDeleted: async () => {
+        ElMessage.success(
+          resources.length === 1 ? 'BOM 已删除' : `已删除 ${resources.length} 个 BOM`
+        )
+        await tableRef.value?.refreshRemove()
       }
-      await tableRef.value?.refreshRemove()
-    } catch (cause) {
-      if (cause !== 'cancel' && cause !== 'close') {
-        ElMessage.error(getFriendlySupabaseErrorMessage(cause, 'BOM 删除失败，请重试'))
-      }
-    } finally {
-      deleteBusy.value = false
-    }
+    })
   }
   const identity = (row: BomRecord) => (
     <div class="bom-maintenance-page__identity">
@@ -648,6 +676,16 @@
     Object.assign(search, { keyword: '', purpose: undefined, status: undefined })
     void tableRef.value?.refreshCreate()
   })
+  watch(
+    [targetGroupId, groups],
+    ([id, records]) => {
+      if (id && records.some((group) => group.id === id)) {
+        selectedGroupId.value = id
+        refresh()
+      }
+    },
+    { immediate: true }
+  )
 </script>
 
 <style scoped lang="scss">

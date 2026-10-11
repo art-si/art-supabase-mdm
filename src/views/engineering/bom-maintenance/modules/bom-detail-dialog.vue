@@ -225,7 +225,7 @@
       dict: {
         code: 'commonBoolean',
         display: 'text',
-        value: (row) => String(row.mrpEnabled)
+        value: (row) => String(row.mrpEnabled ?? '')
       }
     },
     {

@@ -99,11 +99,9 @@
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useAuth } from '@/hooks/core/useAuth'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
-  import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -128,13 +126,10 @@
 
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
-  const { confirmDelete } = useArtFeedback()
-  const { hasAuth } = useAuth()
-  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
     'mdm_workstation',
     '工位'
   )
-  const deleteBusy = ref(false)
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof WorkstationDialog>>()
 
@@ -322,7 +317,7 @@
       width: 112,
       align: 'center',
       formatter: (row) => (
-        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled ?? '')} display="tag" />
       )
     },
     {
@@ -425,38 +420,19 @@
   }
 
   async function removeRows(rows: Workstation[]): Promise<void> {
-    if (deleteBusy.value || !rows.length) return
-    if (!hasAuth('MdmWorkstation:Delete') || rows.some((row) => !row.id)) {
-      ElMessage.error('当前账号无权删除所选工位，或记录已变化，请刷新后重试')
-      return
-    }
     const resources = rows.map((row) => ({
       id: row.id,
       label: `${row.workstationName} · ${row.workstationCode}`
     }))
-    deleteBusy.value = true
-    try {
-      if (await inspectDeleteReferences(resources)) return
-      await confirmDelete(
-        rows.length === 1
-          ? `确定删除工位“${rows[0].workstationName}”吗？`
-          : `确定删除选中的 ${rows.length} 个工位吗？`
-      )
-      try {
-        await deleteWorkstations(resources.map((row) => row.id))
-      } catch (error) {
-        if (error instanceof DeleteReferenceBlockedError) return
-        if (await inspectDeleteReferences(resources)) return
-        throw error
+    await deleteRecords({
+      resources,
+      permission: 'MdmWorkstation:Delete',
+      remove: () => deleteWorkstations(resources.map((row) => row.id)),
+      onDeleted: async () => {
+        ElMessage.success(resources.length > 1 ? `已删除 ${resources.length} 个工位` : '工位已删除')
+        await tableRef.value?.refreshRemove()
       }
-      tableRef.value?.clearSelection()
-      await tableRef.value?.refreshRemove()
-    } catch (error) {
-      if (error !== 'cancel' && error !== 'close')
-        notifyFriendlyError(error, '工位删除失败，请检查网络后重试')
-    } finally {
-      deleteBusy.value = false
-    }
+    })
   }
 
   async function handleSaved(mode: 'add' | 'edit'): Promise<void> {

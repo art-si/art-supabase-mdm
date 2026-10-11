@@ -98,7 +98,9 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteResource
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {
@@ -114,17 +116,11 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { recordDeleteGuardOptions } from '@/hooks/core/useRecordDeleteGuard'
+  import { recordDeleteGuardOptions, useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { formatWithDayjs } from '@/utils/time'
-  import {
-    getFriendlySupabaseErrorMessage,
-    markErrorAsUserNotified,
-    wasErrorUserNotified
-  } from '@/utils/supabase/error'
   import TreeUtils from '@/utils/tree'
   import {
     deleteDocumentTypes,
@@ -205,21 +201,21 @@
   const { effectiveTenantId, isAllTenants, scopeLabel, tenantOptions } =
     storeToRefs(tenantScopeStore)
   const { hasAuth, hasAnyAuth } = useAuth()
-  const { confirmDelete } = useArtFeedback()
-  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
-  const deleteBusy = ref(false)
-  const inspectDeleteReferences = async (rows: DocumentTypeRecord[]): Promise<boolean> => {
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_document_type',
+    '单据类型'
+  )
+  const inspectDeleteReferences = async (
+    resources: MasterDataDeleteResource[]
+  ): Promise<boolean> => {
     if (!deleteGuardRef.value) {
       ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
       return true
     }
     const options = recordDeleteGuardOptions(
-      { table: 'mdm_document_type', ids: rows.map((row) => row.id) },
+      { table: 'mdm_document_type', ids: resources.map((row) => row.id) },
       '单据类型',
-      rows.map((row) => ({
-        id: row.id,
-        label: `${row.documentTypeName} · ${row.documentTypeCode}`
-      }))
+      resources
     )
     if (!options.fetchDependencies) return true
     const fetchDependencies = options.fetchDependencies
@@ -517,7 +513,11 @@
       label: '默认类型',
       width: 96,
       formatter: (row) => (
-        <ArtDictDisplay dictCode="commonBoolean" value={String(row.isDefault)} display="tag" />
+        <ArtDictDisplay
+          dictCode="commonBoolean"
+          value={String(row.isDefault ?? '')}
+          display="tag"
+        />
       )
     },
     { prop: 'sortOrder', label: '排序', width: 82, sortable: true },
@@ -526,7 +526,7 @@
       label: '状态',
       width: 88,
       formatter: (row) => (
-        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+        <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled ?? '')} display="tag" />
       )
     },
     { prop: 'remark', label: '备注', minWidth: 190 },
@@ -601,36 +601,26 @@
   }
 
   const removeRows = async (rows: DocumentTypeRecord[]): Promise<void> => {
-    if (deleteBusy.value || !rows.length) return
-    deleteBusy.value = true
-    try {
-      const blocked = await inspectDeleteReferences(rows)
-      if (blocked) throw markErrorAsUserNotified(new Error('关联检查已显示'))
-      await confirmDelete(
-        rows.length === 1
-          ? `确定删除单据类型“${rows[0].documentTypeName}”吗？`
-          : `确定删除选中的 ${rows.length} 条单据类型吗？`
-      )
-      await deleteDocumentTypes(rows.map((row) => row.id))
-      await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
-    } catch (error) {
-      if (error === 'cancel' || error === 'close') {
-        throw markErrorAsUserNotified(new Error('已取消删除'))
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${row.documentTypeName} · ${row.documentTypeCode}`
+    }))
+    await deleteRecords({
+      resources,
+      permission: 'MdmDocumentType:Delete',
+      inspectReferences: inspectDeleteReferences,
+      remove: () => deleteDocumentTypes(resources.map((row) => row.id)),
+      onDeleted: async () => {
+        ElMessage.success(
+          resources.length > 1 ? `已删除 ${resources.length} 条单据类型` : '单据类型已删除'
+        )
+        await Promise.all([tableRef.value?.refreshRemove(), loadStats()])
       }
-      throw error
-    } finally {
-      deleteBusy.value = false
-    }
+    })
   }
 
   const removeRow = async (row: DocumentTypeRecord): Promise<void> => {
-    try {
-      await removeRows([row])
-    } catch (error) {
-      if (!wasErrorUserNotified(error)) {
-        ElMessage.error(getFriendlySupabaseErrorMessage(error, '单据类型删除失败，请重试'))
-      }
-    }
+    await removeRows([row])
   }
 
   const loadStats = async (): Promise<void> => {

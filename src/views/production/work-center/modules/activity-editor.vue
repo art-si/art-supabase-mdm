@@ -192,7 +192,7 @@
       align: 'center',
       formatter: (row) =>
         props.readonly ? (
-          dictDisplay('commonBoolean', String(row.backflush))
+          dictDisplay('commonBoolean', String(row.backflush ?? ''))
         ) : (
           <ElSwitch v-model={row.backflush} aria-label="倒冲" />
         )

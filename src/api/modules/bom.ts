@@ -125,10 +125,19 @@ export async function saveBomGroup(payload: BomGroupInput): Promise<string> {
 }
 
 export async function deleteBomGroup(id: string): Promise<void> {
-  await responseHandle(() => supabase.rpc('mdm_delete_bom_group_secure', { p_id: id }), {
-    ...writeOptions,
-    message: 'BOM 分组已删除'
-  })
+  const { data } = await responseHandle<number>(
+    () => supabase.rpc('mdm_delete_bom_group_secure', { p_id: id }),
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      requireAffected: true,
+      noAffectedMessage: '该 BOM 分组未删除，请刷新核对权限和记录状态后重试',
+      errorMessage: 'BOM 分组删除失败，请先处理下级分组或 BOM 引用'
+    }
+  )
+  if (data !== 1) throw new Error('BOM 分组删除结果异常，请刷新核对记录状态后重试')
 }
 
 export async function saveBom(payload: BomInput): Promise<string> {
@@ -257,18 +266,31 @@ export async function deleteBom(id: string, options?: ApiFeedbackOptions): Promi
   await responseHandle(() => supabase.rpc('mdm_delete_bom', { p_bom_id: id }), {
     ...writeOptions,
     message: 'BOM 已删除',
+    showMessage: options?.showMessage ?? true,
+    showReferenceFeedback: false,
     showErrorMessage: options?.showErrorMessage ?? true,
     errorMessage: 'BOM 删除失败，请确认处于设计状态且未被业务引用'
   })
 }
 
 export async function deleteBoms(ids: string[], options?: ApiFeedbackOptions): Promise<void> {
-  await responseHandle<number>(() => supabase.rpc('mdm_delete_boms', { p_bom_ids: ids }), {
-    ...writeOptions,
-    message: '已删除选中的 BOM',
-    showErrorMessage: options?.showErrorMessage ?? true,
-    errorMessage: 'BOM 批量删除失败，请确认所选记录仍处于设计状态且未被业务引用'
-  })
+  const targets = uniq(ids)
+  if (!targets.length || targets.some((id) => !id.trim()))
+    throw new Error('请选择有效的 BOM 后重试')
+  const { data } = await responseHandle<number>(
+    () => supabase.rpc('mdm_delete_boms', { p_bom_ids: targets }),
+    {
+      ...writeOptions,
+      showMessage: false,
+      showReferenceFeedback: false,
+      requireAffected: true,
+      noAffectedMessage: '所选 BOM 未删除，请刷新列表核对权限和记录状态后重试',
+      showErrorMessage: options?.showErrorMessage ?? true,
+      errorMessage: 'BOM 批量删除失败，请确认所选记录仍处于设计状态且未被业务引用'
+    }
+  )
+  if (data !== targets.length)
+    throw new Error('删除数量与所选 BOM 不一致，请刷新列表核对权限和记录状态后重试')
 }
 
 export async function fetchBomStructure(id: string, maxDepth = 8): Promise<BomStructureNode[]> {

@@ -38,6 +38,7 @@
       />
       <MovementTypeDialog ref="dialogRef" @success="refresh" />
       <MovementTypeDetailDrawer ref="detailRef" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -61,7 +62,8 @@
     ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -92,12 +94,23 @@
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
   const { effectiveTenantId, isAllTenants, tenantOptions } = storeToRefs(tenantScopeStore)
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard(
+    'mdm_stock_movement_type',
+    '出入库类型'
+  )
+  const route = useRoute()
+  const referencedRecordNo = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode === 'mdm_stock_movement_type' &&
+    typeof route.query.recordNo === 'string'
+      ? route.query.recordNo
+      : ''
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof MovementTypeDialog>>()
   const detailRef = ref<InstanceType<typeof MovementTypeDetailDrawer>>()
   const optionError = ref(false)
-  const search = reactive<SearchModel>({ keyword: '', direction: undefined })
+  const search = reactive<SearchModel>({ keyword: referencedRecordNo.value, direction: undefined })
   const directionOptions = useDictionaryOptions('mdmStockMovementDirection')
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -130,9 +143,19 @@
     await tableRef.value?.refreshUpdate()
   }
   async function removeRow(row: MovementTypeRecord): Promise<void> {
-    await confirmDelete(`确定删除出入库类型“${row.movementName}”吗？被反向类型引用时无法删除。`)
-    await deleteMovementTypes([row.id])
-    await tableRef.value?.refreshRemove()
+    await removeRows([row])
+  }
+  async function removeRows(rows: MovementTypeRecord[]): Promise<void> {
+    const resources = rows.map((row) => ({
+      id: row.id,
+      label: `${row.movementCode} · ${row.movementName}`
+    }))
+    await deleteRecords({
+      resources,
+      permission: 'MdmStockMovementType:Delete',
+      remove: () => deleteMovementTypes(resources.map((resource) => resource.id)),
+      onDeleted: async () => tableRef.value?.refreshRemove()
+    })
   }
   const toExportRow = (row: MovementTypeRecord): ExportRow => ({
     ...row,
@@ -143,8 +166,11 @@
     reverseTypeLabel: row.reverseType
       ? `${row.reverseType.movementCode} · ${row.reverseType.movementName}`
       : '',
-    reversalLabel: userStore.getDictDisplayLabelByValue('commonBoolean', String(row.reversal)),
-    otherIoLabel: userStore.getDictDisplayLabelByValue('commonBoolean', String(row.otherIo)),
+    reversalLabel: userStore.getDictDisplayLabelByValue(
+      'commonBoolean',
+      String(row.reversal ?? '')
+    ),
+    otherIoLabel: userStore.getDictDisplayLabelByValue('commonBoolean', String(row.otherIo ?? '')),
     statusLabel: row.status === 'enabled' ? '启用' : '禁用'
   })
   const headerActions: ArtTableQueryHeaderAction[] = [
@@ -167,12 +193,8 @@
     {
       permission: 'MdmStockMovementType:Delete',
       type: 'delete',
-      content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
-        `确定删除选中的 ${selectedCount} 条出入库类型吗？被其他类型引用的记录无法删除。`,
-      onClick: async ({ selectedRows, api }) => {
-        await deleteMovementTypes(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
-      }
+      confirm: false,
+      onClick: ({ selectedRows }) => removeRows(selectedRows as MovementTypeRecord[])
     },
     {
       permission: 'MdmStockMovementType:Export',
@@ -263,7 +285,11 @@
         width: 112,
         align: 'center',
         formatter: (row) => (
-          <ArtDictDisplay dictCode="commonBoolean" value={String(row.reversal)} display="text" />
+          <ArtDictDisplay
+            dictCode="commonBoolean"
+            value={String(row.reversal ?? '')}
+            display="text"
+          />
         )
       },
       {
@@ -272,7 +298,11 @@
         width: 118,
         align: 'center',
         formatter: (row) => (
-          <ArtDictDisplay dictCode="commonBoolean" value={String(row.otherIo)} display="text" />
+          <ArtDictDisplay
+            dictCode="commonBoolean"
+            value={String(row.otherIo ?? '')}
+            display="text"
+          />
         )
       },
       {
@@ -357,4 +387,9 @@
     }
   }
   onMounted(() => void loadOptions())
+  watch(referencedRecordNo, (recordNo) => {
+    search.keyword = recordNo
+    search.direction = undefined
+    void tableRef.value?.getData()
+  })
 </script>

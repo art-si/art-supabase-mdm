@@ -354,6 +354,7 @@ export async function deleteBusinessTypes(ids: string[]): Promise<void> {
       showMessage: false,
       showErrorMessage: false,
       noAffectedMessage: '所选业务类型未删除，请刷新列表核对权限和记录状态后重试',
+      showReferenceFeedback: false,
       errorMessage: '删除失败，请先解除源业务类型或业务单据引用'
     }
   )

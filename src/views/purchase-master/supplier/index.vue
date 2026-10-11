@@ -67,6 +67,7 @@
       <SupplierDetail ref="detailRef" :groups="groups" @changed="refreshAfterSave('edit')" />
       <GroupDialog ref="groupDialogRef" @success="refreshAfterGroupSave" />
       <MasterDataDeleteGuard ref="deleteGuardRef" />
+      <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -76,7 +77,8 @@
 
   import { replaceReactiveModel } from '@/utils/form/model'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useSupplierDelete } from '@/hooks/core/useSupplierDelete'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -120,7 +122,25 @@
   })
 
   defineOptions({ name: 'MdmPurchaseSupplier' })
-  const { confirmDelete } = useArtFeedback()
+  const { hasAuth } = useAuth()
+  const { deleteGuardRef: groupDeleteGuardRef, deleteRecords: deleteGroups } = useRecordDeleteGuard(
+    'mdm_master_group',
+    '供应商分组',
+    {
+      mdm_master_group: {
+        label: '下级供应商分组',
+        routeName: 'MdmPurchaseSupplier',
+        actionLabel: '查看分组',
+        canNavigate: () => hasAuth('MdmPurchaseSupplier:View')
+      },
+      mdm_supplier: {
+        label: '供应商',
+        routeName: 'MdmPurchaseSupplier',
+        actionLabel: '查看供应商',
+        canNavigate: () => hasAuth('MdmPurchaseSupplier:View')
+      }
+    }
+  )
   const { deleteGuardRef, deleteBusy, removeSuppliers } = useSupplierDelete(
     'MdmPurchaseSupplier:Delete'
   )
@@ -137,6 +157,7 @@
   const groupsLoading = ref(false)
   const groupsError = ref('')
   const selectedGroupId = ref('')
+  const route = useRoute()
   const total = ref(0)
   const search = reactive({ keyword: '', supplierCategory: '', supplierType: '' })
   const groupTree = new TreeUtils({ parentKey: 'parentId' })
@@ -404,10 +425,22 @@
     void groupDialogRef.value?.handleOpen(groupOpenData(row))
   }
   async function removeGroup(row: MasterGroup): Promise<void> {
-    await confirmDelete(`确定删除分组“${row.name}”吗？`)
-    await deleteMasterGroup(row.id)
-    if (selectedGroupId.value === row.id) selectedGroupId.value = ''
-    await refreshAfterGroupSave()
+    const resource = { id: row.id, label: `${row.name} · ${row.code}` }
+    await deleteGroups({
+      resources: [resource],
+      permission: 'MdmPurchaseSupplier:ManageGroup',
+      remove: () =>
+        deleteMasterGroup(resource.id, {
+          showMessage: false,
+          showErrorMessage: false,
+          showReferenceFeedback: false
+        }),
+      onDeleted: async () => {
+        ElMessage.success('供应商分组已删除')
+        if (selectedGroupId.value === resource.id) selectedGroupId.value = ''
+        await refreshAfterGroupSave()
+      }
+    })
   }
   async function removeSupplier(row: PurchaseSupplier): Promise<void> {
     await removeSuppliers([row], () => tableRef.value?.refreshRemove())
@@ -426,6 +459,20 @@
     await tableRef.value?.getData()
   }
   watch(effectiveTenantId, () => void loadContext(), { immediate: true })
+  watch(
+    [() => route.query, groups],
+    ([query]) => {
+      if (query.fromMasterDelete !== '1') return
+      if (query.dependencyCode === 'mdm_master_group' && typeof query.recordId === 'string') {
+        if (groups.value.some((group) => group.id === query.recordId)) selectGroup(query.recordId)
+      } else if (query.dependencyCode === 'mdm_supplier' && typeof query.recordNo === 'string') {
+        selectedGroupId.value = ''
+        Object.assign(search, { keyword: query.recordNo, supplierCategory: '', supplierType: '' })
+        void tableRef.value?.getData()
+      }
+    },
+    { immediate: true }
+  )
 </script>
 
 <style scoped lang="scss">
