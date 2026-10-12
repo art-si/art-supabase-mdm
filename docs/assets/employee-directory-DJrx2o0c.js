@@ -1,1 +1,0 @@
-import{Cr as e,Xr as t,jr as n}from"./supabase-CH7imMya.js";import{t as r}from"./catalog-CkmqOyHF.js";var i=n({name:`MdmEmployeeDirectory`,__name:`index`,setup(n){return(n,i)=>(t(),e(r))}});export{i as default};

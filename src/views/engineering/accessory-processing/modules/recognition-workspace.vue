@@ -350,7 +350,7 @@
                         </template>
                         <template #sketchPath>
                           <div
-                            class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--art-main-bg-color)]"
+                            class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--default-box-color)]"
                           >
                             <ArtUploadImage
                               :model-value="workspace.sketchUrls[index] || ''"
