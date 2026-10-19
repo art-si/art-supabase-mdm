@@ -2,6 +2,7 @@ import type { AppRouteRecord } from '@/types/router'
 import type { WorkOrderExtensionField } from '@/types/business/work-order-extension'
 
 export type DocumentTypeTagStyle = '' | 'primary' | 'success' | 'info' | 'warning' | 'danger'
+export type ProductionReportControl = 'none' | 'warning' | 'strict'
 
 export interface DocumentTypeTenantReference {
   tenantCode: string
@@ -25,6 +26,7 @@ export interface DocumentTypeRecord {
   packingEnabled: boolean
   packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
+  productionReportControl: ProductionReportControl
   createBy?: string | null
   createTime?: string
   updateBy?: string | null
@@ -48,6 +50,7 @@ export interface DocumentTypeWriteInput {
   packingEnabled: boolean
   packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
+  productionReportControl: ProductionReportControl
 }
 
 export type DocumentTypeUpdateInput = Omit<DocumentTypeWriteInput, 'tenantId'>

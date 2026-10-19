@@ -245,6 +245,7 @@
 
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { formatMaterialSource } from '@/utils/business/material-source'
 
   import { ElImage, ElTag } from 'element-plus'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -491,8 +492,7 @@
       }
     }
   ]
-  const sourceLabel = (value: MaterialArchive['materialSource']): string =>
-    ({ purchase: '采购', self_made: '自制', outsourcing: '委外' })[value]
+  const sourceLabel = formatMaterialSource
   const valuationLabel = (value?: string | null): string =>
     value
       ? {

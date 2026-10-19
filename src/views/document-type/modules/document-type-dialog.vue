@@ -224,6 +224,7 @@
   const { confirmAction } = useArtFeedback()
   const { getDictMap } = storeToRefs(userStore)
   const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
+  const productionReportControlOptions = useDictionaryOptions('mdmProductionReportControl')
   const extensionValueTypeOptions = useDictionaryOptions('mdmDocumentExtensionValueType')
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
@@ -406,6 +407,21 @@
                   form.mode === 'copy'
                     ? '副本沿用源类型的领料仓库范围，创建后可单独修改。'
                     : '工单下达自动预留与关联工单领料均受此范围约束。'
+              } as FormItem,
+              {
+                label: '完工入库报工控制',
+                key: 'productionReportControl',
+                type: 'select',
+                span: 24,
+                options: productionReportControlOptions,
+                props: {
+                  disabled: form.mode === 'copy',
+                  placeholder: '选择报工控制强度'
+                },
+                description:
+                  form.mode === 'copy'
+                    ? '副本默认不控制，创建后可单独修改。'
+                    : '默认不控制；警告提示已报工数量不足但允许入库；严格控制时禁止超出已报工未入库数量。'
               } as FormItem,
               {
                 label: '板材及排包工单配置',
@@ -624,6 +640,7 @@
       form.data.extensionFields = []
       form.data.packingEnabled = false
       form.data.packingThicknessFieldKey = null
+      form.data.productionReportControl = 'none'
     }
 
     if (form.data.isDefault) {

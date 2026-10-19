@@ -40,6 +40,14 @@
 
       <ArtSectionCard
         v-if="detail.isProductionType"
+        title="完工入库报工控制"
+        subtitle="入库过账时按工单类型控制已报工未入库数量。"
+      >
+        <ArtDescriptions :data="detail" :items="reportControlItems" :columns="1" />
+      </ArtSectionCard>
+
+      <ArtSectionCard
+        v-if="detail.isProductionType"
         title="领料仓库范围"
         subtitle="工单下达锁料和关联工单出库均按此范围执行。"
       >
@@ -133,7 +141,8 @@
       extensionFields: [],
       packingEnabled: false,
       packingThicknessFieldKey: null,
-      allowedIssueWarehouseTypes: ['raw_material']
+      allowedIssueWarehouseTypes: ['raw_material'],
+      productionReportControl: 'none'
     },
     menuPath: '',
     isProductionType: false
@@ -166,6 +175,16 @@
       value: (data: DocumentTypeDetailData) => data.record.tenant?.tenantName
     },
     { key: 'remark', label: '备注', field: 'record.remark', span: 2 }
+  ]
+  const reportControlItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
+    {
+      key: 'productionReportControl',
+      label: '控制强度',
+      value: (data: DocumentTypeDetailData) =>
+        ({ none: '不控制', warning: '警告', strict: '严格控制' })[
+          data.record.productionReportControl ?? 'none'
+        ]
+    }
   ]
   const auditItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
     { key: 'tagStyle', label: '标签样式', field: 'record.tagStyle' },

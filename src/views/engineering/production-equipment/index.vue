@@ -303,6 +303,7 @@
   }
 
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
+  const configuredScopeModeOptions = useDictionaryOptions('mdmProductionEquipmentScopeMode')
   const tenantScopeStore = useTenantScopeStore()
   const { confirmAction } = useArtFeedback()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
@@ -337,11 +338,12 @@
     () => treeUtils.listToTree(references.categories) as TreeReference[]
   )
   const locationTree = computed(() => treeUtils.listToTree(references.locations) as TreeReference[])
-  const scopeModeOptions = [
-    { label: '分类', value: 'category' },
-    { label: '组织', value: 'department' },
-    { label: '地点', value: 'location' }
-  ]
+  const scopeModeOptions = computed(() =>
+    configuredScopeModeOptions.filter(
+      (option): option is { label: string; value: ScopeMode } =>
+        option.value === 'category' || option.value === 'department' || option.value === 'location'
+    )
+  )
   const activeScopeTree = computed(() =>
     scopeMode.value === 'category'
       ? categoryTree.value

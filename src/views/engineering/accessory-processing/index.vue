@@ -120,9 +120,12 @@
             aria-label="筛选编码状态"
             class="accessory-processing-page__status-filter"
           >
-            <ElOption label="全部编码状态" value="all" />
-            <ElOption label="待编码" value="pending" />
-            <ElOption label="已编码" value="coded" />
+            <ElOption
+              v-for="option in codeFilterOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </ElSelect>
           <ElInput
             v-model="keyword"
@@ -654,6 +657,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
@@ -744,6 +748,12 @@
   const error = ref('')
   const keyword = ref('')
   const codeFilter = ref<'all' | 'pending' | 'coded'>('all')
+  const configuredCodeFilterOptions = useDictionaryOptions('mdmAccessoryCodingFilter')
+  const codeFilterOptions = computed(() =>
+    configuredCodeFilterOptions.filter((option) =>
+      ['all', 'pending', 'coded'].includes(option.value)
+    )
+  )
   const projectKeyword = ref('')
   const page = ref(1)
   const pageSize = ref(20)

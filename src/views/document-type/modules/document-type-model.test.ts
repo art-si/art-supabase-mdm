@@ -23,7 +23,8 @@ const source: DocumentTypeRecord = {
   extensionFields: [],
   packingEnabled: false,
   packingThicknessFieldKey: null,
-  allowedIssueWarehouseTypes: ['raw_material', 'outsourced']
+  allowedIssueWarehouseTypes: ['raw_material', 'outsourced'],
+  productionReportControl: 'warning'
 }
 
 test('copy model keeps presentation but clears the unique code and default state', () => {
@@ -37,6 +38,7 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.deepEqual(copy.menuIds, ['menu-id'])
   assert.equal(copy.sortOrder, 30)
   assert.deepEqual(copy.allowedIssueWarehouseTypes, source.allowedIssueWarehouseTypes)
+  assert.equal(copy.productionReportControl, 'none')
 })
 
 test('write payload normalizes text and only includes tenant when required', () => {
@@ -62,4 +64,5 @@ test('write payload normalizes text and only includes tenant when required', () 
   assert.equal(tenantPayload.tenantId, 'tenant-id')
   assert.equal('tenantId' in ordinaryPayload, false)
   assert.deepEqual(tenantPayload.allowedIssueWarehouseTypes, ['raw_material'])
+  assert.equal(tenantPayload.productionReportControl, 'none')
 })

@@ -1,0 +1,1 @@
+import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./governance-center-LeNWp_va.js";var i=e({name:`MdmChangeManagement`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`changes`}))}});export{i as default};
