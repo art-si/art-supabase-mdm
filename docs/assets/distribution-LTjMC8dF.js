@@ -1,0 +1,1 @@
+import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./governance-center-xo1yd0g2.js";var i=e({name:`MdmDataDistribution`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`outbox`}))}});export{i as default};

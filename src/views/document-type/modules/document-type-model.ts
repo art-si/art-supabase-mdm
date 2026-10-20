@@ -28,6 +28,8 @@ export const createDocumentTypeFormModel = (
   packingThicknessFieldKey: null,
   allowedIssueWarehouseTypes: ['raw_material'],
   productionReportControl: 'none',
+  productionFullIssueControl: 'none',
+  productionFullIssueScope: 'all',
   ...patch
 })
 
@@ -49,7 +51,9 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     packingEnabled: false,
     packingThicknessFieldKey: null,
     allowedIssueWarehouseTypes: [...source.allowedIssueWarehouseTypes],
-    productionReportControl: 'none'
+    productionReportControl: 'none',
+    productionFullIssueControl: 'none',
+    productionFullIssueScope: 'all'
   })
 
 export const buildDocumentTypeInput = (
@@ -72,7 +76,9 @@ export const buildDocumentTypeInput = (
     'packingEnabled',
     'packingThicknessFieldKey',
     'allowedIssueWarehouseTypes',
-    'productionReportControl'
+    'productionReportControl',
+    'productionFullIssueControl',
+    'productionFullIssueScope'
   ]) as DocumentTypeWriteInput
 
   payload.documentTypeCode = normalizeNonNullableText(payload.documentTypeCode).toUpperCase()

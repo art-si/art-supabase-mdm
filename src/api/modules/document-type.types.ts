@@ -3,6 +3,7 @@ import type { WorkOrderExtensionField } from '@/types/business/work-order-extens
 
 export type DocumentTypeTagStyle = '' | 'primary' | 'success' | 'info' | 'warning' | 'danger'
 export type ProductionReportControl = 'none' | 'warning' | 'strict'
+export type ProductionFullIssueScope = 'all' | 'non_backflush' | 'key'
 
 export interface DocumentTypeTenantReference {
   tenantCode: string
@@ -27,6 +28,8 @@ export interface DocumentTypeRecord {
   packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
   productionReportControl: ProductionReportControl
+  productionFullIssueControl: ProductionReportControl
+  productionFullIssueScope: ProductionFullIssueScope
   createBy?: string | null
   createTime?: string
   updateBy?: string | null
@@ -51,6 +54,8 @@ export interface DocumentTypeWriteInput {
   packingThicknessFieldKey: string | null
   allowedIssueWarehouseTypes: string[]
   productionReportControl: ProductionReportControl
+  productionFullIssueControl: ProductionReportControl
+  productionFullIssueScope: ProductionFullIssueScope
 }
 
 export type DocumentTypeUpdateInput = Omit<DocumentTypeWriteInput, 'tenantId'>

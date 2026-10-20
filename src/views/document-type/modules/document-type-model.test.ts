@@ -24,7 +24,9 @@ const source: DocumentTypeRecord = {
   packingEnabled: false,
   packingThicknessFieldKey: null,
   allowedIssueWarehouseTypes: ['raw_material', 'outsourced'],
-  productionReportControl: 'warning'
+  productionReportControl: 'warning',
+  productionFullIssueControl: 'strict',
+  productionFullIssueScope: 'non_backflush'
 }
 
 test('copy model keeps presentation but clears the unique code and default state', () => {
@@ -39,6 +41,8 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.equal(copy.sortOrder, 30)
   assert.deepEqual(copy.allowedIssueWarehouseTypes, source.allowedIssueWarehouseTypes)
   assert.equal(copy.productionReportControl, 'none')
+  assert.equal(copy.productionFullIssueControl, 'none')
+  assert.equal(copy.productionFullIssueScope, 'all')
 })
 
 test('write payload normalizes text and only includes tenant when required', () => {
@@ -65,4 +69,6 @@ test('write payload normalizes text and only includes tenant when required', () 
   assert.equal('tenantId' in ordinaryPayload, false)
   assert.deepEqual(tenantPayload.allowedIssueWarehouseTypes, ['raw_material'])
   assert.equal(tenantPayload.productionReportControl, 'none')
+  assert.equal(tenantPayload.productionFullIssueControl, 'none')
+  assert.equal(tenantPayload.productionFullIssueScope, 'all')
 })

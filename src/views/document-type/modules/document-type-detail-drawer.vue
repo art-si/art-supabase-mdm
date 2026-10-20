@@ -40,10 +40,29 @@
 
       <ArtSectionCard
         v-if="detail.isProductionType"
-        title="完工入库报工控制"
-        subtitle="入库过账时按工单类型控制已报工未入库数量。"
+        title="完工入库控制"
+        subtitle="按工单类型复核报工数量与 BOM 组件领料，严格规则由审核和过账执行。"
       >
-        <ArtDescriptions :data="detail" :items="reportControlItems" :columns="1" />
+        <ArtDescriptions :data="detail" :items="reportControlItems" :columns="2">
+          <template #item-productionReportControl>
+            <ArtDictDisplay
+              dict-code="mdmProductionReportControl"
+              :value="detail.record.productionReportControl || 'none'"
+            />
+          </template>
+          <template #item-productionFullIssueControl>
+            <ArtDictDisplay
+              dict-code="mdmProductionReportControl"
+              :value="detail.record.productionFullIssueControl || 'none'"
+            />
+          </template>
+          <template #item-productionFullIssueScope>
+            <ArtDictDisplay
+              dict-code="mdmProductionFullIssueScope"
+              :value="detail.record.productionFullIssueScope || 'all'"
+            />
+          </template>
+        </ArtDescriptions>
       </ArtSectionCard>
 
       <ArtSectionCard
@@ -142,7 +161,9 @@
       packingEnabled: false,
       packingThicknessFieldKey: null,
       allowedIssueWarehouseTypes: ['raw_material'],
-      productionReportControl: 'none'
+      productionReportControl: 'none',
+      productionFullIssueControl: 'none',
+      productionFullIssueScope: 'all'
     },
     menuPath: '',
     isProductionType: false
@@ -179,11 +200,18 @@
   const reportControlItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
     {
       key: 'productionReportControl',
-      label: '控制强度',
-      value: (data: DocumentTypeDetailData) =>
-        ({ none: '不控制', warning: '警告', strict: '严格控制' })[
-          data.record.productionReportControl ?? 'none'
-        ]
+      label: '报工控制',
+      field: 'record.productionReportControl'
+    },
+    {
+      key: 'productionFullIssueControl',
+      label: '完全领料控制',
+      field: 'record.productionFullIssueControl'
+    },
+    {
+      key: 'productionFullIssueScope',
+      label: '组件范围',
+      field: 'record.productionFullIssueScope'
     }
   ]
   const auditItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [

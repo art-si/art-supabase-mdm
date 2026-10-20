@@ -225,6 +225,7 @@
   const { getDictMap } = storeToRefs(userStore)
   const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
   const productionReportControlOptions = useDictionaryOptions('mdmProductionReportControl')
+  const productionFullIssueScopeOptions = useDictionaryOptions('mdmProductionFullIssueScope')
   const extensionValueTypeOptions = useDictionaryOptions('mdmDocumentExtensionValueType')
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
@@ -422,6 +423,33 @@
                   form.mode === 'copy'
                     ? '副本默认不控制，创建后可单独修改。'
                     : '默认不控制；警告提示已报工数量不足但允许入库；严格控制时禁止超出已报工未入库数量。'
+              } as FormItem,
+              {
+                label: '入库完全领料控制',
+                key: 'productionFullIssueControl',
+                type: 'select',
+                span: 24,
+                options: productionReportControlOptions,
+                props: {
+                  disabled: form.mode === 'copy',
+                  placeholder: '选择完全领料控制强度'
+                },
+                description:
+                  form.mode === 'copy'
+                    ? '副本默认不控制，创建后可单独修改。'
+                    : '默认不控制；警告提示工单 BOM 组件缺料但允许办理；严格控制在审核和入库过账时拦截。'
+              } as FormItem,
+              {
+                label: '完全领料组件范围',
+                key: 'productionFullIssueScope',
+                type: 'select',
+                span: 24,
+                options: productionFullIssueScopeOptions,
+                props: {
+                  disabled: form.mode === 'copy' || form.data.productionFullIssueControl === 'none',
+                  placeholder: '选择需要检查的 BOM 组件'
+                },
+                description: '可检查全部物料、非倒冲物料或标记为关键物料的组件。'
               } as FormItem,
               {
                 label: '板材及排包工单配置',
@@ -641,6 +669,8 @@
       form.data.packingEnabled = false
       form.data.packingThicknessFieldKey = null
       form.data.productionReportControl = 'none'
+      form.data.productionFullIssueControl = 'none'
+      form.data.productionFullIssueScope = 'all'
     }
 
     if (form.data.isDefault) {
