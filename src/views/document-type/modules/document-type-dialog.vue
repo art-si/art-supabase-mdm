@@ -226,6 +226,9 @@
   const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
   const productionReportControlOptions = useDictionaryOptions('mdmProductionReportControl')
   const productionFullIssueScopeOptions = useDictionaryOptions('mdmProductionFullIssueScope')
+  const productionWipDeductionTimingOptions = useDictionaryOptions(
+    'mdmProductionWipDeductionTiming'
+  )
   const extensionValueTypeOptions = useDictionaryOptions('mdmDocumentExtensionValueType')
   const { shouldExposeTenantField } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
@@ -452,6 +455,19 @@
                 description: '可检查全部物料、非倒冲物料或标记为关键物料的组件。'
               } as FormItem,
               {
+                label: '在制材料扣减时机',
+                key: 'productionWipDeductionTiming',
+                type: 'select',
+                span: 24,
+                options: productionWipDeductionTimingOptions,
+                props: {
+                  disabled: form.mode === 'copy',
+                  placeholder: '选择在制材料扣减时机'
+                },
+                description:
+                  '入库审核时按工单实际净领料比例扣减；后续补料、退料和完工退库会调整在制余额。'
+              } as FormItem,
+              {
                 label: '板材及排包工单配置',
                 key: 'packingSection',
                 type: 'divider',
@@ -671,6 +687,7 @@
       form.data.productionReportControl = 'none'
       form.data.productionFullIssueControl = 'none'
       form.data.productionFullIssueScope = 'all'
+      form.data.productionWipDeductionTiming = 'inbound_approval'
     }
 
     if (form.data.isDefault) {

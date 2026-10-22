@@ -213,6 +213,7 @@
     deepClone: false
   })
   const initial = (): EsopDocumentInput => ({
+    id: undefined,
     tenantId: '',
     categoryId: '',
     documentCode: '',

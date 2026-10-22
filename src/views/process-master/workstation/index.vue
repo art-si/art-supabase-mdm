@@ -151,6 +151,9 @@
   })
 
   const departmentTree = computed(() => productionTree.listToTree(scope.departments))
+  const departmentPaths = computed(() =>
+    productionTree.getLabelPathIndex(departmentTree.value, (department) => department.name)
+  )
   const selectedWorkshop = computed(() =>
     scope.departments.find((item) => item.id === scope.selectedWorkshopId)
   )
@@ -165,10 +168,7 @@
   }
 
   function departmentPath(department: ProductionDepartment): string {
-    const path = productionTree
-      .getAncestors(departmentTree.value, department.id)
-      .map((item) => String(item.name))
-      .join(' / ')
+    const path = departmentPaths.value.get(department.id)
     if (effectiveTenantId.value) return path || department.name
     const tenant = tenantOptions.value.find((item) => item.id === department.tenantId)
     return `${tenant?.tenantName || '当前租户'} / ${path || department.name}`

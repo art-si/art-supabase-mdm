@@ -1,0 +1,1 @@
+import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./payable-reference-workspace-Bf8oXXDo.js";var i=e({name:`MdmPaymentPurpose`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{kind:`purpose`,permissions:{View:`MdmPaymentPurpose:View`,Add:`MdmPaymentPurpose:Add`,Edit:`MdmPaymentPurpose:Edit`}}))}});export{i as default};

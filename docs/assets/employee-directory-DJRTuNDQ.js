@@ -1,1 +1,0 @@
-import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./catalog-D1txvD9J.js";var i=e({name:`MdmEmployeeDirectory`,__name:`index`,setup(e){return(e,i)=>(t(),n(r))}});export{i as default};

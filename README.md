@@ -4,13 +4,13 @@
   <p>统一目录、来源追溯、资料质量、生产组织、工厂日历、作业模板、工作中心与工艺路线。</p>
 
   <p>
-    <a href="https://gitee.com/wangyanghub/art-supabase-mdm">Gitee</a>
+    <a href="https://gitee.com/art-si/art-supabase-mdm">Gitee</a>
     ·
-    <a href="https://github.com/869123771/art-supabase-mdm">GitHub</a>
+    <a href="https://github.com/art-si/art-supabase-mdm">GitHub</a>
     ·
-    <a href="https://gitee.com/wangyanghub/art-supabase-pro">主平台</a>
+    <a href="https://gitee.com/art-si/art-supabase-pro">主平台</a>
     ·
-    <a href="https://869123771.github.io/art-supabase-doc/modules/mdm">使用文档</a>
+    <a href="https://art-si.github.io/art-supabase-doc/modules/mdm">使用文档</a>
     ·
     <a href="./README.en.md">English</a>
   </p>
@@ -20,7 +20,7 @@
 
 亿企工场 MDM 是亿企工场的主数据治理与生产基础配置应用。它一方面把分散在 Platform、HR、TMS、VMS、SMIS 等来源中的关键主档汇入统一只读目录，提供一致的查询、质量识别和来源追溯；另一方面维护生产组织、人员、日历、标准作业、工作中心与工艺路线，为 MES 等执行应用提供稳定的生产语义。
 
-本仓只维护 MDM 页面、业务 API、领域类型与生产基础规则。认证、租户、菜单、权限、布局、路由、公共组件、Store 和 Supabase 公共客户端由 [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro) 统一提供。
+本仓只维护 MDM 页面、业务 API、领域类型与生产基础规则。认证、租户、菜单、权限、布局、路由、公共组件、Store 和 Supabase 公共客户端由 [`art-supabase-pro`](https://gitee.com/art-si/art-supabase-pro) 统一提供。
 
 ## 核心能力
 

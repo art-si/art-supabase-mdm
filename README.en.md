@@ -4,13 +4,13 @@
   <p>Unified catalogs, source traceability, data-quality review, production organizations, factory calendars, work centers, standard operations, and process routes.</p>
 
   <p>
-    <a href="https://gitee.com/wangyanghub/art-supabase-mdm">Gitee</a>
+    <a href="https://gitee.com/art-si/art-supabase-mdm">Gitee</a>
     ·
-    <a href="https://github.com/869123771/art-supabase-mdm">GitHub</a>
+    <a href="https://github.com/art-si/art-supabase-mdm">GitHub</a>
     ·
-    <a href="https://gitee.com/wangyanghub/art-supabase-pro">Platform</a>
+    <a href="https://gitee.com/art-si/art-supabase-pro">Platform</a>
     ·
-    <a href="https://869123771.github.io/art-supabase-doc/modules/mdm">Documentation</a>
+    <a href="https://art-si.github.io/art-supabase-doc/modules/mdm">Documentation</a>
     ·
     <a href="./README.md">简体中文</a>
   </p>
@@ -20,7 +20,7 @@
 
 Yiqi Workshop MDM is the master-data governance and production-foundation application for Yiqi Workshop. It provides a unified read-only catalog over authoritative records owned by Platform, HR, TMS, VMS, and SMIS, while owning production-specific configuration such as departments, personnel settings, factory calendars, standard operations, work centers, and process routes.
 
-Authentication, tenancy, navigation, authorization, layout, shared components, stores, and the common Supabase client remain owned by [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro).
+Authentication, tenancy, navigation, authorization, layout, shared components, stores, and the common Supabase client remain owned by [`art-supabase-pro`](https://gitee.com/art-si/art-supabase-pro).
 
 ## Current Capabilities
 

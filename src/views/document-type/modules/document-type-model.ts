@@ -30,6 +30,7 @@ export const createDocumentTypeFormModel = (
   productionReportControl: 'none',
   productionFullIssueControl: 'none',
   productionFullIssueScope: 'all',
+  productionWipDeductionTiming: 'inbound_approval',
   ...patch
 })
 
@@ -53,7 +54,8 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     allowedIssueWarehouseTypes: [...source.allowedIssueWarehouseTypes],
     productionReportControl: 'none',
     productionFullIssueControl: 'none',
-    productionFullIssueScope: 'all'
+    productionFullIssueScope: 'all',
+    productionWipDeductionTiming: 'inbound_approval'
   })
 
 export const buildDocumentTypeInput = (
@@ -78,7 +80,8 @@ export const buildDocumentTypeInput = (
     'allowedIssueWarehouseTypes',
     'productionReportControl',
     'productionFullIssueControl',
-    'productionFullIssueScope'
+    'productionFullIssueScope',
+    'productionWipDeductionTiming'
   ]) as DocumentTypeWriteInput
 
   payload.documentTypeCode = normalizeNonNullableText(payload.documentTypeCode).toUpperCase()

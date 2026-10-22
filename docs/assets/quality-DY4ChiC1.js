@@ -1,0 +1,1 @@
+import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./governance-center-Dx7RxH4z.js";var i=e({name:`MdmDataQuality`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{"initial-view":`quality`}))}});export{i as default};

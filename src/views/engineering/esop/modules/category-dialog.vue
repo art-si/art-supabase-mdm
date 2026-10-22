@@ -79,6 +79,7 @@
     deepClone: false
   })
   const initial = (): EsopCategoryInput => ({
+    id: undefined,
     tenantId: '',
     parentId: null,
     categoryCode: '',

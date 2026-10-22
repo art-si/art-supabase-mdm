@@ -41,7 +41,7 @@
       <ArtSectionCard
         v-if="detail.isProductionType"
         title="完工入库控制"
-        subtitle="按工单类型复核报工数量与 BOM 组件领料，严格规则由审核和过账执行。"
+        subtitle="按工单类型复核报工、BOM 领料与在制材料扣减时机。"
       >
         <ArtDescriptions :data="detail" :items="reportControlItems" :columns="2">
           <template #item-productionReportControl>
@@ -60,6 +60,12 @@
             <ArtDictDisplay
               dict-code="mdmProductionFullIssueScope"
               :value="detail.record.productionFullIssueScope || 'all'"
+            />
+          </template>
+          <template #item-productionWipDeductionTiming>
+            <ArtDictDisplay
+              dict-code="mdmProductionWipDeductionTiming"
+              :value="detail.record.productionWipDeductionTiming || 'inbound_approval'"
             />
           </template>
         </ArtDescriptions>
@@ -163,7 +169,8 @@
       allowedIssueWarehouseTypes: ['raw_material'],
       productionReportControl: 'none',
       productionFullIssueControl: 'none',
-      productionFullIssueScope: 'all'
+      productionFullIssueScope: 'all',
+      productionWipDeductionTiming: 'inbound_approval'
     },
     menuPath: '',
     isProductionType: false
@@ -212,6 +219,11 @@
       key: 'productionFullIssueScope',
       label: '组件范围',
       field: 'record.productionFullIssueScope'
+    },
+    {
+      key: 'productionWipDeductionTiming',
+      label: '在制材料扣减时机',
+      field: 'record.productionWipDeductionTiming'
     }
   ]
   const auditItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [

@@ -26,7 +26,8 @@ const source: DocumentTypeRecord = {
   allowedIssueWarehouseTypes: ['raw_material', 'outsourced'],
   productionReportControl: 'warning',
   productionFullIssueControl: 'strict',
-  productionFullIssueScope: 'non_backflush'
+  productionFullIssueScope: 'non_backflush',
+  productionWipDeductionTiming: 'none'
 }
 
 test('copy model keeps presentation but clears the unique code and default state', () => {
@@ -43,6 +44,7 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.equal(copy.productionReportControl, 'none')
   assert.equal(copy.productionFullIssueControl, 'none')
   assert.equal(copy.productionFullIssueScope, 'all')
+  assert.equal(copy.productionWipDeductionTiming, 'inbound_approval')
 })
 
 test('write payload normalizes text and only includes tenant when required', () => {
@@ -71,4 +73,5 @@ test('write payload normalizes text and only includes tenant when required', () 
   assert.equal(tenantPayload.productionReportControl, 'none')
   assert.equal(tenantPayload.productionFullIssueControl, 'none')
   assert.equal(tenantPayload.productionFullIssueScope, 'all')
+  assert.equal(tenantPayload.productionWipDeductionTiming, 'inbound_approval')
 })
