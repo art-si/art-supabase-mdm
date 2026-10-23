@@ -104,40 +104,6 @@
     flex: none;
   }
 
-  .production-workspace__department-identity {
-    display: grid;
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    min-width: 0;
-
-    > span:first-child {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      color: var(--theme-color);
-      background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
-      border-radius: var(--el-border-radius-base);
-    }
-
-    > span:last-child,
-    strong,
-    small {
-      display: block;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    small {
-      margin-top: 2px;
-      font-size: 11px;
-      color: var(--el-text-color-secondary);
-    }
-  }
-
   .production-workspace__resource-identity {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);

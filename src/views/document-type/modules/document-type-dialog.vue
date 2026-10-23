@@ -175,6 +175,7 @@
     createDocumentType,
     fetchDocumentTypeDefaultConflicts,
     fetchNextDocumentTypeSort,
+    fetchFinancialPayableTypeOptions,
     updateDocumentType,
     fetchComponentTypeOptions
   } from '@mdm/api'
@@ -183,6 +184,7 @@
     buildDocumentTypeUpdateInput,
     createDocumentTypeCopyModel,
     createDocumentTypeFormModel,
+    isBuiltinStandardPayableType,
     type DocumentTypeFormModel
   } from './document-type-model'
 
@@ -205,6 +207,7 @@
   interface FormExpose {
     validate: () => Promise<boolean | void>
     clearValidate: () => void
+    readonly readyToSubmit: boolean
   }
 
   interface FormGroup {
@@ -230,13 +233,25 @@
     'mdmProductionWipDeductionTiming'
   )
   const extensionValueTypeOptions = useDictionaryOptions('mdmDocumentExtensionValueType')
-  const { shouldExposeTenantField } = useTenantScopeFormPolicy()
+  const { shouldExposeTenantField, defaultWriteTenantId } = useTenantScopeFormPolicy()
   const presetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
   const componentTypeOptions = ref<ComponentTypeRecord[]>([])
   const isProductionType = computed(() =>
     Boolean(
       form.data.menuIds.some(
         (menuId) => treeUtils.findNode(form.menuTree, menuId)?.name === 'MesWorkOrder'
+      )
+    )
+  )
+  const isEstimatedPayableType = computed(() =>
+    form.data.menuIds.some(
+      (menuId) => treeUtils.findNode(form.menuTree, menuId)?.name === 'FinanceEstimatedPayable'
+    )
+  )
+  const isPayableType = computed(() =>
+    form.data.menuIds.some((menuId) =>
+      ['FinanceEstimatedPayable', 'FinancePurchasePayable'].includes(
+        treeUtils.findNode(form.menuTree, menuId)?.name || ''
       )
     )
   )
@@ -285,11 +300,15 @@
                 filterable: true,
                 disabled: form.mode !== 'add',
                 placeholder: '请选择本条单据类型所属租户',
-                onChange: () => void refreshSuggestedSort()
+                onChange: () => {
+                  form.data.financialPayableTypeId = null
+                  form.data.financialPayableType = null
+                  void refreshSuggestedSort()
+                }
               },
               description:
                 form.mode === 'add'
-                  ? '在全部租户工作区新增时，必须明确数据归属。'
+                  ? '全部租户新增默认归属当前登录租户，也可明确选择目标租户。'
                   : '编辑或复制时沿用原记录租户，避免跨租户复制主数据。'
             }
           ]
@@ -314,6 +333,15 @@
             placeholder: '请选择一个或多个具体菜单功能',
             onChange: (menuIds: string[]) => {
               form.data.menuId = menuIds[0] ?? ''
+              if (
+                !menuIds.some(
+                  (menuId) =>
+                    treeUtils.findNode(form.menuTree, menuId)?.name === 'FinanceEstimatedPayable'
+                )
+              ) {
+                form.data.financialPayableTypeId = null
+                form.data.financialPayableType = null
+              }
               void refreshSuggestedSort()
             },
             props: {
@@ -332,6 +360,12 @@
           props: {
             maxlength: 64,
             clearable: true,
+            onChange: (code: string) => {
+              if (isBuiltinStandardPayableType(code)) {
+                form.data.payableStandardPurchase = true
+                form.data.financialPayableTypeId = null
+              }
+            },
             placeholder: '例如：PRODUCTION_ORDER'
           },
           description: '租户内唯一，保存时自动转换为大写。'
@@ -343,6 +377,72 @@
           span: 24,
           props: { maxlength: 100, clearable: true, placeholder: '请输入业务可识别的类型名称' }
         },
+        ...(isPayableType.value
+          ? [
+              {
+                label: '应付业务规则',
+                key: 'payableSection',
+                type: 'divider',
+                span: 24
+              } as FormItem,
+              {
+                label: '标准采购业务',
+                key: 'payableStandardPurchase',
+                type: 'segment',
+                span: 12,
+                options: booleanOptions,
+                props: {
+                  disabled:
+                    form.mode === 'copy' ||
+                    isBuiltinStandardPayableType(form.data.documentTypeCode),
+                  onChange: (standard: boolean) => {
+                    if (standard) form.data.financialPayableTypeId = null
+                  }
+                },
+                description:
+                  '标准采购明细必须选物料；暂估到票从同源采购入库单生成财务应付，不能直接下推。'
+              } as FormItem,
+              ...(isEstimatedPayableType.value && !form.data.payableStandardPurchase
+                ? [
+                    {
+                      label: '下推财务应付类型',
+                      key: 'financialPayableTypeId',
+                      type: 'select',
+                      span: 12,
+                      api: (params) =>
+                        fetchFinancialPayableTypeOptions({
+                          tenantId:
+                            typeof params?.tenantId === 'string' ? params.tenantId : undefined,
+                          sourceTypeId:
+                            typeof params?.sourceTypeId === 'string'
+                              ? params.sourceTypeId
+                              : undefined
+                        }),
+                      params: {
+                        tenantId: form.data.tenantId,
+                        sourceTypeId: form.data.id || form.data.sourceId
+                      },
+                      shouldFetch: () => Boolean(form.data.tenantId),
+                      labelField: 'documentTypeName',
+                      valueField: 'id',
+                      labelFn: (option) =>
+                        `${option.documentTypeName || ''} · ${option.documentTypeCode || ''}${option.enabled === false ? '（已停用）' : ''}`,
+                      options: form.data.financialPayableType
+                        ? [{ ...form.data.financialPayableType }]
+                        : [],
+                      props: {
+                        filterable: true,
+                        clearable: true,
+                        disabled: form.mode === 'copy' || !form.data.tenantId,
+                        placeholder: '选择同租户非标准财务应付类型'
+                      },
+                      description:
+                        '应付单保存时保留规则快照；修改配置只影响之后新建或改选类型的应付单。'
+                    } as FormItem
+                  ]
+                : [])
+            ]
+          : []),
         { label: '显示、排序与状态', key: 'presentationSection', type: 'divider', span: 24 },
         {
           label: '默认单据类型',
@@ -553,6 +653,13 @@
         }
       ],
       documentTypeName: [{ required: true, message: '请输入单据类型名称', trigger: 'blur' }],
+      financialPayableTypeId: [
+        {
+          required: isEstimatedPayableType.value && !form.data.payableStandardPurchase,
+          message: '请选择下推财务应付类型',
+          trigger: 'change'
+        }
+      ],
       sortOrder: [{ required: true, message: '请输入排序值', trigger: 'blur' }],
       textColor: [
         {
@@ -627,13 +734,17 @@
       ? treeUtils.findNode(form.menuTree, data.selectedMenuId)
       : undefined
     form.data = createDocumentTypeFormModel({
-      tenantId: data.effectiveTenantId ?? undefined,
+      tenantId: data.effectiveTenantId ?? defaultWriteTenantId.value ?? undefined,
       menuId: selectedMenu?.type === 'menu' ? selectedMenu.id : '',
       menuIds: selectedMenu?.type === 'menu' ? [selectedMenu.id] : []
     })
   }
 
   const handleSubmit = async (): Promise<boolean> => {
+    if (!isPayableType.value) form.data.payableStandardPurchase = false
+    if (!isEstimatedPayableType.value || form.data.payableStandardPurchase) {
+      form.data.financialPayableTypeId = null
+    }
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
     } catch (error) {
@@ -761,6 +872,7 @@
           ? '已继承原记录的显示配置，请重新填写唯一编号。'
           : '维护菜单归属、稳定编号与业务展示规则。',
       confirmText: confirmMap[data.mode],
+      confirmDisabled: true,
       contentMaxHeight: '74vh',
       loading: true,
       onOpen: async (_openData, api) => {
@@ -778,6 +890,8 @@
           formRef.value?.clearValidate()
         } finally {
           api.setLoading(false)
+          await nextTick()
+          api.setOptions({ confirmDisabled: !formRef.value?.readyToSubmit })
         }
       },
       onConfirm: handleSubmit
@@ -785,6 +899,11 @@
   }
 
   defineExpose({ handleOpen })
+  watch(
+    () => formRef.value?.readyToSubmit ?? false,
+    (ready) => dialogRef.value?.setOptions({ confirmDisabled: !ready }),
+    { flush: 'sync' }
+  )
   watch(
     () => form.data.tenantId,
     async (tenantId, previous) => {

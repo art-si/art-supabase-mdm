@@ -294,6 +294,7 @@
     type ProductionEquipmentReferences
   } from '@mdm/api'
   import EquipmentDialog, { type EquipmentDialogOpenData } from './modules/equipment-dialog.vue'
+  import { prepareProductionEquipmentImport } from './production-equipment-import'
 
   defineOptions({ name: 'MdmProductionEquipment' })
   type ScopeMode = 'category' | 'department' | 'location'
@@ -612,31 +613,15 @@
   ]
 
   const importRows = async (rows: Record<string, unknown>[]): Promise<void> => {
-    for (const [index, row] of rows.entries()) {
-      const category = references.categories.find((item) =>
-        [item.code, item.name].includes(String(row['设备分类'] || ''))
-      )
-      const department = references.departments.find((item) =>
-        [item.code, item.name].includes(String(row['部门/产线'] || ''))
-      )
-      if (!category || !department || !row['设备名称'])
-        throw new Error(`第 ${index + 2} 行缺少设备名称、有效分类或部门/产线`)
-      await saveProductionEquipment({
-        tenantId: department.tenantId,
-        categoryId: category.id,
-        productionDepartmentId: department.id,
-        equipmentCode: String(row['设备编号'] || ''),
-        equipmentName: String(row['设备名称']),
-        equipmentBrand: String(row['设备品牌'] || ''),
-        model: String(row['设备型号'] || ''),
-        factoryNo: String(row['序列号'] || ''),
-        fixedAssetNo: String(row['固定资产编码'] || ''),
-        syncWorkCenter: false,
-        operationStatus: 'normal',
-        status: 'enabled',
-        sort: 10
-      })
-    }
+    const scopeRevision = tenantScopeStore.revision
+    const prepared = prepareProductionEquipmentImport(
+      rows,
+      references.categories,
+      references.departments,
+      effectiveTenantId.value ?? undefined
+    )
+    if (tenantScopeStore.revision !== scopeRevision) throw new Error('租户范围已变化，请重新导入')
+    for (const row of prepared) await saveProductionEquipment(row.payload)
     refresh()
   }
   const headerActions: ArtTableQueryHeaderAction[] = [

@@ -117,6 +117,7 @@
   } from '@mdm/api'
   import ProductionWorkspaceHeader from '../../production/modules/production-workspace-header.vue'
   import { productionTree } from '../../production/modules/production-model'
+  import { getDepartmentsWithWorkCenters } from '@/utils/business/production-scope'
   import WorkCenterNavigator, {
     type ProductionScopeWorkshopOption as WorkstationWorkshopOption
   } from '@/components/business/production-work-center-navigator/index.vue'
@@ -174,16 +175,17 @@
     return `${tenant?.tenantName || '当前租户'} / ${path || department.name}`
   }
 
+  const departmentsWithWorkCenters = computed(() =>
+    getDepartmentsWithWorkCenters(scope.departments, scope.workCenters)
+  )
   const workshopOptions = computed<WorkstationWorkshopOption[]>(() =>
     scope.departments
-      .filter((department) => {
-        if (!department.enabled || !department.parentId) return false
-        const departmentIds = descendantDepartmentIds(department.id)
-        return scope.workCenters.some(
-          (center) =>
-            center.tenantId === department.tenantId && departmentIds.includes(center.departmentId)
-        )
-      })
+      .filter(
+        (department) =>
+          department.enabled &&
+          Boolean(department.parentId) &&
+          departmentsWithWorkCenters.value.has(department.id)
+      )
       .map((department) => ({
         id: department.id,
         name: department.name,

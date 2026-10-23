@@ -7,13 +7,12 @@
     :show-close="!saving"
   >
     <div class="calendar-day-type-dialog">
-      <div class="calendar-day-type-dialog__date">
-        <span><ArtSvgIcon icon="ri:calendar-check-line" /></span>
-        <div>
-          <strong>{{ dayjs(context.workDate).format('YYYY 年 M 月 D 日') }}</strong>
-          <p>{{ dayjs(context.workDate).locale('zh-cn').format('dddd') }} · 点击类型后立即保存</p>
-        </div>
-      </div>
+      <ArtEntitySummary
+        compact
+        icon="ri:calendar-check-line"
+        :title="dayjs(context.workDate).format('YYYY 年 M 月 D 日')"
+        :description="`${dayjs(context.workDate).locale('zh-cn').format('dddd')} · 点击类型后立即保存`"
+      />
 
       <div class="calendar-day-type-dialog__options" role="radiogroup" aria-label="日期类型">
         <button
@@ -56,6 +55,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { setProductionCalendarDayType, type ProductionCalendarDayType } from '@mdm/api'
   import { calendarDayTypes } from './calendar-day-types'
 
@@ -105,36 +105,6 @@
   .calendar-day-type-dialog {
     display: grid;
     gap: 16px;
-
-    &__date {
-      display: grid;
-      grid-template-columns: 42px minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
-      padding: 13px 14px;
-      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
-      border-radius: var(--el-border-radius-base);
-
-      > span {
-        display: grid;
-        place-items: center;
-        width: 42px;
-        height: 42px;
-        color: var(--theme-color);
-        background: var(--default-box-color);
-        border-radius: var(--el-border-radius-base);
-      }
-
-      strong {
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 3px 0 0;
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-      }
-    }
 
     &__options {
       display: grid;

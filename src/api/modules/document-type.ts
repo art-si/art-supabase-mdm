@@ -14,7 +14,8 @@ import type {
   DocumentTypeRecord,
   DocumentTypeStats,
   DocumentTypeUpdateInput,
-  DocumentTypeWriteInput
+  DocumentTypeWriteInput,
+  FinancialPayableTypeReference
 } from './document-type.types'
 
 export * from './document-type.types'
@@ -39,8 +40,25 @@ const writeOptions = {
 
 const documentTypeSelect = `
   *,
+  financialPayableType:mdm_payable_financial_type(id,document_type_code,document_type_name,enabled),
   tenant:sys_tenant!mdm_document_type_tenant_id_fkey(tenant_code, tenant_name)
 `
+
+export async function fetchFinancialPayableTypeOptions(params: {
+  tenantId?: string
+  sourceTypeId?: string
+}): Promise<Array<FinancialPayableTypeReference & { disabled: boolean }>> {
+  const { data } = await responseHandle<FinancialPayableTypeReference[]>(
+    () =>
+      supabase.rpc('mdm_financial_payable_type_options_secure', {
+        p_tenant: params.tenantId || null,
+        p_source_type: params.sourceTypeId || null
+      }),
+    { ...readOptions, showErrorMessage: false }
+  )
+  if (!Array.isArray(data)) throw new Error('目标财务应付类型加载失败，请重试')
+  return data.map((option) => ({ ...option, disabled: !option.enabled }))
+}
 
 function toDocumentTypeRow(input: DocumentTypeWriteInput | DocumentTypeUpdateInput) {
   const { extensionFields, ...header } = input

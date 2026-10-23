@@ -351,15 +351,6 @@
         onClick: () => openDialog('add')
       },
       {
-        key: 'copy',
-        label: '复制',
-        icon: 'ri:file-copy-line',
-        permission: 'MdmDocumentType:Copy',
-        selectionRequired: true,
-        disabled: ({ selectedCount }: ArtTableQueryHeaderActionContext) => selectedCount !== 1,
-        onClick: ({ selectedRows }) => openDialog('copy', selectedRows[0] as DocumentTypeRecord)
-      },
-      {
         type: 'export',
         label: '导出',
         permission: 'MdmDocumentType:Export',
@@ -401,6 +392,15 @@
       }
     ]),
     selectionActions: computed<ArtTableQueryHeaderAction[]>(() => [
+      {
+        key: 'copy',
+        label: '复制',
+        icon: 'ri:file-copy-line',
+        permission: 'MdmDocumentType:Copy',
+        selectionRequired: true,
+        disabled: ({ selectedCount }: ArtTableQueryHeaderActionContext) => selectedCount !== 1,
+        onClick: ({ selectedRows }) => openDialog('copy', selectedRows[0] as DocumentTypeRecord)
+      },
       {
         type: 'delete',
         permission: 'MdmDocumentType:Delete',
@@ -537,7 +537,7 @@
       formatter: (row) => (
         <div class="document-type-update-cell">
           <span>{formatWithDayjs(row.updateTime) || '--'}</span>
-          <small>{row.updateBy || '系统维护'}</small>
+          <small>{row.updateBy && row.updateBy !== 'unknown' ? row.updateBy : '系统维护'}</small>
         </div>
       )
     },
@@ -596,6 +596,11 @@
       menuPath: menuPathResolver.value.resolveMany(record.menuIds),
       isProductionType: record.menuIds.some(
         (id) => treeUtils.findNode(menu.tree, id)?.name === 'MesWorkOrder'
+      ),
+      isPayableType: record.menuIds.some((id) =>
+        ['FinanceEstimatedPayable', 'FinancePurchasePayable'].includes(
+          treeUtils.findNode(menu.tree, id)?.name || ''
+        )
       )
     })
   }

@@ -3,7 +3,8 @@
     :permissions="{
       View: 'MdmPaymentTerm:View',
       Add: 'MdmPaymentTerm:Add',
-      Edit: 'MdmPaymentTerm:Edit'
+      Edit: 'MdmPaymentTerm:Edit',
+      Delete: 'MdmPaymentTerm:Delete'
     }"
   />
 </template>

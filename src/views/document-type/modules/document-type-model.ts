@@ -1,38 +1,56 @@
 import { pick, uniq } from 'lodash-es'
 import { normalizeNonNullableText } from '@/utils/form/normalize'
-import type { DocumentTypeRecord, DocumentTypeUpdateInput, DocumentTypeWriteInput } from '@mdm/api'
+import type {
+  DocumentTypeRecord,
+  DocumentTypeUpdateInput,
+  DocumentTypeWriteInput,
+  FinancialPayableTypeReference
+} from '@mdm/api'
 
 export interface DocumentTypeFormModel extends DocumentTypeWriteInput {
   id?: string
   sourceId?: string
+  financialPayableType?: FinancialPayableTypeReference | null
 }
+
+export const isBuiltinStandardPayableType = (code: string): boolean =>
+  ['AP_EST_STANDARD', 'AP_FIN_STANDARD'].includes(code.trim().toUpperCase())
 
 export const createDocumentTypeFormModel = (
   patch: Partial<DocumentTypeFormModel> = {}
-): DocumentTypeFormModel => ({
-  id: undefined,
-  sourceId: undefined,
-  tenantId: undefined,
-  menuId: '',
-  menuIds: [],
-  documentTypeCode: '',
-  documentTypeName: '',
-  isDefault: false,
-  remark: '',
-  sortOrder: 10,
-  textColor: '',
-  tagStyle: 'primary',
-  enabled: true,
-  extensionFields: [],
-  packingEnabled: false,
-  packingThicknessFieldKey: null,
-  allowedIssueWarehouseTypes: ['raw_material'],
-  productionReportControl: 'none',
-  productionFullIssueControl: 'none',
-  productionFullIssueScope: 'all',
-  productionWipDeductionTiming: 'inbound_approval',
-  ...patch
-})
+): DocumentTypeFormModel => {
+  const model: DocumentTypeFormModel = {
+    id: undefined,
+    sourceId: undefined,
+    tenantId: undefined,
+    menuId: '',
+    menuIds: [],
+    documentTypeCode: '',
+    documentTypeName: '',
+    isDefault: false,
+    remark: '',
+    sortOrder: 10,
+    textColor: '',
+    tagStyle: 'primary',
+    enabled: true,
+    payableStandardPurchase: false,
+    financialPayableTypeId: null,
+    extensionFields: [],
+    packingEnabled: false,
+    packingThicknessFieldKey: null,
+    allowedIssueWarehouseTypes: ['raw_material'],
+    productionReportControl: 'none',
+    productionFullIssueControl: 'none',
+    productionFullIssueScope: 'all',
+    productionWipDeductionTiming: 'inbound_approval',
+    ...patch
+  }
+  if (isBuiltinStandardPayableType(model.documentTypeCode)) {
+    model.payableStandardPurchase = true
+    model.financialPayableTypeId = null
+  }
+  return model
+}
 
 export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): DocumentTypeFormModel =>
   createDocumentTypeFormModel({
@@ -48,6 +66,9 @@ export const createDocumentTypeCopyModel = (source: DocumentTypeRecord): Documen
     textColor: source.textColor,
     tagStyle: source.tagStyle,
     enabled: source.enabled,
+    payableStandardPurchase: source.payableStandardPurchase ?? false,
+    financialPayableTypeId: source.financialPayableTypeId ?? null,
+    financialPayableType: source.financialPayableType,
     extensionFields: source.extensionFields.map((field) => ({ ...field })),
     packingEnabled: false,
     packingThicknessFieldKey: null,
@@ -74,6 +95,8 @@ export const buildDocumentTypeInput = (
     'textColor',
     'tagStyle',
     'enabled',
+    'payableStandardPurchase',
+    'financialPayableTypeId',
     'extensionFields',
     'packingEnabled',
     'packingThicknessFieldKey',

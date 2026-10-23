@@ -22,13 +22,14 @@
           </div>
         </template>
       </ArtEntitySummary>
-      <div v-else class="material-reference-dialog__context" role="note">
-        <span aria-hidden="true"><ArtSvgIcon :icon="config.icon" /></span>
-        <div>
-          <strong>{{ config.dialogTitle }}</strong>
-          <p>{{ config.dialogDescription }}</p>
-        </div>
-      </div>
+      <ArtEntitySummary
+        v-else
+        compact
+        spaced
+        :icon="config.icon"
+        :title="config.dialogTitle"
+        :description="config.dialogDescription"
+      />
 
       <ArtForm
         ref="formRef"
@@ -850,40 +851,6 @@
 
       small {
         font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__context {
-      display: grid;
-      grid-template-columns: 42px minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
-      padding: 12px 14px;
-      margin-bottom: 18px;
-      background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
-      border-left: 3px solid var(--theme-color);
-      border-radius: var(--el-border-radius-base);
-
-      > span {
-        display: grid;
-        place-items: center;
-        width: 42px;
-        height: 42px;
-        color: var(--theme-color);
-        background: var(--default-box-color);
-        border-radius: var(--el-border-radius-base);
-      }
-
-      span {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--el-text-color-regular);
-      }
-
-      p {
-        margin: 3px 0 0;
-        font-size: 12px;
         color: var(--el-text-color-secondary);
       }
     }

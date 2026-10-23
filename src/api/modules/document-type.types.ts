@@ -11,6 +11,13 @@ export interface DocumentTypeTenantReference {
   tenantName: string
 }
 
+export interface FinancialPayableTypeReference {
+  id: string
+  documentTypeCode: string
+  documentTypeName: string
+  enabled: boolean
+}
+
 export interface DocumentTypeRecord {
   id: string
   tenantId: string
@@ -24,6 +31,9 @@ export interface DocumentTypeRecord {
   textColor: string
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
+  payableStandardPurchase?: boolean
+  financialPayableTypeId?: string | null
+  financialPayableType?: FinancialPayableTypeReference | null
   extensionFields: WorkOrderExtensionField[]
   packingEnabled: boolean
   packingThicknessFieldKey: string | null
@@ -51,6 +61,8 @@ export interface DocumentTypeWriteInput {
   textColor: string
   tagStyle: DocumentTypeTagStyle
   enabled: boolean
+  payableStandardPurchase?: boolean
+  financialPayableTypeId?: string | null
   extensionFields: WorkOrderExtensionField[]
   packingEnabled: boolean
   packingThicknessFieldKey: string | null

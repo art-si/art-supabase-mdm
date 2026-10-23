@@ -77,7 +77,7 @@
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -270,15 +270,11 @@
       label: '部门 / 产线',
       minWidth: 140,
       formatter: (row) => (
-        <div class="personnel-work-center__department" title={departmentPath(row.departmentId)}>
-          <span aria-hidden="true">
-            <ArtSvgIcon icon="ri:node-tree" />
-          </span>
-          <span>
-            <strong>{row.department.name}</strong>
-            <small>{departmentPath(row.departmentId)}</small>
-          </span>
-        </div>
+        <BusinessTableIdentityCell
+          primary={row.department.name}
+          secondary={departmentPath(row.departmentId)}
+          icon="ri:node-tree"
+        />
       )
     },
     {
@@ -471,7 +467,6 @@
 
 <style scoped lang="scss">
   .personnel-work-center {
-    :deep(.personnel-work-center__department),
     :deep(.personnel-work-center__employee) {
       display: grid;
       grid-template-columns: 34px minmax(0, 1fr);
@@ -497,18 +492,6 @@
         margin-top: 2px;
         font-size: 11px;
         color: var(--el-text-color-secondary);
-      }
-    }
-
-    :deep(.personnel-work-center__department) {
-      > span:first-child {
-        display: grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        color: var(--theme-color);
-        background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
-        border-radius: var(--el-border-radius-base);
       }
     }
 

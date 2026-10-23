@@ -4,7 +4,8 @@
     :permissions="{
       View: 'MdmSettlementMethod:View',
       Add: 'MdmSettlementMethod:Add',
-      Edit: 'MdmSettlementMethod:Edit'
+      Edit: 'MdmSettlementMethod:Edit',
+      Delete: 'MdmSettlementMethod:Delete'
     }"
   />
 </template>

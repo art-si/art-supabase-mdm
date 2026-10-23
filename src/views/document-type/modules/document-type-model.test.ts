@@ -47,6 +47,41 @@ test('copy model keeps presentation but clears the unique code and default state
   assert.equal(copy.productionWipDeductionTiming, 'inbound_approval')
 })
 
+test('payable type copies keep mapping while payloads exclude joined labels', () => {
+  for (const index of [1, 2]) {
+    const original: DocumentTypeRecord = {
+      ...source,
+      documentTypeCode: `CUSTOM_EST_${index}`,
+      payableStandardPurchase: false,
+      financialPayableTypeId: `financial-${index}`,
+      financialPayableType: {
+        id: `financial-${index}`,
+        documentTypeCode: `CUSTOM_FIN_${index}`,
+        documentTypeName: `财务应付类型${index}`,
+        enabled: true
+      }
+    }
+    const copy = createDocumentTypeCopyModel(original)
+    assert.equal(copy.financialPayableTypeId, original.financialPayableTypeId)
+    assert.equal(copy.payableStandardPurchase, false)
+    const payload = buildDocumentTypeInput(copy, true)
+    assert.equal(payload.financialPayableTypeId, original.financialPayableTypeId)
+    assert.equal('financialPayableType' in payload, false)
+  }
+})
+
+test('builtin standard types cannot initialize as nonstandard direct-push types', () => {
+  for (const code of ['AP_EST_STANDARD', 'AP_FIN_STANDARD']) {
+    const model = createDocumentTypeFormModel({
+      documentTypeCode: code,
+      payableStandardPurchase: false,
+      financialPayableTypeId: 'forged-target'
+    })
+    assert.equal(model.payableStandardPurchase, true)
+    assert.equal(model.financialPayableTypeId, null)
+  }
+})
+
 test('write payload normalizes text and only includes tenant when required', () => {
   const model = createDocumentTypeFormModel({
     tenantId: 'tenant-id',

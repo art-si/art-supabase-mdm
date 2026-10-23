@@ -4,7 +4,8 @@
     :permissions="{
       View: 'MdmPaymentPurpose:View',
       Add: 'MdmPaymentPurpose:Add',
-      Edit: 'MdmPaymentPurpose:Edit'
+      Edit: 'MdmPaymentPurpose:Edit',
+      Delete: 'MdmPaymentPurpose:Delete'
     }"
   />
 </template>

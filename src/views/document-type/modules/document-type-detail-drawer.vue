@@ -35,6 +35,27 @@
               display="tag"
             />
           </template>
+          <template #item-packingEnabled>
+            <ArtDictDisplay
+              dict-code="commonBoolean"
+              :value="String(detail.record.packingEnabled)"
+            />
+          </template>
+        </ArtDescriptions>
+      </ArtSectionCard>
+
+      <ArtSectionCard
+        v-if="detail.isPayableType"
+        title="应付业务规则"
+        subtitle="应付单按保存时的规则快照执行，不随类型配置变更而重写历史。"
+      >
+        <ArtDescriptions :data="detail" :items="payableItems" :columns="2">
+          <template #item-payableStandardPurchase>
+            <ArtDictDisplay
+              dict-code="commonBoolean"
+              :value="String(detail.record.payableStandardPurchase ?? false)"
+            />
+          </template>
         </ArtDescriptions>
       </ArtSectionCard>
 
@@ -115,7 +136,7 @@
               effect="light"
               :style="tagPreviewStyle"
             >
-              {{ detail.record.tagStyle || '默认' }}
+              样式预览
             </ElTag>
           </template>
           <template #item-textColor>
@@ -146,6 +167,7 @@
     record: DocumentTypeRecord
     menuPath: string
     isProductionType: boolean
+    isPayableType?: boolean
   }
 
   const drawerRef = ref<ArtDrawerExpose<DocumentTypeDetailData>>()
@@ -173,13 +195,29 @@
       productionWipDeductionTiming: 'inbound_approval'
     },
     menuPath: '',
-    isProductionType: false
+    isProductionType: false,
+    isPayableType: false
   })
 
   const tagPreviewStyle = computed<CSSProperties>(() => ({
     color: detail.record.textColor || undefined
   }))
-  const definitionItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
+  const payableItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
+    {
+      key: 'payableStandardPurchase',
+      label: '标准采购业务',
+      field: 'record.payableStandardPurchase'
+    },
+    {
+      key: 'financialPayableType',
+      label: '下推财务应付类型',
+      value: (data: DocumentTypeDetailData) =>
+        data.record.payableStandardPurchase
+          ? '从同源采购入库单到票'
+          : data.record.financialPayableType?.documentTypeName || '未配置'
+    }
+  ]
+  const definitionItems = computed<ArtDescriptionItem<DocumentTypeDetailData>[]>(() => [
     { key: 'menuPath', label: '所属菜单功能', field: 'menuPath', span: 2 },
     {
       key: 'documentTypeCode',
@@ -190,12 +228,16 @@
     { key: 'documentTypeName', label: '单据类型名称', field: 'record.documentTypeName' },
     { key: 'isDefault', label: '默认单据类型', field: 'record.isDefault' },
     { key: 'enabled', label: '状态', field: 'record.enabled' },
-    { key: 'packingEnabled', label: '需要排包', field: 'record.packingEnabled' },
-    {
-      key: 'packingThicknessFieldKey',
-      label: '板厚参数字段',
-      value: (data: DocumentTypeDetailData) => data.record.packingThicknessFieldKey || '—'
-    },
+    ...(detail.isProductionType
+      ? [
+          { key: 'packingEnabled', label: '需要排包', field: 'record.packingEnabled' },
+          {
+            key: 'packingThicknessFieldKey',
+            label: '板厚参数字段',
+            value: (data: DocumentTypeDetailData) => data.record.packingThicknessFieldKey || '—'
+          }
+        ]
+      : []),
     { key: 'sortOrder', label: '排序', field: 'record.sortOrder' },
     {
       key: 'tenantName',
@@ -203,7 +245,7 @@
       value: (data: DocumentTypeDetailData) => data.record.tenant?.tenantName
     },
     { key: 'remark', label: '备注', field: 'record.remark', span: 2 }
-  ]
+  ])
   const reportControlItems: ArtDescriptionItem<DocumentTypeDetailData>[] = [
     {
       key: 'productionReportControl',
