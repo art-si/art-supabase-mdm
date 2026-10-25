@@ -1,0 +1,1 @@
+import{$r as e,Er as t,Pr as n}from"./supabase-DfbAe5Ah.js";import{t as r}from"./catalog-DS_jynzK.js";var i=n({name:`MdmLogisticsDirectory`,__name:`index`,setup(n){return(n,i)=>(e(),t(r))}});export{i as default};

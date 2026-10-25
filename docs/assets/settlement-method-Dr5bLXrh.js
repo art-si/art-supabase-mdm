@@ -1,1 +1,0 @@
-import{Nr as e,Qr as t,Tr as n}from"./supabase-B1-j3BYm.js";import{t as r}from"./payable-reference-workspace-Bf8oXXDo.js";var i=e({name:`MdmSettlementMethod`,__name:`index`,setup(e){return(e,i)=>(t(),n(r,{kind:`method`,permissions:{View:`MdmSettlementMethod:View`,Add:`MdmSettlementMethod:Add`,Edit:`MdmSettlementMethod:Edit`}}))}});export{i as default};
