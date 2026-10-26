@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { toTenantSelectOptions } from '@/utils/tenant-display'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
   import { replaceReactiveModel } from '@/utils/form/model'
@@ -168,11 +169,7 @@
           .map((group) => String(group.id))
       : undefined
   )
-  const tenantChoices = () =>
-    tenantOptions.value.map((tenant) => ({
-      label: `${tenant.tenantName || tenant.tenantCode}（${tenant.tenantCode}）`,
-      value: tenant.id
-    }))
+  const tenantChoices = () => toTenantSelectOptions(tenantOptions.value)
 
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {

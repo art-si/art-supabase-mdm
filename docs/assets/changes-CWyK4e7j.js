@@ -1,0 +1,1 @@
+import{$r as e,Er as t,Pr as n}from"./supabase-DfbAe5Ah.js";import{t as r}from"./governance-center-DIL-nTyg.js";var i=n({name:`MdmChangeManagement`,__name:`index`,setup(n){return(n,i)=>(e(),t(r,{"initial-view":`changes`}))}});export{i as default};

@@ -81,6 +81,7 @@
   </div>
 </template>
 <script setup lang="tsx">
+  import { toTenantSelectOptions } from '@/utils/tenant-display'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { computed, ref, reactive } from 'vue'
@@ -555,11 +556,7 @@
     { type: 'export', permission: 'MdmProcessRoute:Export', onClick: exportRows }
   ]
 
-  const tenantChoices = () =>
-    tenantOptions.value.map((tenant) => ({
-      label: `${tenant.tenantName || tenant.tenantCode}（${tenant.tenantCode}）`,
-      value: tenant.id
-    }))
+  const tenantChoices = () => toTenantSelectOptions(tenantOptions.value)
 
   async function loadGroups() {
     groupState.loading = true

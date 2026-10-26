@@ -79,6 +79,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { toTenantSelectOptions } from '@/utils/tenant-display'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
@@ -565,10 +566,7 @@
   }
 
   function tenantChoices(): Array<{ label: string; value: string }> {
-    return tenantOptions.value.map((tenant) => ({
-      label: `${tenant.tenantName || tenant.tenantCode}（${tenant.tenantCode}）`,
-      value: tenant.id
-    }))
+    return toTenantSelectOptions(tenantOptions.value)
   }
 
   function openDialog(row?: OperationalMasterRecord, copy = false, readonly = false): void {

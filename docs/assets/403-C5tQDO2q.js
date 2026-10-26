@@ -1,1 +1,0 @@
-import{$r as e,Er as t,Pr as n}from"./supabase-DfbAe5Ah.js";import{t as r}from"./art-permission-guard-Cs2F1WM3.js";var i=n({name:`Exception403`,__name:`index`,setup(n){return(n,i)=>(e(),t(r,{"force-denied":``,"resource-name":`目标页面`,"show-relogin":``,"viewport-centered":``}))}});export{i as default};
