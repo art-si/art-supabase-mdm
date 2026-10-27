@@ -117,7 +117,10 @@
   } from '@mdm/api'
   import ProductionWorkspaceHeader from '../../production/modules/production-workspace-header.vue'
   import { productionTree } from '../../production/modules/production-model'
-  import { getDepartmentsWithWorkCenters } from '@/utils/business/production-scope'
+  import {
+    formatProductionDepartmentPath,
+    getDepartmentsWithWorkCenters
+  } from '@/utils/business/production-scope'
   import WorkCenterNavigator, {
     type ProductionScopeWorkshopOption as WorkstationWorkshopOption
   } from '@/components/business/production-work-center-navigator/index.vue'
@@ -168,13 +171,6 @@
       .map((item) => String(item.id))
   }
 
-  function departmentPath(department: ProductionDepartment): string {
-    const path = departmentPaths.value.get(department.id)
-    if (effectiveTenantId.value) return path || department.name
-    const tenant = tenantOptions.value.find((item) => item.id === department.tenantId)
-    return `${tenant?.tenantName || '当前租户'} / ${path || department.name}`
-  }
-
   const departmentsWithWorkCenters = computed(() =>
     getDepartmentsWithWorkCenters(scope.departments, scope.workCenters)
   )
@@ -190,7 +186,12 @@
         id: department.id,
         name: department.name,
         code: department.code,
-        path: departmentPath(department)
+        path: formatProductionDepartmentPath(
+          department,
+          departmentPaths.value,
+          effectiveTenantId.value,
+          tenantOptions.value
+        )
       }))
   )
 
@@ -211,7 +212,7 @@
   )
   const selectedScopeDescription = computed(() =>
     selectedWorkshop.value
-      ? `${departmentPath(selectedWorkshop.value)} · 工位将继承当前生产范围`
+      ? `${formatProductionDepartmentPath(selectedWorkshop.value, departmentPaths.value, effectiveTenantId.value, tenantOptions.value)} · 工位将继承当前生产范围`
       : '从左侧选择车间和工作中心后开始维护工位。'
   )
 

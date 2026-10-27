@@ -110,7 +110,7 @@
     font-size: 29px;
     color: var(--theme-color);
     background: var(--el-bg-color);
-    border-radius: 18px;
+    border-radius: var(--art-surface-radius);
   }
 
   .mdm-roadmap__panel small {

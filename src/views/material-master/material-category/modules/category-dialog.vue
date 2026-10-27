@@ -399,7 +399,7 @@
     height: 42px;
     color: var(--theme-color);
     background: var(--el-bg-color);
-    border-radius: 10px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-category-dialog__notice p {

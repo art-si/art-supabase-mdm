@@ -534,7 +534,7 @@
     pointer-events: none;
     background: rgb(14 25 40 / 95%);
     border: 1px solid rgb(188 207 231 / 35%);
-    border-radius: 6px;
+    border-radius: var(--art-surface-radius);
     box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
   }
 

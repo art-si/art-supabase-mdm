@@ -721,7 +721,7 @@
     height: 38px;
     color: var(--theme-color);
     background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
-    border-radius: 10px;
+    border-radius: var(--art-surface-radius);
   }
 
   :deep(.bom-maintenance-page__identity > span:last-child),

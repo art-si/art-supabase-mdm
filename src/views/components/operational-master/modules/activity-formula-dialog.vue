@@ -1102,7 +1102,7 @@
     height: 28px;
     color: var(--el-text-color-secondary);
     background: var(--el-fill-color-light);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .parameter-node.is-parameter .parameter-node__icon {
@@ -1239,7 +1239,7 @@
     cursor: pointer;
     background: var(--el-bg-color);
     border: 1px solid var(--el-border-color);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .formula-token.is-parameter {

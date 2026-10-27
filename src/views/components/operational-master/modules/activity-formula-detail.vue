@@ -297,7 +297,7 @@
     height: 28px;
     color: var(--el-text-color-secondary);
     background: var(--el-fill-color-light);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .formula-detail__node.is-parameter .formula-detail__node-icon {
@@ -379,7 +379,7 @@
     color: var(--el-text-color-regular);
     background: var(--el-fill-color-light);
     border: 1px solid var(--el-border-color-lighter);
-    border-radius: 7px;
+    border-radius: var(--art-surface-radius);
   }
 
   .formula-detail__token.is-parameter {

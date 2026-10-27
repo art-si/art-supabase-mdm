@@ -1587,7 +1587,7 @@
   .material-archive-dialog__panel {
     padding: 16px;
     border: 1px solid var(--el-border-color-lighter);
-    border-radius: 10px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-archive-dialog__section-heading {
@@ -1635,7 +1635,7 @@
     align-items: baseline;
     padding: 5px 9px;
     background: var(--el-fill-color-lighter);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-archive-dialog__completion span {
@@ -1661,7 +1661,7 @@
     padding: 10px 12px;
     margin-bottom: 4px;
     background: var(--el-fill-color-lighter);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-archive-dialog__notice > span {
@@ -1671,7 +1671,7 @@
     height: 34px;
     color: var(--theme-color);
     background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-archive-dialog__notice p {

@@ -65,7 +65,7 @@
                 <div v-for="warehouse in warehouses" :key="warehouse.id" class="space-y-1">
                   <button
                     type="button"
-                    class="nav-warehouse flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                    class="nav-warehouse flex w-full items-center gap-2 rounded-surface px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
                     :class="{ 'is-current': selectedWarehouseId === warehouse.id }"
                     :aria-expanded="selectedWarehouseId === warehouse.id"
                     @click="selectWarehouse(warehouse.id)"
@@ -92,7 +92,7 @@
                   >
                     <div
                       v-if="!warehouse.enableZones"
-                      class="nav-zone is-current flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                      class="nav-zone is-current flex items-center justify-between rounded-surface px-3 py-2 text-sm"
                       aria-current="page"
                     >
                       仓库直挂<span class="text-xs tabular-nums">{{ zoneShelfCount(null) }}</span>
@@ -101,7 +101,7 @@
                       v-for="zone in zones"
                       :key="zone.id"
                       type="button"
-                      class="nav-zone flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                      class="nav-zone flex w-full items-center justify-between gap-2 rounded-surface px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
                       :class="{ 'is-current': selectedZoneId === zone.id }"
                       :aria-current="selectedZoneId === zone.id ? 'page' : undefined"
                       @click="selectZone(zone.id)"
@@ -694,7 +694,7 @@
     padding: 4px 8px;
     font-size: 12px;
     color: var(--el-text-color-secondary);
-    border-radius: calc(var(--art-control-radius) - 2px);
+    border-radius: var(--art-surface-radius);
   }
 
   .view-switch button.is-current {
@@ -837,7 +837,7 @@
     color: var(--el-text-color-primary);
     background: color-mix(in srgb, var(--bin-color) 13%, var(--el-bg-color));
     border: 1px solid var(--bin-color);
-    border-radius: 4px;
+    border-radius: var(--art-surface-radius);
   }
 
   .detail-bin.is-selected {

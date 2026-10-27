@@ -170,7 +170,7 @@
       text-align: left;
       background: color-mix(in srgb, var(--tile-color) 25%, var(--el-bg-color));
       border-color: color-mix(in srgb, var(--tile-color) 70%, var(--el-border-color));
-      border-radius: 4px;
+      border-radius: var(--art-surface-radius);
       box-shadow: inset 0 2px 0 color-mix(in srgb, var(--el-bg-color) 62%, transparent);
 
       &:hover {

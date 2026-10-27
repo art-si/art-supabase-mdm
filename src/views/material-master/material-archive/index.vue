@@ -1107,7 +1107,7 @@
     color: var(--theme-color);
     background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
     border: 1px solid color-mix(in srgb, var(--theme-color) 12%, transparent);
-    border-radius: 10px;
+    border-radius: var(--art-surface-radius);
   }
 
   :deep(.material-archive-page__identity > span:last-child) {
@@ -1174,7 +1174,7 @@
     font-size: 24px;
     color: var(--theme-color);
     background: var(--el-bg-color);
-    border-radius: 14px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-detail__state {
@@ -1291,7 +1291,7 @@
     height: 34px;
     color: var(--theme-color);
     background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));
-    border-radius: 9px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-detail__section header strong,
@@ -1340,7 +1340,7 @@
     align-items: center;
     padding: 10px 12px;
     background: var(--el-fill-color-lighter);
-    border-radius: 8px;
+    border-radius: var(--art-surface-radius);
   }
 
   .material-detail__conversions small {

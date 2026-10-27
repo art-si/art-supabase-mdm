@@ -1254,7 +1254,7 @@
     color: var(--theme-color);
     background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));
     border: 1px solid color-mix(in srgb, var(--theme-color) 12%, transparent);
-    border-radius: 9px;
+    border-radius: var(--art-surface-radius);
   }
 
   :deep(.bom-dialog__material-copy) {

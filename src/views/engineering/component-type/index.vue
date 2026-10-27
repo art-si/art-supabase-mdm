@@ -66,7 +66,7 @@
                 :aria-pressed="!selectedGroupId"
                 @click="selectGroup('')"
               >
-                <span class="component-type-page__all-icon" aria-hidden="true">
+                <span aria-hidden="true">
                   <ArtSvgIcon icon="ri:apps-2-line" />
                 </span>
                 <span
@@ -494,16 +494,6 @@
 
     &__all-group {
       @include master-group-all-button;
-    }
-
-    &__all-icon {
-      display: grid;
-      place-items: center;
-      width: 36px;
-      height: 36px;
-      color: var(--theme-color);
-      background: var(--default-box-color);
-      border-radius: var(--el-border-radius-base);
     }
 
     &__all-group > span:nth-child(2),
