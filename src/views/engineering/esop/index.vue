@@ -309,7 +309,8 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
-  import { exportExcel, viewAttachment } from '@/utils/file'
+  import { exportExcel, getFileExtension, viewAttachment } from '@/utils/file'
+  import { getAttachmentNameFromUrl } from '@/utils/file/attachment'
   import { formatSize } from '@/utils/file/format-size'
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -800,6 +801,7 @@
         const attachmentUrl = String(row['附件地址'] || '').trim()
         if (!category || !documentCode || !documentName || !attachmentUrl)
           throw new Error(`第 ${index + 2} 行缺少文档编号、名称、有效分类或附件地址`)
+        const attachmentName = getAttachmentNameFromUrl(attachmentUrl, `${documentCode}.pdf`)
         return {
           tenantId: category.tenantId,
           categoryId: category.id,
@@ -807,10 +809,8 @@
           documentName,
           versionNo: String(row['版本'] || 'V1.0').trim(),
           attachmentUrl,
-          attachmentName: decodeURIComponent(
-            attachmentUrl.split('/').pop() || `${documentCode}.pdf`
-          ),
-          attachmentType: attachmentUrl.split('.').pop() || '',
+          attachmentName,
+          attachmentType: getFileExtension(attachmentName),
           description: normalizeNullableText(String(row['说明'] || '')),
           effectiveDate: normalizeNullableText(String(row['生效日期'] || '')),
           status: String(row['状态'] || '启用').trim() === '停用' ? 'disabled' : 'enabled',

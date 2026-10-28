@@ -1,1 +1,0 @@
-import{$r as e,Er as t,Pr as n}from"./supabase-DfbAe5Ah.js";import{t as r}from"./catalog-M0ME1itw.js";var i=n({name:`MdmOrganizationDirectory`,__name:`index`,setup(n){return(n,i)=>(e(),t(r))}});export{i as default};

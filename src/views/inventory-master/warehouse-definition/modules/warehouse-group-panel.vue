@@ -37,7 +37,7 @@
 
     <button
       type="button"
-      class="warehouse-group-panel__all"
+      class="warehouse-group-panel__all art-master-group-all-button"
       :class="{ 'is-current': !selectedId }"
       :aria-pressed="!selectedId"
       @click="$emit('select', '')"
@@ -172,8 +172,6 @@
     }
 
     &__all {
-      @include master-group-all-button;
-
       > span:nth-child(2) {
         display: grid;
         min-width: 0;

@@ -557,7 +557,7 @@
 
 <script setup lang="ts">
   import { getScrollBehavior } from '@/utils/ui/scroll'
-  import { downloadFile } from '@/utils/file'
+  import { downloadFile, getFileExtension } from '@/utils/file'
   import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { ElCollapse, ElCollapseItem, ElMessage } from 'element-plus'
@@ -1100,7 +1100,7 @@
       workspace.groupId,
       'sketch',
       file,
-      `sketch-${index + 1}.${file.name.split('.').pop() || 'png'}`
+      `sketch-${index + 1}.${getFileExtension(file.name) || 'png'}`
     )
   }
 
@@ -1296,7 +1296,7 @@
         sourcePath: files.sourcePath,
         sourceUrl: files.sourceUrl,
         sourceName: files.sourcePath
-          ? `识别原件.${files.sourcePath.split('.').pop() || 'pdf'}`
+          ? `识别原件.${getFileExtension(files.sourcePath.split('/').at(-1)) || 'pdf'}`
           : '识别原件',
         groupId: files.sourcePath.split('/')[1] || crypto.randomUUID(),
         pages: [],

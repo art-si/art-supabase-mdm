@@ -162,6 +162,7 @@
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { getAttachmentNameFromUrl } from '@/utils/file/attachment'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import type { FormRules } from 'element-plus'
@@ -336,7 +337,7 @@
     }
     form.attachmentUrl = resource.url ?? ''
     form.attachmentName =
-      resource.originName || decodeURIComponent(resource.url?.split('/').pop() || 'ESOP附件')
+      resource.originName || getAttachmentNameFromUrl(resource.url ?? '', 'ESOP附件')
     form.attachmentType = resource.suffix || resource.mimeType || ''
     form.attachmentSize = resource.sizeByte
     if (!form.documentName) form.documentName = form.attachmentName.replace(/\.[^.]+$/, '')
@@ -351,8 +352,7 @@
         documentCode: form.documentCode.trim().toUpperCase(),
         documentName: form.documentName.trim(),
         attachmentName:
-          form.attachmentName ||
-          decodeURIComponent(form.attachmentUrl.split('/').pop() || 'ESOP附件')
+          form.attachmentName || getAttachmentNameFromUrl(form.attachmentUrl, 'ESOP附件')
       })
       emit('success')
       return true

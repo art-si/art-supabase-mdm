@@ -38,7 +38,7 @@
 
     <button
       type="button"
-      class="material-category-tree__all"
+      class="material-category-tree__all art-master-group-all-button"
       :class="{ 'is-current': !selectedId }"
       :aria-pressed="!selectedId"
       @click="$emit('select', '')"
@@ -175,8 +175,6 @@
     }
 
     &__all {
-      @include master-group-all-button;
-
       > span:nth-child(2) {
         display: grid;
         min-width: 0;

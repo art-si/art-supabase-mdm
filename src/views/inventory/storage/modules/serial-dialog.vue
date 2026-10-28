@@ -148,19 +148,10 @@
     materialId: [{ required: true, message: '请选择物料', trigger: 'change' }],
     status: [{ required: true, message: '请选择状态', trigger: 'change' }]
   }
-  const materialApi = async ({ keyword, page, pageSize }: DataSelectFetchParams) => {
+  const materialApi = ({ keyword, page, pageSize }: DataSelectFetchParams) => {
     const tenantId = context.value?.warehouse.tenantId
     if (!tenantId) return { data: [], total: 0 }
-    const result = await fetchStorageMaterialsPage(tenantId, keyword, page, pageSize)
-    return {
-      data: result.data.map((material) => ({
-        id: material.id,
-        materialCode: material.materialCode,
-        materialName: material.materialName,
-        specificationModel: material.specificationModel
-      })),
-      total: result.total
-    }
+    return fetchStorageMaterialsPage(tenantId, keyword, page, pageSize)
   }
   async function submit(): Promise<boolean> {
     try {

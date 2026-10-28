@@ -1,4 +1,5 @@
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { getFileExtension } from '@/utils/file/attachment'
 
 export interface DocumentPage {
   dataUrl: string
@@ -90,8 +91,8 @@ async function rasterizeDocx(file: File): Promise<DocumentPage[]> {
 }
 
 export async function rasterizeProcessingList(file: File): Promise<DocumentPage[]> {
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  if (['png', 'jpg', 'jpeg', 'webp'].includes(extension ?? '')) return rasterizeImage(file)
+  const extension = getFileExtension(file.name)
+  if (['png', 'jpg', 'jpeg', 'webp'].includes(extension)) return rasterizeImage(file)
   if (extension === 'pdf') return rasterizePdf(file)
   if (extension === 'docx') return rasterizeDocx(file)
   throw new Error('请上传 PNG、JPG、WebP、PDF 或 DOCX 文件；旧版 DOC 请先另存为 DOCX')

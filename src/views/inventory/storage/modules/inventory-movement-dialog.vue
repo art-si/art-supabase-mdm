@@ -401,21 +401,8 @@
         : []
   }))
 
-  const materialApi = async ({ keyword, page, pageSize }: DataSelectFetchParams) => {
-    const result = await fetchStorageMaterialsPage(context.tenantId, keyword, page, pageSize)
-    return {
-      data: result.data.map((material) => ({
-        id: material.id,
-        materialCode: material.materialCode,
-        materialName: material.materialName,
-        specificationModel: material.specificationModel,
-        description: material.description,
-        materialType: material.materialType,
-        inboundWarehouseId: material.inboundWarehouseId
-      })),
-      total: result.total
-    }
-  }
+  const materialApi = ({ keyword, page, pageSize }: DataSelectFetchParams) =>
+    fetchStorageMaterialsPage(context.tenantId, keyword, page, pageSize)
 
   async function handleMaterialSelection(rows: MaterialSelectRecord[]): Promise<void> {
     selectedMaterial.value = rows

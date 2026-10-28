@@ -1,1 +1,0 @@
-import{r as e}from"./sys-CO1FZkW9.js";function t(t,n=`—`){return e().getDictDisplayLabelByValue(`mdmProcessRouteSequenceType`,t,t===`main`?`标准序列`:t||n)}export{t};

@@ -61,7 +61,7 @@
               </ElInput>
               <button
                 type="button"
-                class="component-type-page__all-group"
+                class="component-type-page__all-group art-master-group-all-button"
                 :class="{ 'is-current': !selectedGroupId }"
                 :aria-pressed="!selectedGroupId"
                 @click="selectGroup('')"
@@ -490,10 +490,6 @@
       background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
       border-color: color-mix(in srgb, var(--theme-color) 18%, transparent);
       box-shadow: inset 3px 0 0 var(--theme-color);
-    }
-
-    &__all-group {
-      @include master-group-all-button;
     }
 
     &__all-group > span:nth-child(2),
