@@ -28,7 +28,7 @@
         />
         <template #actions
           ><ElButton v-auth="'MdmWorkCenter:Personnel'" :loading="state.saving" @click="savePeople"
-            ><template #icon><ArtSvgIcon icon="ri:save-3-line" /></template>保存指定人员</ElButton
+            ><ArtSvgIcon icon="ri:save-3-line" />保存指定人员</ElButton
           ></template
         >
       </ArtSectionCard>
