@@ -41,16 +41,7 @@
             新增字段
           </ElButton>
         </template>
-        <template #textColor>
-          <div class="document-type-dialog__color-field">
-            <ElColorPicker
-              v-model="form.data.textColor"
-              :predefine="presetColors"
-              aria-label="选择单据类型文字颜色"
-            />
-            <span>{{ form.data.textColor || '跟随标签默认颜色' }}</span>
-          </div>
-        </template>
+
         <template #extensionFields>
           <div class="document-type-dialog__extension-editor">
             <p class="document-type-dialog__extension-help">
@@ -496,7 +487,14 @@
           span: 12,
           props: { clearable: true, placeholder: '请选择标签样式' }
         },
-        { label: '文字颜色', key: 'textColor', type: 'input', span: 12 },
+        {
+          label: '文字颜色',
+          key: 'textColor',
+          type: 'colorPicker',
+          span: 12,
+          description: form.data.textColor || '跟随标签默认颜色',
+          props: { predefine: presetColors, 'aria-label': '选择单据类型文字颜色' }
+        },
         ...(isProductionType.value
           ? [
               {
@@ -930,20 +928,6 @@
 
     :deep(.art-form) {
       padding: 0 !important;
-    }
-
-    &__color-field {
-      display: flex;
-      gap: var(--art-space-3);
-      align-items: center;
-      min-height: 32px;
-
-      span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--el-text-color-secondary);
-        white-space: nowrap;
-      }
     }
 
     &__extension-editor {

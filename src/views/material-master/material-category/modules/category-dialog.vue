@@ -17,14 +17,6 @@
         :gutter="24"
         label-position="top"
       >
-        <template #purchaser>
-          <ArtEmployeeSelect
-            :model-value="formModel.purchaserId ?? undefined"
-            :tenant-id="tenantId"
-            placeholder="选择默认采购员"
-            @update:model-value="formModel.purchaserId = $event ?? null"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -38,7 +30,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
+
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
@@ -249,7 +241,19 @@
       type: 'number',
       props: { min: 0, precision: 4, class: '!w-full' }
     },
-    { label: '默认采购员', key: 'purchaserId', type: 'slot' },
+    {
+      label: '默认采购员',
+      key: 'purchaserId',
+      type: 'employeeSelect',
+      props: {
+        modelValue: formModel.value.purchaserId ?? undefined,
+        tenantId: tenantId.value,
+        placeholder: '选择默认采购员',
+        'onUpdate:modelValue': (value?: string) => {
+          formModel.value.purchaserId = value ?? null
+        }
+      }
+    },
     { label: '采购组织', key: 'purchaseOrganization', type: 'input', props: { maxlength: 100 } },
     {
       label: '默认场所',

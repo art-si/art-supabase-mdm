@@ -27,133 +27,6 @@
           label-position="top"
           root-class="material-archive-dialog__form"
         >
-          <template #materialCode>
-            <ElInput
-              v-model="formModel.materialCode"
-              maxlength="60"
-              :disabled="Boolean(formModel.codeRuleId && !formModel.id)"
-              :placeholder="
-                formModel.codeRuleId ? '保存时按编码策略自动生成' : '未选择策略时手工录入编码'
-              "
-            >
-              <template #prefix><ArtSvgIcon icon="ri:barcode-line" /></template>
-            </ElInput>
-          </template>
-          <template #codeRuleId>
-            <ElSelect
-              v-model="formModel.codeRuleId"
-              clearable
-              filterable
-              placeholder="选择编码策略"
-            >
-              <ElOption
-                v-for="item in scopedCodeRules"
-                :key="item.id"
-                :label="item.ruleName"
-                :value="item.id"
-              />
-            </ElSelect>
-          </template>
-          <template #imageUrls>
-            <ArtUploadImage
-              v-model="formModel.imageUrls"
-              :resource-tenant-id="formModel.tenantId"
-              multiple
-              :limit="5"
-              :size="92"
-              tip="支持上传或从资源库选择，最多 5 张"
-            />
-          </template>
-          <template #area>
-            <div class="material-archive-dialog__area-field">
-              <ElInputNumber
-                v-model="formModel.area"
-                :min="0"
-                :precision="4"
-                controls-position="right"
-                placeholder="请输入面积"
-                class="!w-full"
-              />
-              <ElButton plain aria-label="按长度和宽度计算面积" @click="recalculateArea"
-                ><ArtSvgIcon icon="ri:calculator-line" />按长×宽计算</ElButton
-              >
-            </div>
-          </template>
-          <template #description>
-            <div class="material-archive-dialog__description">
-              <ElInput
-                :model-value="materialDescription"
-                type="textarea"
-                :rows="2"
-                readonly
-                resize="none"
-                placeholder="填写分类配置的组成字段后自动生成"
-                aria-label="自动生成的物料描述"
-              />
-              <div class="material-archive-dialog__description-rule">
-                <span class="art-icon-label"><ArtSvgIcon icon="ri:magic-line" />分类描述规则</span>
-                <template v-if="descriptionRuleLabels.length">
-                  <ElTag
-                    v-for="(label, index) in descriptionRuleLabels"
-                    :key="`${label}-${index}`"
-                    size="small"
-                    effect="plain"
-                    >{{ label }}</ElTag
-                  >
-                  <small>连接符：{{ selectedCategory?.compositionSeparator || '（空）' }}</small>
-                </template>
-                <small v-else>当前分类尚未配置描述组成字段</small>
-              </div>
-            </div>
-          </template>
-          <template #purchaserId
-            ><ArtEmployeeSelect
-              :model-value="formModel.purchaserId ?? undefined"
-              v-model:selected-data="employeeSelections.purchaserId"
-              :tenant-id="tenantId"
-              placeholder="选择采购员"
-              @update:model-value="formModel.purchaserId = $event ?? null"
-          /></template>
-          <template #plannerId
-            ><ArtEmployeeSelect
-              :model-value="formModel.plannerId ?? undefined"
-              v-model:selected-data="employeeSelections.plannerId"
-              :tenant-id="tenantId"
-              placeholder="选择计划员"
-              @update:model-value="formModel.plannerId = $event ?? null"
-          /></template>
-          <template #salespersonId
-            ><ArtEmployeeSelect
-              :model-value="formModel.salespersonId ?? undefined"
-              v-model:selected-data="employeeSelections.salespersonId"
-              :tenant-id="tenantId"
-              placeholder="选择销售员"
-              @update:model-value="formModel.salespersonId = $event ?? null"
-          /></template>
-          <template #custodianId
-            ><ArtEmployeeSelect
-              :model-value="formModel.custodianId ?? undefined"
-              v-model:selected-data="employeeSelections.custodianId"
-              :tenant-id="tenantId"
-              placeholder="选择仓管员"
-              @update:model-value="formModel.custodianId = $event ?? null"
-          /></template>
-          <template #dispatcherId
-            ><ArtEmployeeSelect
-              :model-value="formModel.dispatcherId ?? undefined"
-              v-model:selected-data="employeeSelections.dispatcherId"
-              :tenant-id="tenantId"
-              placeholder="选择调度员"
-              @update:model-value="formModel.dispatcherId = $event ?? null"
-          /></template>
-          <template #productionPlannerId
-            ><ArtEmployeeSelect
-              :model-value="formModel.productionPlannerId ?? undefined"
-              v-model:selected-data="employeeSelections.productionPlannerId"
-              :tenant-id="tenantId"
-              placeholder="选择生产计划员"
-              @update:model-value="formModel.productionPlannerId = $event ?? null"
-          /></template>
           <template #unitConversions>
             <div class="conversion-builder">
               <div
@@ -208,13 +81,12 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
-  import { ElMessage, type FormRules } from 'element-plus'
+  import { h } from 'vue'
+  import { ElButton, ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import {
     fetchEmployeeSelectorList,
     type EmployeeIntegrationItem
@@ -689,15 +561,41 @@
           }
         },
         { key: 'identity', label: '核心身份', type: 'divider', span: 24 },
-        { label: '物料编码', key: 'materialCode', type: 'slot' },
         {
+          label: '物料编码',
+          key: 'materialCode',
+          type: 'input',
+          props: {
+            maxlength: 60,
+            disabled: Boolean(formModel.value.codeRuleId && !formModel.value.id),
+            placeholder: formModel.value.codeRuleId
+              ? '保存时按编码策略自动生成'
+              : '未选择策略时手工录入编码'
+          },
+          slots: { prefix: () => h(ArtSvgIcon, { icon: 'ri:barcode-line' }) }
+        },
+        {
+          options: scopedCodeRules.value.map((item) => ({ value: item.id, label: item.ruleName })),
+          props: { clearable: true, filterable: true, placeholder: '选择编码策略' },
           label: '编码策略',
           key: 'codeRuleId',
-          type: 'slot',
+          type: 'select',
           help: '选择规则后在保存事务中自动生成编码；未选择规则时允许手工维护。'
         },
         { label: '旧物料编码', key: 'oldMaterialCode', type: 'input', props: { maxlength: 60 } },
-        { label: '图片', key: 'imageUrls', type: 'slot', span: 12 },
+        {
+          props: {
+            resourceTenantId: formModel.value.tenantId,
+            multiple: true,
+            limit: 5,
+            size: 92,
+            tip: '支持上传或从资源库选择，最多 5 张'
+          },
+          label: '图片',
+          key: 'imageUrls',
+          type: 'uploadImage',
+          span: 12
+        },
         {
           label: '物料名称',
           key: 'materialName',
@@ -804,7 +702,25 @@
           type: 'number',
           props: { min: 0, precision: 4, class: '!w-full' }
         },
-        { label: '面积', key: 'area', type: 'slot', help: '默认按长度 × 宽度计算，也可手工修改。' },
+        {
+          label: '面积',
+          key: 'area',
+          type: 'number',
+          help: '默认按长度 × 宽度计算，也可手工修改。',
+          props: {
+            min: 0,
+            precision: 4,
+            controlsPosition: 'right',
+            placeholder: '请输入面积',
+            class: '!w-full'
+          },
+          description: () =>
+            h(
+              ElButton,
+              { plain: true, 'aria-label': '按长度和宽度计算面积', onClick: recalculateArea },
+              () => [h(ArtSvgIcon, { icon: 'ri:calculator-line' }), '按长×宽计算']
+            )
+        },
         {
           label: '容积',
           key: 'volume',
@@ -839,17 +755,60 @@
         {
           label: '物料描述',
           key: 'description',
-          type: 'slot',
+          type: 'textarea',
           span: 24,
-          help: '根据物料分类中的“描述组成字段 + 描述连接符”实时生成并保存。'
+          help: '根据物料分类中的“描述组成字段 + 描述连接符”实时生成并保存。',
+          description: descriptionRuleLabels.value.length
+            ? `分类描述规则：${descriptionRuleLabels.value.join('、')}；连接符：${selectedCategory.value?.compositionSeparator || '（空）'}`
+            : '当前分类尚未配置描述组成字段',
+          props: {
+            modelValue: materialDescription.value,
+            rows: 2,
+            readonly: true,
+            resize: 'none',
+            placeholder: '填写分类配置的组成字段后自动生成',
+            'aria-label': '自动生成的物料描述'
+          }
         }
       ]
     if (tab === 'purchase')
       return [
         { key: 'purchaseView', label: '采购执行口径', type: 'divider', span: 24 },
         commonUnitItem('采购单位', 'purchaseUnitId'),
-        { label: '采购员', key: 'purchaserId', type: 'slot' },
-        { label: '计划员', key: 'plannerId', type: 'slot' },
+        {
+          props: {
+            modelValue: formModel.value.purchaserId ?? undefined,
+            selectedData: employeeSelections.purchaserId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.purchaserId) => {
+              employeeSelections.purchaserId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择采购员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.purchaserId) => {
+              formModel.value.purchaserId = $event ?? null
+            }
+          },
+          label: '采购员',
+          key: 'purchaserId',
+          type: 'employeeSelect'
+        },
+        {
+          props: {
+            modelValue: formModel.value.plannerId ?? undefined,
+            selectedData: employeeSelections.plannerId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.plannerId) => {
+              employeeSelections.plannerId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择计划员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.plannerId) => {
+              formModel.value.plannerId = $event ?? null
+            }
+          },
+          label: '计划员',
+          key: 'plannerId',
+          type: 'employeeSelect'
+        },
         {
           label: '采购组织',
           key: 'purchaseOrganization',
@@ -912,7 +871,23 @@
       return [
         { key: 'salesView', label: '销售执行口径', type: 'divider', span: 24 },
         commonUnitItem('销售单位', 'salesUnitId'),
-        { label: '销售员', key: 'salespersonId', type: 'slot' },
+        {
+          props: {
+            modelValue: formModel.value.salespersonId ?? undefined,
+            selectedData: employeeSelections.salespersonId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.salespersonId) => {
+              employeeSelections.salespersonId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择销售员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.salespersonId) => {
+              formModel.value.salespersonId = $event ?? null
+            }
+          },
+          label: '销售员',
+          key: 'salespersonId',
+          type: 'employeeSelect'
+        },
         {
           label: '销售组织',
           key: 'salesOrganization',
@@ -950,7 +925,23 @@
       return [
         { key: 'inventoryView', label: '库存执行口径', type: 'divider', span: 24 },
         commonUnitItem('库存单位', 'inventoryUnitId'),
-        { label: '仓管员', key: 'custodianId', type: 'slot' },
+        {
+          props: {
+            modelValue: formModel.value.custodianId ?? undefined,
+            selectedData: employeeSelections.custodianId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.custodianId) => {
+              employeeSelections.custodianId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择仓管员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.custodianId) => {
+              formModel.value.custodianId = $event ?? null
+            }
+          },
+          label: '仓管员',
+          key: 'custodianId',
+          type: 'employeeSelect'
+        },
         {
           label: 'ABC分类',
           key: 'abcClassification',
@@ -1166,8 +1157,40 @@
       return [
         { key: 'productionView', label: '生产计划口径', type: 'divider', span: 24 },
         commonUnitItem('生产单位', 'productionUnitId'),
-        { label: '调度员', key: 'dispatcherId', type: 'slot' },
-        { label: '计划员', key: 'productionPlannerId', type: 'slot' },
+        {
+          props: {
+            modelValue: formModel.value.dispatcherId ?? undefined,
+            selectedData: employeeSelections.dispatcherId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.dispatcherId) => {
+              employeeSelections.dispatcherId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择调度员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.dispatcherId) => {
+              formModel.value.dispatcherId = $event ?? null
+            }
+          },
+          label: '调度员',
+          key: 'dispatcherId',
+          type: 'employeeSelect'
+        },
+        {
+          props: {
+            modelValue: formModel.value.productionPlannerId ?? undefined,
+            selectedData: employeeSelections.productionPlannerId,
+            'onUpdate:selectedData': ($event: typeof employeeSelections.productionPlannerId) => {
+              employeeSelections.productionPlannerId = $event
+            },
+            tenantId: tenantId.value,
+            placeholder: '选择生产计划员',
+            'onUpdate:modelValue': ($event: typeof formModel.value.productionPlannerId) => {
+              formModel.value.productionPlannerId = $event ?? null
+            }
+          },
+          label: '计划员',
+          key: 'productionPlannerId',
+          type: 'employeeSelect'
+        },
         { label: '关键件', key: 'keyComponent', type: 'switch' },
         {
           label: '入库仓库',
@@ -1543,18 +1566,6 @@
   .material-archive-dialog {
     min-width: 0;
 
-    &__area-field {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--art-space-2);
-      align-items: center;
-      width: 100%;
-
-      .el-button {
-        min-width: 126px;
-      }
-    }
-
     :deep(.material-archive-dialog__form .el-input-number) {
       width: 100%;
     }
@@ -1693,43 +1704,6 @@
     width: 100%;
   }
 
-  .material-archive-dialog__description {
-    display: grid;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .material-archive-dialog__description :deep(.el-textarea__inner) {
-    color: var(--el-text-color-primary);
-    background: color-mix(in srgb, var(--theme-color) 4%, var(--default-box-color));
-  }
-
-  .material-archive-dialog__description-rule {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    min-height: 28px;
-    padding: 6px 8px;
-    color: var(--el-text-color-secondary);
-    background: var(--art-gray-100);
-    border-radius: var(--el-border-radius-base);
-  }
-
-  .material-archive-dialog__description-rule > span {
-    display: inline-flex;
-    gap: 5px;
-    align-items: center;
-    margin-right: 2px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--theme-color);
-  }
-
-  .material-archive-dialog__description-rule small {
-    font-size: 11px;
-  }
-
   .conversion-builder {
     display: grid;
     gap: 10px;
@@ -1754,14 +1728,6 @@
   }
 
   @media (width <= 820px) {
-    .material-archive-dialog__area-field {
-      grid-template-columns: 1fr;
-
-      .el-button {
-        width: 100%;
-      }
-    }
-
     .material-archive-dialog__rule-field,
     .conversion-builder__row {
       grid-template-columns: 1fr;

@@ -708,7 +708,6 @@
 
 <style scoped lang="scss">
   .document-type-page {
-    gap: 12px;
     min-width: 0;
     overflow: hidden;
 

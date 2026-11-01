@@ -368,40 +368,6 @@
             :gutter="16"
             label-position="top"
           >
-            <template #projectId>
-              <div class="flex min-w-0 gap-2">
-                <ElSelect
-                  v-model="manual.projectId"
-                  clearable
-                  filterable
-                  class="min-w-0 flex-1"
-                  placeholder="选择系统项目"
-                >
-                  <ElOption
-                    v-for="project in options.projects"
-                    :key="project.id"
-                    :value="project.id"
-                    :label="`${project.projectName} · ${project.projectCode}`"
-                  />
-                </ElSelect>
-                <ElButton
-                  v-auth="'MdmSalesProject:Add'"
-                  :disabled="!manual.tenantId"
-                  @click="openProjectDialog('manual')"
-                  >新建</ElButton
-                >
-              </div>
-            </template>
-            <template #imageUrls>
-              <ArtUploadImage
-                v-model="manual.imageUrls"
-                multiple
-                :limit="5"
-                preview-fit="contain"
-                :size="92"
-                tip="支持上传或从资源库选择，最多 5 张；与物料编码共用图片资源库"
-              />
-            </template>
           </ArtForm>
         </div>
       </ArtDialog>
@@ -421,36 +387,6 @@
             :gutter="16"
             label-position="top"
           >
-            <template #projectId>
-              <div class="flex min-w-0 gap-2">
-                <ElSelect
-                  v-model="materialConfig.projectId"
-                  filterable
-                  class="min-w-0 flex-1"
-                  placeholder="选择系统项目"
-                >
-                  <ElOption
-                    v-if="
-                      materialConfig.projectId &&
-                      !options.projects.some((project) => project.id === materialConfig.projectId)
-                    "
-                    :value="materialConfig.projectId"
-                    :label="
-                      materialRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'
-                    "
-                  />
-                  <ElOption
-                    v-for="project in options.projects"
-                    :key="project.id"
-                    :value="project.id"
-                    :label="`${project.projectName} · ${project.projectCode}`"
-                  />
-                </ElSelect>
-                <ElButton v-auth="'MdmSalesProject:Add'" @click="openProjectDialog('material')"
-                  >新建</ElButton
-                >
-              </div>
-            </template>
           </ArtForm>
           <div>
             <h3 class="text-sm font-semibold">物料图片（选填）</h3>
@@ -496,52 +432,6 @@
             <template #workOrderType
               ><ElTag type="info" effect="plain">PP40 · 配件加工</ElTag></template
             >
-            <template #projectId>
-              <div class="flex min-w-0 gap-2">
-                <ElSelect
-                  v-model="workOrderConfig.projectId"
-                  filterable
-                  class="min-w-0 flex-1"
-                  placeholder="选择系统项目"
-                >
-                  <ElOption
-                    v-if="
-                      workOrderConfig.projectId &&
-                      !options.projects.some((project) => project.id === workOrderConfig.projectId)
-                    "
-                    :value="workOrderConfig.projectId"
-                    :label="
-                      orderRows[0]?.list.project?.projectName || '原清单关联项目（需重新核对）'
-                    "
-                  />
-                  <ElOption
-                    v-for="project in options.projects"
-                    :key="project.id"
-                    :value="project.id"
-                    :label="`${project.projectName} · ${project.projectCode}`"
-                  />
-                </ElSelect>
-                <ElButton v-auth="'MdmSalesProject:Add'" @click="openProjectDialog('order')"
-                  >新建</ElButton
-                >
-              </div>
-            </template>
-            <template #plannedStartDate>
-              <ElDatePicker
-                v-model="workOrderConfig.plannedStartDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                class="w-full!"
-              />
-            </template>
-            <template #plannedEndDate>
-              <ElDatePicker
-                v-model="workOrderConfig.plannedEndDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                class="w-full!"
-              />
-            </template>
           </ArtForm>
         </div>
       </ArtDialog>
@@ -619,10 +509,10 @@
 <script setup lang="ts">
   import TreeUtils from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { computed, onMounted, reactive, ref, watch } from 'vue'
+  import { computed, h, onMounted, reactive, ref, watch } from 'vue'
   import { useElementSize } from '@vueuse/core'
   import dayjs from 'dayjs'
-  import { ElMessage, type FormRules, type ElTree } from 'element-plus'
+  import { ElButton, ElMessage, type FormRules, type ElTree } from 'element-plus'
   import { uniq, uniqBy } from 'lodash-es'
   import { storeToRefs } from 'pinia'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -969,12 +859,58 @@
     { prop: 'operation', label: '操作', width: 82, fixed: 'right', useSlot: true }
   ]
 
+  const projectField = (
+    context: 'manual' | 'material' | 'order',
+    label: string,
+    span: number
+  ): FormItem => {
+    const projectId =
+      context === 'manual'
+        ? manual.projectId
+        : context === 'material'
+          ? materialConfig.projectId
+          : workOrderConfig.projectId
+    const projects = options.projects.map((project) => ({
+      value: project.id,
+      label: `${project.projectName} · ${project.projectCode}`
+    }))
+    if (
+      context !== 'manual' &&
+      projectId &&
+      !projects.some((project) => project.value === projectId)
+    )
+      projects.unshift({
+        value: projectId,
+        label:
+          (context === 'material' ? materialRows.value : orderRows.value)[0]?.list.project
+            ?.projectName || '原清单关联项目（需重新核对）'
+      })
+    return {
+      key: 'projectId',
+      label,
+      type: 'select',
+      span,
+      options: projects,
+      props: { clearable: context === 'manual', filterable: true, placeholder: '选择系统项目' },
+      description: hasAuth('MdmSalesProject:Add')
+        ? () =>
+            h(
+              ElButton,
+              {
+                disabled: context === 'manual' && !manual.tenantId,
+                onClick: () => openProjectDialog(context)
+              },
+              () => '新建项目'
+            )
+        : undefined
+    }
+  }
   const manualItems = computed<FormItem[]>(() => [
     ...(manualMode.value === 'edit'
       ? []
       : [
           { key: 'projectName', label: '项目名称（图纸）', type: 'input' as const, span: 12 },
-          { key: 'projectId', label: '项目名称（系统）', type: 'slot' as const, span: 12 },
+          projectField('manual', '项目名称（系统）', 12),
           { key: 'drawingName', label: '图纸名称', type: 'input' as const, span: 12 }
         ]),
     {
@@ -1055,7 +991,19 @@
       span: 12,
       options: options.codeRules.map((rule) => ({ label: rule.ruleName, value: rule.id }))
     },
-    { key: 'imageUrls', label: '图片', type: 'slot', span: 24 }
+    {
+      props: {
+        multiple: true,
+        limit: 5,
+        previewFit: 'contain',
+        size: 92,
+        tip: '支持上传或从资源库选择，最多 5 张；与物料编码共用图片资源库'
+      },
+      key: 'imageUrls',
+      label: '图片',
+      type: 'uploadImage',
+      span: 24
+    }
   ])
   const manualRules: FormRules = {
     projectName: [{ required: true, message: '请填写图纸项目名称', trigger: 'blur' }],
@@ -1066,7 +1014,7 @@
     categoryId: [{ required: true, message: '请选择物料分类', trigger: 'change' }]
   }
   const materialItems = computed<FormItem[]>(() => [
-    { key: 'projectId', label: '项目名称（系统）', type: 'slot', span: 24 },
+    projectField('material', '项目名称（系统）', 24),
     {
       key: 'materialTypeId',
       label: '物料类型',
@@ -1114,13 +1062,25 @@
     categoryId: [{ required: true, message: '请选择物料分类', trigger: 'change' }],
     codeRuleId: [{ required: true, message: '请选择编码策略', trigger: 'change' }]
   }
-  const workOrderItems: FormItem[] = [
+  const workOrderItems = computed<FormItem[]>(() => [
     { key: 'workOrderType', label: '工单类型', type: 'slot', span: 12 },
-    { key: 'projectId', label: '项目', type: 'slot', span: 12 },
+    projectField('order', '项目', 12),
     { key: 'constructionNo', label: '施工号（选填）', type: 'input', span: 12 },
-    { key: 'plannedStartDate', label: '计划开始日期', type: 'slot', span: 12 },
-    { key: 'plannedEndDate', label: '计划完工日期', type: 'slot', span: 12 }
-  ]
+    {
+      props: { type: 'date', valueFormat: 'YYYY-MM-DD', class: 'w-full!' },
+      key: 'plannedStartDate',
+      label: '计划开始日期',
+      type: 'date',
+      span: 12
+    },
+    {
+      props: { type: 'date', valueFormat: 'YYYY-MM-DD', class: 'w-full!' },
+      key: 'plannedEndDate',
+      label: '计划完工日期',
+      type: 'date',
+      span: 12
+    }
+  ])
   const workOrderRules: FormRules = {
     projectId: [{ required: true, message: '请选择系统项目', trigger: 'change' }],
     plannedStartDate: [{ required: true, message: '请选择计划开始日期', trigger: 'change' }],
@@ -1843,7 +1803,6 @@
 
 <style scoped lang="scss">
   .accessory-processing-page {
-    gap: var(--art-space-3);
     min-width: 0;
     overflow: hidden;
 

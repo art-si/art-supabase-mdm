@@ -26,15 +26,7 @@
         :span="12"
         :gutter="24"
         label-position="top"
-      >
-        <template #scope>
-          <div class="code-rule-dialog__scope" role="group" aria-label="适用范围">
-            <ElCheckbox v-model="form.model.applyBatch" border>适用批号</ElCheckbox>
-            <ElCheckbox v-model="form.model.applySerial" border>适用序列号</ElCheckbox>
-            <ElCheckbox v-model="form.model.applyTracking" border>适用跟踪号</ElCheckbox>
-          </div>
-        </template>
-      </ArtForm>
+      />
 
       <ArtSectionCard
         title="编码设置"
@@ -225,7 +217,28 @@
       type: 'segment',
       options: statusOptions
     },
-    { label: '业务对象', key: 'scope', type: 'slot', span: 16 },
+    {
+      label: '业务对象',
+      key: 'scope',
+      type: 'checkboxGroup',
+      span: 16,
+      options: [
+        { label: '适用批号', value: 'applyBatch', border: true },
+        { label: '适用序列号', value: 'applySerial', border: true },
+        { label: '适用跟踪号', value: 'applyTracking', border: true }
+      ],
+      props: {
+        class: 'code-rule-dialog__scope',
+        'aria-label': '适用范围',
+        modelValue: (['applyBatch', 'applySerial', 'applyTracking'] as const).filter(
+          (key) => form.model[key]
+        ),
+        'onUpdate:modelValue': (values: string[]) => {
+          for (const key of ['applyBatch', 'applySerial', 'applyTracking'] as const)
+            form.model[key] = values.includes(key)
+        }
+      }
+    },
     {
       label: '每个物料单独编码',
       key: 'perMaterial',

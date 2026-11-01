@@ -8,31 +8,13 @@
         :closable="false"
         show-icon
       />
-      <ArtForm
-        v-model="form"
-        :items="[{ key: 'templateId', label: '作业模板', span: 24 }]"
-        label-position="top"
-      >
-        <template #templateId>
-          <ArtTableSingleSelect
-            v-model="form.templateId"
-            :api-fn="fetchChoices"
-            :columns="[
-              { prop: 'name', label: '作业模板', minWidth: 180 },
-              { prop: 'totalScore', label: '总记分', width: 100 }
-            ]"
-            label-key="name"
-            title="选择作业模板"
-            placeholder="请选择启用的模板"
-          />
-        </template>
-      </ArtForm>
+      <ArtForm v-model="form" :items="items" label-position="top" />
     </div>
   </ArtDialog>
 </template>
 <script setup lang="ts">
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import { ref } from 'vue'
   import { ElMessage } from 'element-plus'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -52,6 +34,28 @@
       size: p.pageSize,
       enabled: true
     })
+  const items = computed<FormItem[]>(() => [
+    {
+      key: 'templateId',
+      label: '作业模板',
+      type: 'dataSelect',
+      span: 24,
+      props: {
+        mode: 'table',
+        multiple: false,
+        showSelectedPanel: false,
+        showPagination: true,
+        apiFn: fetchChoices,
+        columns: [
+          { prop: 'name', label: '作业模板', minWidth: 180 },
+          { prop: 'totalScore', label: '总记分', width: 100 }
+        ],
+        labelKey: 'name',
+        title: '选择作业模板',
+        placeholder: '请选择启用的模板'
+      }
+    }
+  ])
   async function handleOpen(selectedIds: string[]) {
     ids.value = selectedIds
     form.value.templateId = undefined

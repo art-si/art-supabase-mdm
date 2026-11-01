@@ -688,7 +688,6 @@
 
 <style scoped lang="scss">
   .bom-maintenance-page {
-    gap: 12px;
     min-width: 0;
   }
 

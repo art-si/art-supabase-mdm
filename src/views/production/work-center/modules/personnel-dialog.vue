@@ -58,15 +58,7 @@
     </div>
   </ArtDialog>
   <ArtDialog ref="adjustmentDialog" size="md"
-    ><ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"
-      ><template #personId
-        ><ArtEmployeeSelect
-          v-model="form.personId"
-          :api-fn="fetchProductionPersonSelector"
-          :display-fields="['jobTitle', 'employmentStatus']"
-          title="选择生产人员"
-          search-placeholder="姓名 / 工号"
-          subtitle="从当前租户的人员配置中选择" /></template></ArtForm
+    ><ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"></ArtForm
     ><ElAlert v-if="formError" :title="formError" type="error" :closable="false"
   /></ArtDialog>
 </template>
@@ -122,7 +114,18 @@
     range: [] as string[]
   })
   const items = computed<FormItem[]>(() => [
-    { key: 'personId', label: '人员' },
+    {
+      type: 'employeeSelect',
+      props: {
+        apiFn: fetchProductionPersonSelector,
+        displayFields: ['jobTitle', 'employmentStatus'],
+        title: '选择生产人员',
+        searchPlaceholder: '姓名 / 工号',
+        subtitle: '从当前租户的人员配置中选择'
+      },
+      key: 'personId',
+      label: '人员'
+    },
     {
       key: 'kind',
       label: '临时调整',

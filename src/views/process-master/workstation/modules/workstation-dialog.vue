@@ -23,21 +23,6 @@
         :gutter="24"
         label-position="top"
       >
-        <template #responsiblePersonId>
-          <ArtEmployeeSelect
-            :model-value="form.model.responsiblePersonId || undefined"
-            :selected-data="form.selectedPerson"
-            :tenant-id="form.model.tenantId"
-            :api-fn="fetchProductionPersonSelector"
-            title="选择工位负责人"
-            subtitle="人员来源于当前租户的生产人员配置"
-            placeholder="选择工位负责人（可选）"
-            search-placeholder="姓名 / 工号"
-            :display-fields="['jobTitle', 'employmentStatus']"
-            @update:model-value="form.model.responsiblePersonId = $event || null"
-            @update:selected-data="form.selectedPerson = $event"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -48,7 +33,6 @@
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -120,9 +104,26 @@
       props: { maxlength: 120, placeholder: '如 驾驶室装配一号位', clearable: true }
     },
     {
+      props: {
+        modelValue: form.model.responsiblePersonId || undefined,
+        selectedData: form.selectedPerson,
+        tenantId: form.model.tenantId,
+        apiFn: fetchProductionPersonSelector,
+        title: '选择工位负责人',
+        subtitle: '人员来源于当前租户的生产人员配置',
+        placeholder: '选择工位负责人（可选）',
+        searchPlaceholder: '姓名 / 工号',
+        displayFields: ['jobTitle', 'employmentStatus'],
+        'onUpdate:modelValue': ($event: typeof form.model.responsiblePersonId) => {
+          form.model.responsiblePersonId = $event || null
+        },
+        'onUpdate:selectedData': ($event: typeof form.selectedPerson) => {
+          form.selectedPerson = $event
+        }
+      },
       key: 'responsiblePersonId',
       label: '工位负责人',
-      type: 'slot',
+      type: 'employeeSelect',
       help: '可选；用于现场异常通知与工位责任追溯。'
     },
     {

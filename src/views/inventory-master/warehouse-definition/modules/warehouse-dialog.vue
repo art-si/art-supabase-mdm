@@ -29,19 +29,6 @@
         label-position="top"
         root-class="warehouse-identity-form"
       >
-        <template #responsibleEmployeeId>
-          <ArtEmployeeSelect
-            :model-value="form.model.responsibleEmployeeId || undefined"
-            :selected-data="form.selectedEmployee"
-            :tenant-id="form.tenantId"
-            title="选择仓库负责人"
-            subtitle="人员来源于当前租户的员工花名册"
-            placeholder="从员工花名册选择负责人"
-            :display-fields="['organization', 'jobTitle', 'employmentStatus']"
-            @update:model-value="form.model.responsibleEmployeeId = $event || null"
-            @update:selected-data="form.selectedEmployee = $event"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -57,7 +44,6 @@
   import { cloneDeep } from 'lodash-es'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { fetchEnabledOrganizationOptionsList } from '@/api/system-manage'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -175,9 +161,24 @@
       props: { clearable: true, filterable: true, checkStrictly: true, placeholder: '选择仓库分组' }
     },
     {
+      props: {
+        modelValue: form.model.responsibleEmployeeId || undefined,
+        selectedData: form.selectedEmployee,
+        tenantId: form.tenantId,
+        title: '选择仓库负责人',
+        subtitle: '人员来源于当前租户的员工花名册',
+        placeholder: '从员工花名册选择负责人',
+        displayFields: ['organization', 'jobTitle', 'employmentStatus'],
+        'onUpdate:modelValue': ($event: typeof form.model.responsibleEmployeeId) => {
+          form.model.responsibleEmployeeId = $event || null
+        },
+        'onUpdate:selectedData': ($event: typeof form.selectedEmployee) => {
+          form.selectedEmployee = $event
+        }
+      },
       label: '仓库负责人',
       key: 'responsibleEmployeeId',
-      type: 'slot'
+      type: 'employeeSelect'
     },
     {
       key: 'operation',

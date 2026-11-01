@@ -60,41 +60,6 @@
           :gutter="24"
           label-position="top"
         >
-          <template #categoryId>
-            <div class="esop-document-dialog__category-field">
-              <ElTreeSelect
-                v-model="form.categoryId"
-                :data="scopedCategories"
-                :props="treeProps"
-                node-key="id"
-                value-key="id"
-                check-strictly
-                default-expand-all
-                filterable
-                :disabled="!form.tenantId"
-                empty-text="当前租户尚未建立分类"
-                class="w-full"
-                :placeholder="form.tenantId ? '请选择启用的文档分类' : '请先选择目标租户'"
-              />
-              <p v-if="form.tenantId && !scopedCategories.length" role="status">
-                <ArtSvgIcon
-                  icon="ri:information-line"
-                />当前租户暂无分类，请先关闭弹窗并在左侧新建。
-              </p>
-            </div>
-          </template>
-          <template #attachmentUrl>
-            <ArtUploadFile
-              v-model="form.attachmentUrl"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
-              title="选择 ESOP 附件"
-              tip="推荐 PDF；支持常见文档、表格、演示稿与图片，单个文件不超过 20 MB"
-              :disabled="!form.tenantId"
-              :resource-tenant-id="form.tenantId"
-              :file-name="form.attachmentName"
-              @resource-change="handleAttachmentChange"
-            />
-          </template>
         </ArtForm>
 
         <ArtForm
@@ -104,44 +69,6 @@
           :span="24"
           label-position="top"
         >
-          <template #materialIds>
-            <ElSelect
-              v-model="form.materialIds"
-              multiple
-              filterable
-              collapse-tags
-              collapse-tags-tooltip
-              clearable
-              placeholder="选择适用产品或物料"
-              class="w-full"
-            >
-              <ElOption
-                v-for="item in scopedReferences.materials"
-                :key="item.id"
-                :value="item.id"
-                :label="`${item.materialCode} · ${item.materialName}`"
-              />
-            </ElSelect>
-          </template>
-          <template #routeIds>
-            <ElSelect
-              v-model="form.routeIds"
-              multiple
-              filterable
-              collapse-tags
-              collapse-tags-tooltip
-              clearable
-              placeholder="选择适用工艺路线"
-              class="w-full"
-            >
-              <ElOption
-                v-for="item in scopedReferences.routes"
-                :key="item.id"
-                :value="item.id"
-                :label="`${item.materialCode} · ${item.name}`"
-              />
-            </ElSelect>
-          </template>
         </ArtForm>
         <div v-if="activeTab === 'scope'" class="esop-document-dialog__scope-note">
           <span><ArtSvgIcon icon="ri:information-line" /></span>
@@ -164,7 +91,6 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import TreeUtils from '@/utils/tree'
@@ -266,7 +192,29 @@
       span: 12,
       props: { maxlength: 160, placeholder: '请输入标准作业指导书名称' }
     },
-    { label: '文档分类', key: 'categoryId', type: 'text', span: 10 },
+    {
+      label: '文档分类',
+      key: 'categoryId',
+      type: 'treeSelect',
+      span: 10,
+      description:
+        form.value.tenantId && !scopedCategories.value.length
+          ? '当前租户暂无分类，请先关闭弹窗并在左侧新建。'
+          : undefined,
+      props: {
+        data: scopedCategories.value,
+        props: treeProps,
+        nodeKey: 'id',
+        valueKey: 'id',
+        checkStrictly: true,
+        defaultExpandAll: true,
+        filterable: true,
+        disabled: !form.value.tenantId,
+        emptyText: '当前租户尚未建立分类',
+        class: 'w-full',
+        placeholder: form.value.tenantId ? '请选择启用的文档分类' : '请先选择目标租户'
+      }
+    },
     {
       label: '版本号',
       key: 'versionNo',
@@ -289,7 +237,21 @@
       options: statusOptions,
       props: { placeholder: '请选择状态' }
     },
-    { label: '受控附件', key: 'attachmentUrl', type: 'text', span: 24 },
+    {
+      props: {
+        accept: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*',
+        title: '选择 ESOP 附件',
+        tip: '推荐 PDF；支持常见文档、表格、演示稿与图片，单个文件不超过 20 MB',
+        disabled: !form.value.tenantId,
+        resourceTenantId: form.value.tenantId,
+        fileName: form.value.attachmentName,
+        onResourceChange: handleAttachmentChange
+      },
+      label: '受控附件',
+      key: 'attachmentUrl',
+      type: 'uploadFile',
+      span: 24
+    },
     {
       label: '文档说明',
       key: 'description',
@@ -298,10 +260,46 @@
       props: { rows: 3, maxlength: 1000, showWordLimit: true, resize: 'none' }
     }
   ])
-  const scopeItems: FormItem[] = [
-    { label: '适用产品 / 物料', key: 'materialIds', type: 'text', span: 24 },
-    { label: '适用工艺路线', key: 'routeIds', type: 'text', span: 24 }
-  ]
+  const scopeItems = computed<FormItem[]>(() => [
+    {
+      options: scopedReferences.value.materials.map((item) => ({
+        value: item.id,
+        label: `${item.materialCode} · ${item.materialName}`
+      })),
+      props: {
+        multiple: true,
+        filterable: true,
+        collapseTags: true,
+        collapseTagsTooltip: true,
+        clearable: true,
+        placeholder: '选择适用产品或物料',
+        class: 'w-full'
+      },
+      label: '适用产品 / 物料',
+      key: 'materialIds',
+      type: 'select',
+      span: 24
+    },
+    {
+      options: scopedReferences.value.routes.map((item) => ({
+        value: item.id,
+        label: `${item.materialCode} · ${item.name}`
+      })),
+      props: {
+        multiple: true,
+        filterable: true,
+        collapseTags: true,
+        collapseTagsTooltip: true,
+        clearable: true,
+        placeholder: '选择适用工艺路线',
+        class: 'w-full'
+      },
+      label: '适用工艺路线',
+      key: 'routeIds',
+      type: 'select',
+      span: 24
+    }
+  ])
   const rules: FormRules<EsopDocumentInput> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
     documentCode: [
@@ -499,21 +497,6 @@
         padding: 4px 8px;
         background: var(--el-fill-color-lighter);
         border-radius: 999px;
-      }
-    }
-
-    &__category-field {
-      display: grid;
-      gap: var(--art-space-1);
-
-      p {
-        display: flex;
-        gap: var(--art-space-1);
-        align-items: center;
-        margin: 0;
-        font-size: 11px;
-        line-height: 18px;
-        color: var(--el-color-warning);
       }
     }
 

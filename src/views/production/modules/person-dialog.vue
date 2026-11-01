@@ -15,17 +15,6 @@
       show-icon
     />
     <ArtForm ref="formRef" v-model="form.model" :items="items" :rules="form.rules" :span="12">
-      <template #employeeId>
-        <ArtEmployeeSelect
-          :model-value="form.model.employeeId || undefined"
-          :selected-data="selection"
-          :tenant-id="form.model.tenantId"
-          :api-fn="fetchProductionEmployeeOptions"
-          :disabled="form.sourceLoading"
-          @confirm="selectEmployee"
-          @clear="clearEmployee"
-        />
-      </template>
     </ArtForm>
   </ArtDialog>
 </template>
@@ -100,6 +89,16 @@
       help: '“全部租户”下仍可新增；人员、员工档案和生产部门必须属于同一租户。'
     },
     {
+      type: 'employeeSelect',
+      props: {
+        modelValue: form.model.employeeId || undefined,
+        selectedData: selection.value,
+        tenantId: form.model.tenantId,
+        apiFn: fetchProductionEmployeeOptions,
+        disabled: form.sourceLoading,
+        onConfirm: selectEmployee,
+        onClear: clearEmployee
+      },
       key: 'employeeId',
       label: '员工花名册',
       span: 24,

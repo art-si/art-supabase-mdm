@@ -22,16 +22,27 @@
           primary-min="224px"
           primary-max="360px"
           :breakpoint="900"
-          stacked-primary-size="320px"
+          :stacked-primary-size="activeScopeTree.length ? '320px' : 'auto'"
         >
           <template #primary>
-            <aside class="production-equipment-page__navigator art-card-xs" aria-label="设备范围">
-              <header>
-                <div>
-                  <span>EQUIPMENT SCOPE</span>
-                  <strong>设备范围</strong>
-                  <small>按分类、生产组织或位置筛选</small>
-                </div>
+            <ArtSectionCard
+              class="production-equipment-page__navigator"
+              title="设备范围"
+              subtitle="按分类、生产组织或位置筛选"
+              aria-label="设备范围"
+              :empty="!activeScopeTree.length"
+              :empty-title="scopeEmptyText"
+              :empty-description="
+                scopeMode === 'category'
+                  ? '维护设备分类后，可按分类层级快速筛选设备。'
+                  : scopeMode === 'department'
+                    ? '建立部门或产线后，可按生产归属快速筛选设备。'
+                    : '维护存放位置后，可按现场区域快速筛选设备。'
+              "
+              :empty-visual-size="68"
+              :min-height="0"
+            >
+              <template #actions>
                 <ElButton
                   text
                   aria-label="清除设备范围"
@@ -41,62 +52,47 @@
                 >
                   <ArtSvgIcon icon="ri:filter-off-line" />
                 </ElButton>
-              </header>
-              <ElSegmented v-model="scopeMode" :options="scopeModeOptions" block />
-              <button
-                type="button"
-                class="production-equipment-page__all"
-                :class="{ 'is-active': !activeScopeId }"
-                @click="clearScope"
-              >
-                <span class="art-icon-label"><ArtSvgIcon icon="ri:apps-2-line" />全部设备</span>
-                <strong>{{ overview.total }}</strong>
-              </button>
-              <ArtAsyncState
-                :empty="!activeScopeTree.length"
-                :empty-text="scopeEmptyText"
-                :empty-description="
-                  scopeMode === 'category'
-                    ? '维护设备分类后，可按分类层级快速筛选设备。'
-                    : scopeMode === 'department'
-                      ? '建立部门或产线后，可按生产归属快速筛选设备。'
-                      : '维护存放位置后，可按现场区域快速筛选设备。'
-                "
-                :empty-image-size="68"
-                :min-height="180"
-                size="compact"
-                full-height
-                class="production-equipment-page__scope-state"
-              >
-                <ElScrollbar class="production-equipment-page__scope-scrollbar">
-                  <ElTree
-                    :data="activeScopeTree"
-                    node-key="id"
-                    :props="{ label: 'name', children: 'children' }"
-                    :current-node-key="activeScopeId || undefined"
-                    :expand-on-click-node="false"
-                    highlight-current
-                    default-expand-all
-                    @node-click="selectScope"
+              </template>
+              <template #toolbar>
+                <div class="grid gap-3">
+                  <ElSegmented v-model="scopeMode" :options="scopeModeOptions" block />
+                  <button
+                    type="button"
+                    class="production-equipment-page__all"
+                    :class="{ 'is-active': !activeScopeId }"
+                    @click="clearScope"
                   >
-                    <template #default="{ data }">
-                      <span class="production-equipment-page__tree-node">
-                        <ArtSvgIcon :icon="scopeNodeIcon(data)" />
-                        <span :title="data.name">{{ data.name }}</span>
-                      </span>
-                    </template>
-                    <template #empty>
-                      <ArtEmptyState
-                        title="暂无可显示内容"
-                        description="请调整当前范围或稍后刷新。"
-                        size="compact"
-                        :visual-size="64"
-                      />
-                    </template>
-                  </ElTree>
-                </ElScrollbar>
-              </ArtAsyncState>
-            </aside>
+                    <span class="art-icon-label"><ArtSvgIcon icon="ri:apps-2-line" />全部设备</span>
+                    <strong>{{ overview.total }}</strong>
+                  </button>
+                </div>
+              </template>
+              <ElTree
+                :data="activeScopeTree"
+                node-key="id"
+                :props="{ label: 'name', children: 'children' }"
+                :current-node-key="activeScopeId || undefined"
+                :expand-on-click-node="false"
+                highlight-current
+                default-expand-all
+                @node-click="selectScope"
+              >
+                <template #default="{ data }">
+                  <span class="production-equipment-page__tree-node">
+                    <ArtSvgIcon :icon="scopeNodeIcon(data)" />
+                    <span :title="data.name">{{ data.name }}</span>
+                  </span>
+                </template>
+                <template #empty>
+                  <ArtEmptyState
+                    title="暂无可显示内容"
+                    description="请调整当前范围或稍后刷新。"
+                    size="compact"
+                    :visual-size="64"
+                  />
+                </template>
+              </ElTree>
+            </ArtSectionCard>
           </template>
 
           <main class="production-equipment-page__results">
@@ -271,7 +267,6 @@
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
-  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -753,7 +748,6 @@
   .production-equipment-page {
     display: flex;
     flex-direction: column;
-    gap: var(--art-space-3);
     min-width: 0;
     min-height: 0;
 
@@ -767,46 +761,9 @@
     &__navigator {
       display: flex;
       flex-direction: column;
-      gap: var(--art-space-3);
       min-width: 0;
       min-height: 0;
-      padding: var(--art-space-4);
       overflow: hidden;
-    }
-
-    &__navigator > header {
-      display: flex;
-      gap: var(--art-space-2);
-      align-items: flex-start;
-      justify-content: space-between;
-
-      > div:first-child {
-        min-width: 0;
-
-        > span,
-        strong,
-        small {
-          display: block;
-        }
-
-        > span {
-          margin-bottom: 2px;
-          font-size: 9px;
-          font-weight: 700;
-          color: var(--theme-color);
-          letter-spacing: 0.08em;
-        }
-
-        strong {
-          font-size: var(--art-font-size-section-title);
-        }
-
-        small {
-          margin-top: 2px;
-          font-size: 11px;
-          color: var(--el-text-color-secondary);
-        }
-      }
     }
 
     &__all {
@@ -848,16 +805,6 @@
     &__all.is-active {
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 8%, transparent);
-    }
-
-    &__scope-state {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    &__scope-scrollbar {
-      height: 100%;
     }
 
     &__tree-node {

@@ -284,7 +284,6 @@
   .outbound-rule-page {
     display: flex;
     flex-direction: column;
-    gap: 14px;
     min-width: 0;
     min-height: 0;
 

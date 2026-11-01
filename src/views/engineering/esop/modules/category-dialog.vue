@@ -17,20 +17,6 @@
         :gutter="16"
         label-position="top"
       >
-        <template #parentId>
-          <ElTreeSelect
-            v-model="form.parentId"
-            :data="availableCategories"
-            :props="treeProps"
-            node-key="id"
-            value-key="id"
-            check-strictly
-            clearable
-            default-expand-all
-            placeholder="作为一级分类"
-            class="w-full"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -112,7 +98,23 @@
         placeholder: '请选择本次维护的数据归属租户'
       }
     },
-    { label: '上级分类', key: 'parentId', type: 'text', span: 24 },
+    {
+      props: {
+        data: availableCategories.value,
+        props: treeProps,
+        nodeKey: 'id',
+        valueKey: 'id',
+        checkStrictly: true,
+        clearable: true,
+        defaultExpandAll: true,
+        placeholder: '作为一级分类',
+        class: 'w-full'
+      },
+      label: '上级分类',
+      key: 'parentId',
+      type: 'treeSelect',
+      span: 24
+    },
     {
       label: '分类编码',
       key: 'categoryCode',

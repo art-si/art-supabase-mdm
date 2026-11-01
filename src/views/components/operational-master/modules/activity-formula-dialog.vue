@@ -27,448 +27,283 @@
       />
 
       <ArtForm
-        custom-layout
         v-else
         ref="formRef"
         v-model="model"
         :rules="rules"
+        :items="formItems"
+        :span="8"
+        :gutter="16"
+        root-class="p-0!"
         label-position="top"
       >
-        <ArtSectionCard class="formula-dialog__basic" preserve-content-structure>
-          <header class="formula-dialog__section-header">
-            <div>
-              <span class="formula-dialog__eyebrow">基本信息</span>
-              <h3>定义公式适用范围</h3>
-            </div>
-            <span class="formula-dialog__hint">用途会同步筛选下方可选参数</span>
-          </header>
-
-          <div class="formula-dialog__basic-grid">
-            <ElFormItem class="formula-dialog__field--wide" label="公式编码" prop="code">
-              <ElInput
-                v-model="model.code"
-                :disabled="readonly"
-                maxlength="64"
-                placeholder="例如 ACT_PREP_001"
-              />
-            </ElFormItem>
-            <ElFormItem class="formula-dialog__field--wide" label="公式名称" prop="name">
-              <ElInput
-                v-model="model.name"
-                :disabled="readonly"
-                maxlength="160"
-                placeholder="输入易于识别的公式名称"
-              />
-            </ElFormItem>
-            <ElFormItem class="formula-dialog__field--wide" label="用途" prop="purpose">
-              <ElSelect
-                v-model="model.purpose"
-                :disabled="readonly"
-                placeholder="选择计划或汇报用途"
-                @change="handlePurposeChange"
+        <template #formulaTokens>
+          <section class="formula-dialog__workspace">
+            <aside class="parameter-panel art-card-xs">
+              <header
+                class="formula-dialog__section-header formula-dialog__section-header--compact"
               >
-                <ElOption
-                  v-for="item in purposeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </ElSelect>
-            </ElFormItem>
-            <ElFormItem
-              class="formula-dialog__field--activity"
-              label="活动类型"
-              prop="activityTypes"
-            >
-              <ElSelect
-                v-model="model.activityTypes"
-                multiple
-                collapse-tags
-                collapse-tags-tooltip
-                :disabled="readonly"
-                placeholder="可选择多个活动类型"
-              >
-                <ElOption
-                  v-for="item in activityTypeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </ElSelect>
-            </ElFormItem>
-            <ElFormItem class="formula-dialog__field--status" label="默认公式">
-              <ElSwitch
-                v-model="model.isDefault"
-                :disabled="readonly"
-                inline-prompt
-                active-text="是"
-                inactive-text="否"
-              />
-            </ElFormItem>
-            <ElFormItem class="formula-dialog__field--status" label="使用状态">
-              <ElSwitch
-                v-model="model.enabled"
-                :disabled="readonly"
-                inline-prompt
-                active-text="启"
-                inactive-text="停"
-              />
-            </ElFormItem>
-          </div>
-        </ArtSectionCard>
-
-        <section class="formula-dialog__workspace">
-          <aside class="parameter-panel art-card-xs">
-            <header class="formula-dialog__section-header formula-dialog__section-header--compact">
-              <div>
-                <span class="formula-dialog__eyebrow">参数层级</span>
-                <h3>选择计算参数</h3>
-              </div>
-              <div
-                v-if="!readonly"
-                class="parameter-panel__actions"
-                v-auth="'MdmActivityFormula:ManageParameter'"
-              >
-                <ArtIconButton
-                  class="parameter-panel__create"
-                  icon="ri:add-line"
-                  :label="model.purpose ? '新增参数分组' : '请先选择公式用途'"
-                  :disabled="!model.purpose"
-                  @click="openParameterEditor('group')"
-                />
-                <ArtIconButton
-                  class="parameter-panel__refresh"
-                  icon="ri:refresh-line"
-                  label="刷新参数"
-                  :loading="loadingParameters"
-                  @click="loadParameters"
-                />
-              </div>
-            </header>
-
-            <ElInput
-              v-model="parameterKeyword"
-              clearable
-              prefix-icon="Search"
-              placeholder="搜索参数名称或编码"
-            />
-            <ArtEmptyState
-              v-if="!model.purpose"
-              class="parameter-panel__state"
-              title="请先选择用途"
-              description="参数会按所选用途自动级联。"
-              size="compact"
-              :visual-size="64"
-            />
-            <div v-else-if="parameterError" class="parameter-panel__empty is-error">
-              <ArtSvgIcon icon="ri:error-warning-line" />
-              <strong>参数加载失败</strong>
-              <span>{{ parameterError }}</span>
-              <ElButton link type="primary" @click="loadParameters">重新加载</ElButton>
-            </div>
-            <ArtAsyncState
-              v-else-if="loadingParameters"
-              :loading="loadingParameters"
-              :min-height="240"
-              size="compact"
-            />
-            <ArtEmptyState
-              v-else-if="!parameterTree.length"
-              class="parameter-panel__state"
-              title="尚未配置公式参数"
-              description="先新建分组，再在分组下维护可参与计算的参数。"
-              size="compact"
-              :visual-size="64"
-            >
-              <ElButton
-                v-if="!readonly"
-                v-auth="'MdmActivityFormula:ManageParameter'"
-                type="primary"
-                link
-                @click="openParameterEditor('group')"
-              >
-                创建第一个节点
-                <ArtSvgIcon icon="ri:arrow-right-line" />
-              </ElButton>
-            </ArtEmptyState>
-            <ElScrollbar v-else class="parameter-panel__scroll">
-              <ElTree
-                class="parameter-panel__tree"
-                :data="parameterTree"
-                node-key="id"
-                default-expand-all
-                :expand-on-click-node="false"
-                :filter-node-method="filterParameterNode"
-                ref="parameterTreeRef"
-                @node-click="insertParameter"
-              >
-                <template #default="{ data }">
-                  <div
-                    class="parameter-node"
-                    :class="{ 'is-parameter': data.nodeType === 'parameter' }"
-                  >
-                    <span class="parameter-node__icon"
-                      ><ArtSvgIcon
-                        :icon="data.nodeType === 'group' ? 'ri:folder-3-line' : 'ri:braces-line'"
-                    /></span>
-                    <span class="parameter-node__main">
-                      <strong>{{ data.name }}</strong>
-                      <small
-                        >{{ data.code
-                        }}<template v-if="data.activityUnit">
-                          · {{ unitLabel(data.activityUnit) }}</template
-                        ></small
-                      >
-                    </span>
-                    <span
-                      v-if="!readonly"
-                      class="parameter-node__actions"
-                      v-auth="'MdmActivityFormula:ManageParameter'"
-                      @click.stop
-                    >
-                      <ArtIconButton
-                        v-if="data.nodeType === 'group'"
-                        icon="ri:add-line"
-                        label="新增下级参数"
-                        @click="openParameterEditor('parameter', undefined, data)"
-                      />
-                      <ArtIconButton
-                        icon="ri:edit-line"
-                        label="编辑参数节点"
-                        @click="openParameterEditor(data.nodeType, data)"
-                      />
-                      <ArtIconButton
-                        icon="ri:delete-bin-6-line"
-                        label="删除参数节点"
-                        tone="danger"
-                        @click="removeParameter(data)"
-                      />
-                    </span>
-                    <ArtSvgIcon
-                      v-if="data.nodeType === 'parameter' && !readonly"
-                      class="parameter-node__insert"
-                      icon="ri:add-circle-line"
-                    />
-                  </div>
-                </template>
-                <template #empty>
-                  <ArtEmptyState
-                    title="未找到匹配项"
-                    description="请调整关键词或清空筛选条件。"
-                    size="compact"
-                    :visual-size="64"
+                <div>
+                  <span class="formula-dialog__eyebrow">参数层级</span>
+                  <h3>选择计算参数</h3>
+                </div>
+                <div
+                  v-if="!readonly"
+                  class="parameter-panel__actions"
+                  v-auth="'MdmActivityFormula:ManageParameter'"
+                >
+                  <ArtIconButton
+                    class="parameter-panel__create"
+                    icon="ri:add-line"
+                    :label="model.purpose ? '新增参数分组' : '请先选择公式用途'"
+                    :disabled="!model.purpose"
+                    @click="openParameterEditor('group')"
                   />
-                </template>
-              </ElTree>
-            </ElScrollbar>
-          </aside>
+                  <ArtIconButton
+                    class="parameter-panel__refresh"
+                    icon="ri:refresh-line"
+                    label="刷新参数"
+                    :loading="loadingParameters"
+                    @click="loadParameters"
+                  />
+                </div>
+              </header>
 
-          <main class="formula-editor art-card-xs">
-            <header class="formula-dialog__section-header formula-dialog__section-header--compact">
-              <div>
-                <span class="formula-dialog__eyebrow">公式配置</span>
-                <h3>组合计算规则</h3>
-              </div>
-              <span class="formula-dialog__hint">点击左侧参数，再选择运算符</span>
-            </header>
-
-            <div class="formula-editor__palette" :class="{ 'is-disabled': readonly }">
-              <div class="palette-group">
-                <span>运算符</span>
-                <ElButton
-                  v-for="item in operatorOptions"
-                  :key="item.value"
-                  plain
-                  :disabled="readonly"
-                  @click="addOperator(item)"
-                >
-                  <b>{{ item.symbol }}</b
-                  ><small>{{ item.label }}</small>
-                </ElButton>
-              </div>
-              <div class="palette-group">
-                <span>函数</span>
-                <ElButton
-                  v-for="item in functionOptions"
-                  :key="item.value"
-                  plain
-                  :disabled="readonly"
-                  @click="addFunction(item)"
-                  >{{ item.label }}</ElButton
-                >
-              </div>
-              <div class="palette-group palette-group--constant">
-                <span>常量</span>
+              <div class="px-4">
                 <ElInput
-                  v-model="constantValue"
-                  :disabled="readonly"
-                  placeholder="输入数字"
-                  @keyup.enter="addConstant"
-                >
-                  <template #append
-                    ><ElButton :disabled="readonly" @click="addConstant">添加</ElButton></template
-                  >
-                </ElInput>
-              </div>
-            </div>
-
-            <ElFormItem class="formula-editor__field" label="公式" prop="formulaTokens">
-              <div class="formula-canvas" :class="{ 'is-empty': !model.formulaTokens?.length }">
-                <div v-if="model.formulaTokens?.length" class="formula-canvas__tokens">
-                  <button
-                    v-for="(token, index) in model.formulaTokens"
-                    :key="`${token.type}-${index}-${token.value}`"
-                    type="button"
-                    :class="['formula-token', `is-${token.type}`]"
-                    :disabled="readonly"
-                    :title="readonly ? token.label : '点击删除此项'"
-                    @click="removeToken(index)"
-                  >
-                    {{ token.type === 'parameter' ? token.label : token.value }}
-                  </button>
-                </div>
-                <div v-else class="formula-canvas__placeholder">
-                  <ArtSvgIcon icon="ri:cursor-line" />
-                  <span>从左侧选择参数，开始搭建公式</span>
-                </div>
-                <div v-if="!readonly" class="formula-canvas__tools">
-                  <ElButton link :disabled="!model.formulaTokens?.length" @click="undoToken"
-                    ><ArtSvgIcon icon="ri:arrow-go-back-line" />撤销</ElButton
-                  >
-                  <ElButton
-                    link
-                    type="danger"
-                    :disabled="!model.formulaTokens?.length"
-                    @click="clearFormula"
-                    ><ArtSvgIcon icon="ri:delete-bin-line" />清空</ElButton
-                  >
-                </div>
-              </div>
-            </ElFormItem>
-
-            <div class="formula-editor__preview-grid">
-              <ElFormItem label="公式表达式">
-                <ElInput
-                  :model-value="formulaExpression"
-                  readonly
-                  type="textarea"
-                  :rows="3"
-                  placeholder="机器可计算表达式将在此生成"
+                  v-model="parameterKeyword"
+                  clearable
+                  prefix-icon="Search"
+                  placeholder="搜索参数名称或编码"
                 />
-              </ElFormItem>
-              <ElFormItem label="公式译文">
-                <ElInput
-                  :model-value="formulaTranslation"
-                  readonly
-                  type="textarea"
-                  :rows="3"
-                  placeholder="便于业务人员核对的中文译文"
-                />
-              </ElFormItem>
-            </div>
-            <ElFormItem label="公式说明">
-              <ElInput
-                v-model="model.description"
-                :disabled="readonly"
-                type="textarea"
-                :rows="2"
-                maxlength="500"
-                show-word-limit
-                placeholder="说明计算口径、边界条件或使用注意事项"
+              </div>
+              <ArtEmptyState
+                v-if="!model.purpose"
+                class="parameter-panel__state"
+                title="请先选择用途"
+                description="参数会按所选用途自动级联。"
+                size="compact"
+                :visual-size="64"
               />
-            </ElFormItem>
-          </main>
-        </section>
+              <div v-else-if="parameterError" class="parameter-panel__empty is-error">
+                <ArtSvgIcon icon="ri:error-warning-line" />
+                <strong>参数加载失败</strong>
+                <span>{{ parameterError }}</span>
+                <ElButton link type="primary" @click="loadParameters">重新加载</ElButton>
+              </div>
+              <ArtAsyncState
+                v-else-if="loadingParameters"
+                :loading="loadingParameters"
+                :min-height="240"
+                size="compact"
+              />
+              <ArtEmptyState
+                v-else-if="!parameterTree.length"
+                class="parameter-panel__state"
+                title="尚未配置公式参数"
+                description="先新建分组，再在分组下维护可参与计算的参数。"
+                size="compact"
+                :visual-size="64"
+              >
+                <ElButton
+                  v-if="!readonly"
+                  v-auth="'MdmActivityFormula:ManageParameter'"
+                  type="primary"
+                  link
+                  @click="openParameterEditor('group')"
+                >
+                  创建第一个节点
+                  <ArtSvgIcon icon="ri:arrow-right-line" />
+                </ElButton>
+              </ArtEmptyState>
+              <ElScrollbar v-else class="parameter-panel__scroll">
+                <ElTree
+                  class="parameter-panel__tree"
+                  :data="parameterTree"
+                  node-key="id"
+                  default-expand-all
+                  :expand-on-click-node="false"
+                  :filter-node-method="filterParameterNode"
+                  ref="parameterTreeRef"
+                  @node-click="insertParameter"
+                >
+                  <template #default="{ data }">
+                    <div
+                      class="parameter-node"
+                      :class="{ 'is-parameter': data.nodeType === 'parameter' }"
+                    >
+                      <span class="parameter-node__icon"
+                        ><ArtSvgIcon
+                          :icon="data.nodeType === 'group' ? 'ri:folder-3-line' : 'ri:braces-line'"
+                      /></span>
+                      <span class="parameter-node__main">
+                        <strong>{{ data.name }}</strong>
+                        <small
+                          >{{ data.code
+                          }}<template v-if="data.activityUnit">
+                            · {{ unitLabel(data.activityUnit) }}</template
+                          ></small
+                        >
+                      </span>
+                      <span
+                        v-if="!readonly"
+                        class="parameter-node__actions"
+                        v-auth="'MdmActivityFormula:ManageParameter'"
+                        @click.stop
+                      >
+                        <ArtIconButton
+                          v-if="data.nodeType === 'group'"
+                          icon="ri:add-line"
+                          label="新增下级参数"
+                          @click="openParameterEditor('parameter', undefined, data)"
+                        />
+                        <ArtIconButton
+                          icon="ri:edit-line"
+                          label="编辑参数节点"
+                          @click="openParameterEditor(data.nodeType, data)"
+                        />
+                        <ArtIconButton
+                          icon="ri:delete-bin-6-line"
+                          label="删除参数节点"
+                          tone="danger"
+                          @click="removeParameter(data)"
+                        />
+                      </span>
+                      <ArtSvgIcon
+                        v-if="data.nodeType === 'parameter' && !readonly"
+                        class="parameter-node__insert"
+                        icon="ri:add-circle-line"
+                      />
+                    </div>
+                  </template>
+                  <template #empty>
+                    <ArtEmptyState
+                      title="未找到匹配项"
+                      description="请调整关键词或清空筛选条件。"
+                      size="compact"
+                      :visual-size="64"
+                    />
+                  </template>
+                </ElTree>
+              </ElScrollbar>
+            </aside>
+
+            <main class="formula-editor art-card-xs">
+              <header
+                class="formula-dialog__section-header formula-dialog__section-header--compact"
+              >
+                <div>
+                  <span class="formula-dialog__eyebrow">公式配置</span>
+                  <h3>组合计算规则</h3>
+                </div>
+                <span class="formula-dialog__hint">点击左侧参数，再选择运算符</span>
+              </header>
+
+              <div class="formula-editor__palette" :class="{ 'is-disabled': readonly }">
+                <div class="palette-group">
+                  <span>运算符</span>
+                  <ElButton
+                    v-for="item in operatorOptions"
+                    :key="item.value"
+                    plain
+                    :disabled="readonly"
+                    @click="addOperator(item)"
+                  >
+                    <b>{{ item.symbol }}</b
+                    ><small>{{ item.label }}</small>
+                  </ElButton>
+                </div>
+                <div class="palette-group">
+                  <span>函数</span>
+                  <ElButton
+                    v-for="item in functionOptions"
+                    :key="item.value"
+                    plain
+                    :disabled="readonly"
+                    @click="addFunction(item)"
+                    >{{ item.label }}</ElButton
+                  >
+                </div>
+                <div class="palette-group palette-group--constant">
+                  <span>常量</span>
+                  <ElInput
+                    v-model="constantValue"
+                    :disabled="readonly"
+                    placeholder="输入数字"
+                    @keyup.enter="addConstant"
+                  >
+                    <template #append
+                      ><ElButton :disabled="readonly" @click="addConstant">添加</ElButton></template
+                    >
+                  </ElInput>
+                </div>
+              </div>
+
+              <div class="formula-editor__field">
+                <div class="formula-canvas" :class="{ 'is-empty': !model.formulaTokens?.length }">
+                  <div v-if="model.formulaTokens?.length" class="formula-canvas__tokens">
+                    <button
+                      v-for="(token, index) in model.formulaTokens"
+                      :key="`${token.type}-${index}-${token.value}`"
+                      type="button"
+                      :class="['formula-token', `is-${token.type}`]"
+                      :disabled="readonly"
+                      :title="readonly ? token.label : '点击删除此项'"
+                      @click="removeToken(index)"
+                    >
+                      {{ token.type === 'parameter' ? token.label : token.value }}
+                    </button>
+                  </div>
+                  <div v-else class="formula-canvas__placeholder">
+                    <ArtSvgIcon icon="ri:cursor-line" />
+                    <span>从左侧选择参数，开始搭建公式</span>
+                  </div>
+                  <div v-if="!readonly" class="formula-canvas__tools">
+                    <ElButton link :disabled="!model.formulaTokens?.length" @click="undoToken"
+                      ><ArtSvgIcon icon="ri:arrow-go-back-line" />撤销</ElButton
+                    >
+                    <ElButton
+                      link
+                      type="danger"
+                      :disabled="!model.formulaTokens?.length"
+                      @click="clearFormula"
+                      ><ArtSvgIcon icon="ri:delete-bin-line" />清空</ElButton
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <dl class="formula-editor__preview-grid">
+                <div
+                  ><dt>公式表达式</dt
+                  ><dd class="whitespace-pre-wrap break-words">{{
+                    formulaExpression || '机器可计算表达式将在此生成'
+                  }}</dd></div
+                >
+                <div
+                  ><dt>公式译文</dt
+                  ><dd class="whitespace-pre-wrap break-words">{{
+                    formulaTranslation || '便于业务人员核对的中文译文'
+                  }}</dd></div
+                >
+              </dl>
+            </main>
+          </section>
+        </template>
       </ArtForm>
     </div>
   </ArtDialog>
 
   <ArtDialog ref="parameterDialogRef" size="sm">
     <ArtForm
-      custom-layout
       ref="parameterFormRef"
-      label-position="top"
       v-model="parameterEditor.model"
+      :items="parameterItems"
       :rules="parameterRules"
-    >
-      <div class="parameter-editor__grid">
-        <ElFormItem label="节点类型" required>
-          <ElSegmented
-            v-model="parameterEditor.model.nodeType"
-            :options="[
-              { label: '分组', value: 'group' },
-              { label: '参数', value: 'parameter' }
-            ]"
-            :disabled="!!parameterEditor.id"
-            @change="handleParameterNodeTypeChange"
-          />
-        </ElFormItem>
-        <ElFormItem label="上级分组">
-          <ElTreeSelect
-            v-model="parameterEditor.model.parentId"
-            :data="parentGroupTree"
-            node-key="id"
-            check-strictly
-            clearable
-            :render-after-expand="false"
-            placeholder="根级节点"
-          />
-        </ElFormItem>
-        <ElFormItem label="节点编码" prop="code">
-          <ElInput
-            v-model="parameterEditor.model.code"
-            maxlength="60"
-            placeholder="以大写字母开头，可包含数字或下划线"
-            @input="normalizeParameterCode"
-          />
-        </ElFormItem>
-        <ElFormItem label="节点名称" prop="name">
-          <ElInput
-            v-model="parameterEditor.model.name"
-            maxlength="100"
-            placeholder="业务可读名称"
-          />
-        </ElFormItem>
-        <template v-if="parameterEditor.model.nodeType === 'parameter'">
-          <ElFormItem label="活动单位" prop="activityUnit">
-            <ElSelect v-model="parameterEditor.model.activityUnit">
-              <ElOption
-                v-for="item in unitOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </ElSelect>
-          </ElFormItem>
-          <ElFormItem label="关联字段" prop="relatedField">
-            <ElInput
-              v-model="parameterEditor.model.relatedField"
-              maxlength="120"
-              placeholder="例如 process_qty"
-            />
-          </ElFormItem>
-        </template>
-        <ElFormItem label="排序">
-          <ElInputNumber
-            v-model="parameterEditor.model.sort"
-            :min="0"
-            :max="999999"
-            controls-position="right"
-          />
-        </ElFormItem>
-        <ElFormItem label="启用">
-          <ElSwitch v-model="parameterEditor.model.enabled" />
-        </ElFormItem>
-        <ElFormItem class="parameter-editor__wide" label="备注">
-          <ElInput
-            v-model="parameterEditor.model.remark"
-            type="textarea"
-            :rows="2"
-            maxlength="500"
-          />
-        </ElFormItem>
-      </div>
-    </ArtForm>
+      :span="12"
+      :gutter="16"
+      label-position="top"
+    />
   </ArtDialog>
   <MasterDataDeleteGuard ref="parameterDeleteGuardRef" />
 </template>
@@ -481,14 +316,13 @@
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import ArtForm from '@/components/core/forms/art-form/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
   import type { ElTree } from 'element-plus'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -638,6 +472,140 @@
       }
     ]
   }
+
+  const formItems = computed<FormItem[]>(() => [
+    { key: 'basicSection', label: '定义公式适用范围', type: 'divider', span: 24 },
+    {
+      key: 'code',
+      label: '公式编码',
+      type: 'input',
+      props: { maxlength: 64, placeholder: '例如 ACT_PREP_001' }
+    },
+    {
+      key: 'name',
+      label: '公式名称',
+      type: 'input',
+      props: { maxlength: 160, placeholder: '输入易于识别的公式名称' }
+    },
+    {
+      key: 'purpose',
+      label: '用途',
+      type: 'select',
+      options: purposeOptions.value,
+      props: { placeholder: '选择计划或汇报用途', onChange: handlePurposeChange },
+      help: '用途会同步筛选下方可选参数'
+    },
+    {
+      key: 'activityTypes',
+      label: '活动类型',
+      type: 'select',
+      span: 16,
+      options: activityTypeOptions,
+      props: {
+        multiple: true,
+        collapseTags: true,
+        collapseTagsTooltip: true,
+        placeholder: '可选择多个活动类型'
+      }
+    },
+    {
+      key: 'isDefault',
+      label: '默认公式',
+      type: 'switch',
+      span: 4,
+      props: { inlinePrompt: true, activeText: '是', inactiveText: '否' }
+    },
+    {
+      key: 'enabled',
+      label: '使用状态',
+      type: 'switch',
+      span: 4,
+      props: { inlinePrompt: true, activeText: '启', inactiveText: '停' }
+    },
+    {
+      key: 'formulaTokens',
+      label: '公式',
+      type: 'formulaBuilder',
+      span: 24,
+      formItemProps: { class: 'formula-workspace-field' }
+    },
+    {
+      key: 'description',
+      label: '公式说明',
+      type: 'textarea',
+      span: 24,
+      props: {
+        rows: 2,
+        maxlength: 500,
+        showWordLimit: true,
+        placeholder: '说明计算口径、边界条件或使用注意事项'
+      }
+    }
+  ])
+  const parameterItems = computed<FormItem[]>(() => [
+    {
+      key: 'nodeType',
+      label: '节点类型',
+      type: 'segment',
+      formItemProps: { required: true },
+      options: [
+        { label: '分组', value: 'group' },
+        { label: '参数', value: 'parameter' }
+      ],
+      props: { disabled: Boolean(parameterEditor.id), onChange: handleParameterNodeTypeChange }
+    },
+    {
+      key: 'parentId',
+      label: '上级分组',
+      type: 'treeSelect',
+      options: parentGroupTree.value,
+      props: {
+        nodeKey: 'id',
+        checkStrictly: true,
+        clearable: true,
+        renderAfterExpand: false,
+        placeholder: '根级节点'
+      }
+    },
+    {
+      key: 'code',
+      label: '节点编码',
+      type: 'input',
+      props: {
+        maxlength: 60,
+        placeholder: '以大写字母开头，可包含数字或下划线',
+        onInput: normalizeParameterCode
+      }
+    },
+    {
+      key: 'name',
+      label: '节点名称',
+      type: 'input',
+      props: { maxlength: 100, placeholder: '业务可读名称' }
+    },
+    {
+      key: 'activityUnit',
+      label: '活动单位',
+      type: 'select',
+      hidden: parameterEditor.model.nodeType !== 'parameter',
+      options: unitOptions
+    },
+    {
+      key: 'relatedField',
+      label: '关联字段',
+      type: 'input',
+      hidden: parameterEditor.model.nodeType !== 'parameter',
+      props: { maxlength: 120, placeholder: '例如 process_qty' }
+    },
+    {
+      key: 'sort',
+      label: '排序',
+      type: 'number',
+      props: { min: 0, max: 999999, controlsPosition: 'right' }
+    },
+    { key: 'enabled', label: '启用', type: 'switch' },
+    { key: 'remark', label: '备注', type: 'textarea', span: 24, props: { rows: 2, maxlength: 500 } }
+  ])
 
   function createEmptyModel(tenantId: string): OperationalMasterRecord {
     return {
@@ -909,20 +877,10 @@
     min-width: 0;
   }
 
-  .formula-dialog__basic,
   .parameter-panel,
   .formula-editor {
     background: var(--el-bg-color);
     border: 1px solid var(--el-border-color-lighter);
-  }
-
-  .formula-dialog__basic {
-    padding: var(--art-space-4) var(--art-space-5) 0;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--theme-color) 2.5%, var(--el-bg-color)) 0,
-      var(--el-bg-color) 76px
-    );
   }
 
   .formula-dialog__section-header {
@@ -955,33 +913,6 @@
     color: var(--el-text-color-secondary);
   }
 
-  .formula-dialog__basic-grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 0 var(--art-space-4);
-
-    :deep(.el-form-item) {
-      margin-bottom: var(--art-space-4);
-    }
-  }
-
-  .formula-dialog__field--wide {
-    grid-column: span 2;
-  }
-
-  .formula-dialog__field--activity {
-    grid-column: span 4;
-  }
-
-  .formula-dialog__field--status {
-    grid-column: span 1;
-
-    :deep(.el-form-item__content) {
-      align-items: center;
-      min-height: 40px;
-    }
-  }
-
   .formula-dialog__workspace {
     display: grid;
     grid-template-columns: minmax(300px, 32%) minmax(0, 1fr);
@@ -989,7 +920,6 @@
     min-height: 500px;
   }
 
-  .parameter-panel,
   .formula-editor {
     min-width: 0;
     padding: var(--art-space-4);
@@ -999,6 +929,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--art-space-3);
+    min-width: 0;
+
+    > .formula-dialog__section-header {
+      padding: var(--art-space-4) var(--art-space-4) 0;
+    }
   }
 
   .parameter-panel__actions {
@@ -1020,6 +955,10 @@
   .parameter-panel__scroll {
     flex: 1;
     min-height: 330px;
+
+    :deep(> .el-scrollbar__wrap > .el-scrollbar__view) {
+      padding: 0 var(--art-space-4) var(--art-space-4);
+    }
   }
 
   .parameter-panel__tree {
@@ -1284,16 +1223,6 @@
     gap: var(--art-space-4);
   }
 
-  .parameter-editor__grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 var(--art-space-4);
-  }
-
-  .parameter-editor__wide {
-    grid-column: 1 / -1;
-  }
-
   :deep(.el-select),
   :deep(.el-input-number),
   :deep(.el-segmented) {
@@ -1301,16 +1230,6 @@
   }
 
   @media (width <= 1000px) {
-    .formula-dialog__basic-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .formula-dialog__field--wide,
-    .formula-dialog__field--activity,
-    .formula-dialog__field--status {
-      grid-column: span 1;
-    }
-
     .formula-dialog__workspace {
       grid-template-columns: 1fr;
     }
@@ -1321,9 +1240,7 @@
   }
 
   @media (width <= 640px) {
-    .formula-dialog__basic-grid,
-    .formula-editor__preview-grid,
-    .parameter-editor__grid {
+    .formula-editor__preview-grid {
       grid-template-columns: 1fr;
     }
 

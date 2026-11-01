@@ -477,7 +477,6 @@
   .purchase-supplier-page {
     display: flex;
     flex-direction: column;
-    gap: 14px;
     min-width: 0;
 
     &__workspace {

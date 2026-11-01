@@ -25,25 +25,6 @@
           label-position="top"
           root-class="equipment-dialog__form"
         >
-          <template #photoUrl>
-            <ArtUploadImage
-              v-model="form.photoUrl"
-              :resource-tenant-id="form.tenantId"
-              title="上传设备图片"
-              :limit="1"
-              :size="104"
-              tip="支持上传或从资源库选择 1 张设备主图"
-            />
-          </template>
-          <template #responsibleEmployeeId>
-            <ArtEmployeeSelect
-              :model-value="form.responsibleEmployeeId ?? undefined"
-              :tenant-id="form.tenantId"
-              :selected-data="selectedEmployee"
-              placeholder="选择设备管理员"
-              @update:model-value="form.responsibleEmployeeId = $event ?? null"
-            />
-          </template>
         </ArtForm>
       </section>
     </div>
@@ -61,8 +42,6 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -244,9 +223,16 @@
         },
         { label: '设备名称', key: 'equipmentName', type: 'input', props: { maxlength: 120 } },
         {
+          props: {
+            resourceTenantId: form.value.tenantId,
+            title: '上传设备图片',
+            limit: 1,
+            size: 104,
+            tip: '支持上传或从资源库选择 1 张设备主图'
+          },
           label: '设备图片',
           key: 'photoUrl',
-          type: 'slot',
+          type: 'uploadImage',
           span: 24,
           help: '用于设备列表识别与档案首屏展示。'
         },
@@ -300,7 +286,20 @@
             defaultExpandAll: true
           }
         },
-        { label: '设备管理员', key: 'responsibleEmployeeId', type: 'slot' },
+        {
+          props: {
+            modelValue: form.value.responsibleEmployeeId ?? undefined,
+            tenantId: form.value.tenantId,
+            selectedData: selectedEmployee.value,
+            placeholder: '选择设备管理员',
+            'onUpdate:modelValue': ($event: typeof form.value.responsibleEmployeeId) => {
+              form.value.responsibleEmployeeId = $event ?? null
+            }
+          },
+          label: '设备管理员',
+          key: 'responsibleEmployeeId',
+          type: 'employeeSelect'
+        },
         {
           label: '供应商',
           key: 'supplierId',

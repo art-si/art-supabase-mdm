@@ -22,16 +22,26 @@
           primary-min="224px"
           primary-max="360px"
           :breakpoint="900"
-          stacked-primary-size="300px"
+          :stacked-primary-size="optionsError || !categoryTree.length ? 'auto' : '300px'"
         >
           <template #primary>
-            <aside class="esop-page__catalog art-card-xs" aria-label="ESOP 文档分类">
-              <header>
-                <div>
-                  <span>ESOP LIBRARY</span>
-                  <strong>文档分类</strong>
-                  <small>按业务用途组织</small>
-                </div>
+            <ArtSectionCard
+              class="esop-page__catalog"
+              title="文档分类"
+              subtitle="按业务用途组织"
+              aria-label="ESOP 文档分类"
+              :loading="loadingOptions"
+              loading-mode="mask"
+              :error="optionsError"
+              error-title="文档分类加载失败"
+              :empty="!loadingOptions && !optionsError && !categoryTree.length"
+              empty-title="尚未建立文档分类"
+              empty-description="先创建一个分类，再登记受控 ESOP 文档。"
+              :empty-visual-size="70"
+              :min-height="0"
+              @retry="loadOptions"
+            >
+              <template #actions>
                 <div class="esop-page__catalog-actions">
                   <ArtIconButton
                     icon="ri:add-line"
@@ -55,86 +65,68 @@
                     @click="removeCategory"
                   />
                 </div>
-              </header>
-              <ElInput
-                v-model="categoryKeyword"
-                clearable
-                placeholder="搜索分类"
-                :prefix-icon="Search"
-                :disabled="!categories.length"
-                class="esop-page__catalog-search"
-              />
-              <button
-                type="button"
-                class="esop-page__all-category"
-                :class="{ 'is-active': !selectedCategoryId }"
-                @click="selectCategory()"
-              >
-                <span class="art-icon-label"
-                  ><ArtSvgIcon icon="ri:folder-open-line" />全部文档</span
-                >
-                <strong>{{ overview.total }}</strong>
-              </button>
-              <ArtAsyncState
-                :loading="loadingOptions"
-                :error="optionsError"
-                error-title="文档分类加载失败"
-                :empty="!categoryTree.length"
-                empty-text="尚未建立文档分类"
-                empty-description="先创建一个分类，再登记受控 ESOP 文档。"
-                :empty-image-size="70"
-                :min-height="180"
-                size="compact"
-                full-height
-                class="esop-page__catalog-state"
-                @retry="loadOptions"
-              >
-                <template #empty-action>
-                  <ElButton
-                    v-auth="'MdmEsop:Add'"
-                    type="primary"
-                    plain
-                    @click="openCategoryDialog()"
+              </template>
+              <template #toolbar>
+                <div class="grid gap-3">
+                  <ElInput
+                    v-model="categoryKeyword"
+                    clearable
+                    placeholder="搜索分类"
+                    :prefix-icon="Search"
+                    :disabled="!categories.length"
+                    class="esop-page__catalog-search"
+                  />
+                  <button
+                    type="button"
+                    class="esop-page__all-category"
+                    :class="{ 'is-active': !selectedCategoryId }"
+                    @click="selectCategory()"
                   >
-                    <ArtSvgIcon icon="ri:add-line" />新建分类
-                  </ElButton>
-                </template>
-                <ElScrollbar class="esop-page__category-scrollbar">
-                  <ElTree
-                    ref="categoryTreeRef"
-                    :data="categoryTree"
-                    node-key="id"
-                    :props="categoryTreeProps"
-                    :filter-node-method="filterCategory"
-                    :expand-on-click-node="false"
-                    default-expand-all
-                    highlight-current
-                    class="esop-page__category-tree"
-                    @node-click="handleCategoryClick"
-                  >
-                    <template #default="{ data }">
-                      <span class="esop-page__tree-node">
-                        <span class="art-icon-label">
-                          <ArtSvgIcon
-                            :icon="data.children?.length ? 'ri:folder-3-line' : 'ri:folder-line'"
-                          />
-                          <span>{{ data.categoryName }}</span>
-                        </span>
-                        <i v-if="data.status === 'disabled'">停用</i>
-                      </span>
-                    </template>
-                    <template #empty>
-                      <ArtEmptyState
-                        title="未找到匹配分类"
-                        description="请更换关键词或清空搜索条件。"
-                        size="compact"
-                        :visual-size="64"
+                    <span class="art-icon-label"
+                      ><ArtSvgIcon icon="ri:folder-open-line" />全部文档</span
+                    >
+                    <strong>{{ overview.total }}</strong>
+                  </button>
+                </div>
+              </template>
+              <template #empty-action>
+                <ElButton v-auth="'MdmEsop:Add'" type="primary" plain @click="openCategoryDialog()">
+                  <ArtSvgIcon icon="ri:add-line" />新建分类
+                </ElButton>
+              </template>
+              <ElTree
+                ref="categoryTreeRef"
+                :data="categoryTree"
+                node-key="id"
+                :props="categoryTreeProps"
+                :filter-node-method="filterCategory"
+                :expand-on-click-node="false"
+                default-expand-all
+                highlight-current
+                class="esop-page__category-tree"
+                @node-click="handleCategoryClick"
+              >
+                <template #default="{ data }">
+                  <span class="esop-page__tree-node">
+                    <span class="art-icon-label">
+                      <ArtSvgIcon
+                        :icon="data.children?.length ? 'ri:folder-3-line' : 'ri:folder-line'"
                       />
-                    </template>
-                  </ElTree>
-                </ElScrollbar>
-              </ArtAsyncState>
-            </aside>
+                      <span>{{ data.categoryName }}</span>
+                    </span>
+                    <i v-if="data.status === 'disabled'">停用</i>
+                  </span>
+                </template>
+                <template #empty>
+                  <ArtEmptyState
+                    title="未找到匹配分类"
+                    description="请更换关键词或清空搜索条件。"
+                    size="compact"
+                    :visual-size="64"
+                  />
+                </template>
+              </ElTree>
+            </ArtSectionCard>
           </template>
 
           <main class="esop-page__results">
@@ -318,7 +310,7 @@
   import TreeUtils from '@/utils/tree'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtButtonMore, {
@@ -904,7 +896,6 @@
   .esop-page {
     display: flex;
     flex-direction: column;
-    gap: var(--art-space-3);
     min-width: 0;
     min-height: 0;
 
@@ -918,46 +909,9 @@
     &__catalog {
       display: flex;
       flex-direction: column;
-      gap: var(--art-space-3);
       min-width: 0;
       min-height: 0;
-      padding: var(--art-space-4);
       overflow: hidden;
-
-      > header {
-        display: flex;
-        gap: var(--art-space-2);
-        align-items: flex-start;
-        justify-content: space-between;
-
-        > div:first-child {
-          min-width: 0;
-
-          > span,
-          strong,
-          small {
-            display: block;
-          }
-
-          > span {
-            margin-bottom: 2px;
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--theme-color);
-            letter-spacing: 0.08em;
-          }
-
-          strong {
-            font-size: var(--art-font-size-section-title);
-          }
-
-          small {
-            margin-top: 2px;
-            font-size: 11px;
-            color: var(--el-text-color-secondary);
-          }
-        }
-      }
     }
 
     &__catalog-actions {
@@ -1016,15 +970,6 @@
         background: var(--el-bg-color);
         border-radius: 999px;
       }
-    }
-
-    &__catalog-state {
-      flex: 1;
-      min-height: 0;
-    }
-
-    &__category-scrollbar {
-      height: 100%;
     }
 
     &__category-tree {

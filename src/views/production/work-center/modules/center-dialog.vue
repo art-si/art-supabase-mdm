@@ -29,52 +29,6 @@
               :span="12"
               label-position="top"
             >
-              <template #mainCenterId
-                ><ArtTableSingleSelect
-                  :model-value="form.model.mainCenterId || undefined"
-                  @update:model-value="
-                    form.model.mainCenterId = $event == null ? null : String($event)
-                  "
-                  :selected-data="form.mainSelection"
-                  :api-fn="fetchCenters"
-                  :columns="[
-                    { prop: 'code', label: '工作中心', minWidth: 150 },
-                    { prop: 'name', label: '名称', minWidth: 160 }
-                  ]"
-                  label-key="code"
-                  placeholder="本工作中心（默认）"
-                  :disabled-key="disabledCenter"
-              /></template>
-              <template #operationControlCodeId
-                ><ArtTableSingleSelect
-                  :model-value="form.model.operationControlCodeId || undefined"
-                  @update:model-value="
-                    form.model.operationControlCodeId = $event == null ? null : String($event)
-                  "
-                  :selected-data="form.controlCodeSelection"
-                  :api-fn="fetchControlCodes"
-                  :columns="[
-                    { prop: 'code', label: '控制码', minWidth: 140 },
-                    { prop: 'name', label: '名称', minWidth: 220 }
-                  ]"
-                  label-key="name"
-                  title="选择工序控制码"
-                  subtitle="来源：工艺主数据 · 工序控制码"
-                  search-placeholder="控制码 / 名称"
-                  placeholder="请选择工序控制码"
-                  :disabled="!referenceTenantId"
-              /></template>
-              <template #personIds
-                ><ArtEmployeeSelect
-                  multiple
-                  v-model:model-values="form.model.personIds"
-                  v-model:selected-data="form.people"
-                  :api-fn="fetchProductionPersonSelector"
-                  :display-fields="['jobTitle', 'employmentStatus']"
-                  title="选择生产人员"
-                  subtitle="从人员配置选择参与生产的人员"
-                  search-placeholder="姓名 / 工号"
-              /></template>
             </ArtForm>
           </ArtSectionCard>
         </ElTabPane>
@@ -132,8 +86,6 @@
 <script setup lang="ts">
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import { ref, reactive, computed, watch } from 'vue'
   import { cloneDeep, pick } from 'lodash-es'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -260,11 +212,54 @@
       props: { checkStrictly: true, filterable: true }
     },
     {
+      type: 'dataSelect',
+      props: {
+        mode: 'table',
+        multiple: false,
+        showSelectedPanel: false,
+        showPagination: Boolean(fetchCenters),
+        modelValue: form.model.mainCenterId || undefined,
+        'onUpdate:modelValue': ($event: typeof form.model.mainCenterId) => {
+          form.model.mainCenterId = $event == null ? null : String($event)
+        },
+        selectedData: form.mainSelection,
+        apiFn: fetchCenters,
+        columns: [
+          { prop: 'code', label: '工作中心', minWidth: 150 },
+          { prop: 'name', label: '名称', minWidth: 160 }
+        ],
+        labelKey: 'code',
+        placeholder: '本工作中心（默认）',
+        disabledKey: disabledCenter
+      },
       key: 'mainCenterId',
       label: '主工序位',
       help: '默认以本工作中心为核心；多设备产线可选择未被其他中心绑定的工作中心。'
     },
     {
+      type: 'dataSelect',
+      props: {
+        mode: 'table',
+        multiple: false,
+        showSelectedPanel: false,
+        showPagination: Boolean(fetchControlCodes),
+        modelValue: form.model.operationControlCodeId || undefined,
+        'onUpdate:modelValue': ($event: typeof form.model.operationControlCodeId) => {
+          form.model.operationControlCodeId = $event == null ? null : String($event)
+        },
+        selectedData: form.controlCodeSelection,
+        apiFn: fetchControlCodes,
+        columns: [
+          { prop: 'code', label: '控制码', minWidth: 140 },
+          { prop: 'name', label: '名称', minWidth: 220 }
+        ],
+        labelKey: 'name',
+        title: '选择工序控制码',
+        subtitle: '来源：工艺主数据 · 工序控制码',
+        searchPlaceholder: '控制码 / 名称',
+        placeholder: '请选择工序控制码',
+        disabled: !referenceTenantId.value
+      },
       key: 'operationControlCodeId',
       label: '工序控制码',
       help: '来源于工艺主数据中的工序控制码。'
@@ -283,6 +278,23 @@
       props: { min: 1, max: 10000, precision: 0 }
     },
     {
+      type: 'employeeSelect',
+      props: {
+        multiple: true,
+        modelValues: form.model.personIds,
+        'onUpdate:modelValues': ($event: typeof form.model.personIds) => {
+          form.model.personIds = $event
+        },
+        selectedData: form.people,
+        'onUpdate:selectedData': ($event: typeof form.people) => {
+          form.people = $event
+        },
+        apiFn: fetchProductionPersonSelector,
+        displayFields: ['jobTitle', 'employmentStatus'],
+        title: '选择生产人员',
+        subtitle: '从人员配置选择参与生产的人员',
+        searchPlaceholder: '姓名 / 工号'
+      },
       key: 'personIds',
       label: '指定人员',
       span: 24,

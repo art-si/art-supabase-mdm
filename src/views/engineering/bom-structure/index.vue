@@ -627,7 +627,6 @@
 
 <style scoped lang="scss">
   .bom-structure-page {
-    gap: var(--art-space-3);
     min-width: 0;
     overflow: hidden;
 

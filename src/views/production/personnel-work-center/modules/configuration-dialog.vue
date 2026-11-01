@@ -17,40 +17,6 @@
         :span="24"
         label-position="top"
       >
-        <template #personnelId>
-          <ArtEmployeeSelect
-            v-model="form.model.personnelId"
-            v-model:selected-data="form.people"
-            :api-fn="fetchPeople"
-            :disabled="form.mode === 'edit'"
-            :clearable="form.mode === 'add'"
-            :display-fields="['organization', 'jobTitle', 'phone']"
-            title="选择生产人员"
-            :subtitle="personnelSubtitle"
-            search-placeholder="姓名 / 工号 / 手机号"
-            @confirm="handlePersonnelConfirm"
-          />
-        </template>
-        <template #workCenterIds>
-          <ArtTableMultipleSelect
-            :model-value="form.model.workCenterIds"
-            :selected-data="form.centers"
-            :api-fn="fetchCenters"
-            :columns="centerColumns"
-            row-key="id"
-            label-key="name"
-            description-key="code"
-            title="选择常用工作中心"
-            :subtitle="`当前可选范围：${form.scopeLabel}`"
-            search-placeholder="工作中心编号 / 名称"
-            placeholder="选择一个或多个常用工作中心"
-            empty-text="当前范围暂无工作中心"
-            empty-description="请调整左侧部门/产线范围，或先在工作中心菜单完成配置。"
-            :max-tag-count="3"
-            @update:model-value="updateCenterIds"
-            @update:selected-data="updateCenters"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -60,9 +26,7 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref } from 'vue'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import type {
     DataSelectColumn,
     DataSelectFetchParams,
@@ -136,11 +100,49 @@
       help: '默认跟随左侧部门；选择员工后会校准为其当前所属部门，也可手动改选。'
     },
     {
+      type: 'employeeSelect',
+      props: {
+        selectedData: form.people,
+        'onUpdate:selectedData': ($event: typeof form.people) => {
+          form.people = $event
+        },
+        apiFn: fetchPeople,
+        disabled: form.mode === 'edit',
+        clearable: form.mode === 'add',
+        displayFields: ['organization', 'jobTitle', 'phone'],
+        title: '选择生产人员',
+        subtitle: personnelSubtitle.value,
+        searchPlaceholder: '姓名 / 工号 / 手机号',
+        onConfirm: handlePersonnelConfirm
+      },
       key: 'personnelId',
       label: '员工',
       help: '人员来自“人员配置”，已有常用项的人员请从列表使用编辑。'
     },
     {
+      type: 'dataSelect',
+      props: {
+        mode: 'table',
+        multiple: true,
+        showSelectedPanel: true,
+        showPagination: true,
+        modelValue: form.model.workCenterIds,
+        selectedData: form.centers,
+        apiFn: fetchCenters,
+        columns: centerColumns,
+        rowKey: 'id',
+        labelKey: 'name',
+        descriptionKey: 'code',
+        title: '选择常用工作中心',
+        subtitle: `当前可选范围：${form.scopeLabel}`,
+        searchPlaceholder: '工作中心编号 / 名称',
+        placeholder: '选择一个或多个常用工作中心',
+        emptyText: '当前范围暂无工作中心',
+        emptyDescription: '请调整左侧部门/产线范围，或先在工作中心菜单完成配置。',
+        maxTagCount: 3,
+        'onUpdate:modelValue': updateCenterIds,
+        'onUpdate:selectedData': updateCenters
+      },
       key: 'workCenterIds',
       label: '常用工作中心',
       help: '支持多选；保存后作业员可在工作台快速找到这些工作中心。'

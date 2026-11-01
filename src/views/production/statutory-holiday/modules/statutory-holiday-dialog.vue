@@ -16,21 +16,6 @@
         :gutter="24"
         label-position="top"
       >
-        <template #organizationId>
-          <ElTreeSelect
-            v-model="form.model.organizationId"
-            class="w-full"
-            :data="organizationTree"
-            :props="organizationTreeProps"
-            node-key="id"
-            value-key="id"
-            check-strictly
-            filterable
-            clearable
-            default-expand-all
-            placeholder="请选择公司或组织"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -114,7 +99,24 @@
   }>({
     model: initialForm(),
     items: computed(() => [
-      { label: '公司/组织', key: 'organizationId', type: 'text', span: 24 },
+      {
+        props: {
+          class: 'w-full',
+          data: organizationTree.value,
+          props: organizationTreeProps,
+          nodeKey: 'id',
+          valueKey: 'id',
+          checkStrictly: true,
+          filterable: true,
+          clearable: true,
+          defaultExpandAll: true,
+          placeholder: '请选择公司或组织'
+        },
+        label: '公司/组织',
+        key: 'organizationId',
+        type: 'treeSelect',
+        span: 24
+      },
       {
         label: '假期类型',
         key: 'holidayType',

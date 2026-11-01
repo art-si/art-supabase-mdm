@@ -14,7 +14,7 @@
       >
         <template #actions><BusinessTableWorkspaceActions :table="tableRef" /></template>
       </BusinessWorkspaceHeader>
-      <ElAlert v-if="optionError" type="warning" :closable="false" show-icon class="mb-3">
+      <ElAlert v-if="optionError" type="warning" :closable="false" show-icon>
         类型字典加载失败，部分标签暂不可见。
         <ElButton link type="primary" @click="loadOptions">重新加载</ElButton>
       </ElAlert>

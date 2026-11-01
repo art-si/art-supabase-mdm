@@ -26,12 +26,6 @@
         :gutter="20"
         label-position="top"
       >
-        <template #textColor>
-          <div class="flex items-center gap-3">
-            <ElColorPicker v-model="model.textColor" aria-label="组件类型文字颜色" />
-            <span class="text-sm text-gray-500">{{ model.textColor || '跟随标签样式' }}</span>
-          </div>
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -135,7 +129,13 @@
       props: { activeText: '启用', inactiveText: '禁用' }
     },
     { key: 'tagStyle', label: '标签样式', type: 'tagStyleSelect' },
-    { key: 'textColor', label: '文字颜色', type: 'slot' },
+    {
+      key: 'textColor',
+      label: '文字颜色',
+      type: 'colorPicker',
+      description: model.value.textColor || '跟随标签样式',
+      props: { 'aria-label': '组件类型文字颜色' }
+    },
     {
       key: 'remark',
       label: '备注',

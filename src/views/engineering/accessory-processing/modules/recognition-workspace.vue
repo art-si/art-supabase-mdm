@@ -153,53 +153,6 @@
                   label-position="top"
                   root-class="accessory-inline-form mt-4"
                 >
-                  <template #projectId>
-                    <ElSelect
-                      v-model="draft.projectId"
-                      clearable
-                      filterable
-                      placeholder="留空按名称查找或创建"
-                      class="w-full"
-                      :disabled="workspace.projectsLoading"
-                      @change="onProjectSelected"
-                    >
-                      <ElOption
-                        v-for="project in workspace.projects"
-                        :key="project.id"
-                        :value="project.id"
-                        :label="`${project.projectName} · ${project.projectCode}`"
-                      />
-                    </ElSelect>
-                  </template>
-                  <template #customerId>
-                    <ElSelect
-                      v-model="draft.customerId"
-                      clearable
-                      filterable
-                      :placeholder="draft.projectId ? '已有项目未关联客户' : '新建项目时必选'"
-                      class="w-full"
-                      :disabled="Boolean(draft.projectId)"
-                    >
-                      <ElOption
-                        v-for="customer in workspace.customers"
-                        :key="customer.id"
-                        :value="customer.id"
-                        :label="customer.customerName"
-                      />
-                    </ElSelect>
-                  </template>
-                  <template #categoryId>
-                    <ElTreeSelect
-                      v-model="draft.categoryId"
-                      :data="categoryTreeOptions"
-                      check-strictly
-                      clearable
-                      filterable
-                      placeholder="选择加工件所属分类"
-                      class="w-full"
-                      @change="onDefaultCategoryChanged"
-                    />
-                  </template>
                 </ArtForm>
                 <p
                   v-if="draft.status === 'materials_ready'"
@@ -354,48 +307,13 @@
                           <ArtForm
                             :ref="(form) => setCorrectionFormRef(form, index)"
                             :model-value="item"
-                            :items="correctionFormItems"
+                            :items="correctionFormItems(item, index)"
                             :rules="correctionRules"
                             :span="8"
                             :gutter="16"
                             label-position="top"
                             root-class="accessory-inline-form"
                           >
-                            <template #specificationModel>
-                              <ElInput
-                                v-model="item.specificationModel"
-                                maxlength="120"
-                                :placeholder="defaultSpecification(item)"
-                              />
-                            </template>
-                            <template #sketchPath>
-                              <div
-                                class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--default-box-color)]"
-                              >
-                                <ArtUploadImage
-                                  :model-value="workspace.sketchUrls[index] || ''"
-                                  :upload-request="(file) => uploadSketch(file, index)"
-                                  :show-resource-picker="false"
-                                  title="上传加工草图"
-                                  preview-fit="contain"
-                                  :size="112"
-                                  @update:model-value="(url) => onSketchModelChanged(url, index)"
-                                  @resource-change="
-                                    (resources) => onSketchUploaded(resources, index)
-                                  "
-                                />
-                                <div class="min-w-40 flex-1">
-                                  <p class="text-sm font-medium">{{
-                                    item.sketchPath ? '已关联独立草图' : '请上传本件加工草图'
-                                  }}</p>
-                                  <p
-                                    class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300"
-                                  >
-                                    图片会单独保存，并随对应物料及生产加工单保留。点击图片可预览或删除。
-                                  </p>
-                                </div>
-                              </div>
-                            </template>
                           </ArtForm>
                         </div>
                       </div>
@@ -615,7 +533,6 @@
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
-  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -809,7 +726,7 @@
       }))
     )
   )
-  const allProjectFormItems: FormItem[] = [
+  const allProjectFormItems = computed<FormItem[]>(() => [
     {
       key: 'projectName',
       label: '项目名称',
@@ -817,7 +734,24 @@
       span: 8,
       props: { maxlength: 160, placeholder: '识别或手动填写项目名称' }
     },
-    { key: 'projectId', label: '关联已有项目', type: 'select', span: 8 },
+    {
+      options: workspace.projects.map((project) => ({
+        value: project.id,
+        label: `${project.projectName} · ${project.projectCode}`
+      })),
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: '留空按名称查找或创建',
+        class: 'w-full',
+        disabled: workspace.projectsLoading,
+        onChange: onProjectSelected
+      },
+      key: 'projectId',
+      label: '关联已有项目',
+      type: 'select',
+      span: 8
+    },
     {
       key: 'drawingName',
       label: '图纸名称',
@@ -825,97 +759,158 @@
       span: 8,
       props: { maxlength: 160, placeholder: '识别或手动填写图纸名称' }
     },
-    { key: 'customerId', label: '项目客户', type: 'select', span: 8 },
-    { key: 'categoryId', label: '默认物料分类', type: 'treeSelect', span: 8 }
-  ]
+    {
+      options: workspace.customers.map((customer) => ({
+        value: customer.id,
+        label: customer.customerName
+      })),
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: draft.projectId ? '已有项目未关联客户' : '新建项目时必选',
+        class: 'w-full',
+        disabled: Boolean(draft.projectId)
+      },
+      key: 'customerId',
+      label: '项目客户',
+      type: 'select',
+      span: 8
+    },
+    {
+      props: {
+        data: categoryTreeOptions.value,
+        checkStrictly: true,
+        clearable: true,
+        filterable: true,
+        placeholder: '选择加工件所属分类',
+        class: 'w-full',
+        onChange: onDefaultCategoryChanged
+      },
+      key: 'categoryId',
+      label: '默认物料分类',
+      type: 'treeSelect',
+      span: 8
+    }
+  ])
   const projectFormItems = computed(() =>
     draft.status === 'materials_ready'
-      ? allProjectFormItems.filter((item) =>
+      ? allProjectFormItems.value.filter((item) =>
           ['projectName', 'projectId', 'customerId'].includes(item.key)
         )
-      : allProjectFormItems
+      : allProjectFormItems.value
   )
-  const correctionFormItems = computed<FormItem[]>(() => [
-    {
-      key: 'name',
-      label: '构件名称',
-      type: 'input',
-      span: 8,
-      props: { maxlength: 120 }
-    },
-    { key: 'specificationModel', label: '规格型号', type: 'input', span: 8 },
-    {
-      key: 'materialColor',
-      label: '材质与颜色',
-      type: 'input',
-      span: 8,
-      props: { maxlength: 160 }
-    },
-    {
-      key: 'widthMm',
-      label: '展宽 (mm)',
-      type: 'number',
-      span: 6,
-      props: { min: 0, precision: 1, controlsPosition: 'right', class: '!w-full' }
-    },
-    {
-      key: 'lengthM',
-      label: '长度 (m)',
-      type: 'number',
-      span: 6,
-      props: { min: 0.001, precision: 3, controlsPosition: 'right', class: '!w-full' }
-    },
-    {
-      key: 'quantity',
-      label: '数量 (件)',
-      type: 'number',
-      span: 6,
-      props: { min: 1, precision: 0, controlsPosition: 'right', class: '!w-full' }
-    },
-    {
-      key: 'baseUnitId',
-      label: '基本单位',
-      type: 'select',
-      span: 6,
-      options: workspace.units.map((unit) => ({ label: unit.unitName, value: unit.id })),
-      props: { filterable: true }
-    },
-    {
-      key: 'materialTypeId',
-      label: '物料类型',
-      type: 'select',
-      span: 8,
-      options: workspace.types.map((type) => ({ label: type.typeName, value: type.id })),
-      props: { filterable: true }
-    },
-    {
-      key: 'materialSource',
-      label: '物料来源',
-      type: 'select',
-      span: 8,
-      options: materialSourceOptions.value.map((source) => ({
-        label: source.label,
-        value: source.value
-      }))
-    },
-    {
-      key: 'categoryId',
-      label: '物料分类',
-      type: 'treeSelect',
-      span: 8,
-      options: optionTree.listToTree(
-        workspace.categories.map((category) => ({
-          label: `${category.categoryName} · ${category.categoryCode}`,
-          value: category.id,
-          parentId: category.parentId,
-          disabled: category.status !== 'enabled'
+  const correctionFormItems = (item: AccessoryProcessingItem, index: number): FormItem[] => {
+    const sketchPath = item.sketchPath
+    return [
+      {
+        key: 'name',
+        label: '构件名称',
+        type: 'input',
+        span: 8,
+        props: { maxlength: 120 }
+      },
+      {
+        props: { maxlength: '120', placeholder: defaultSpecification(item) },
+        key: 'specificationModel',
+        label: '规格型号',
+        type: 'input',
+        span: 8
+      },
+      {
+        key: 'materialColor',
+        label: '材质与颜色',
+        type: 'input',
+        span: 8,
+        props: { maxlength: 160 }
+      },
+      {
+        key: 'widthMm',
+        label: '展宽 (mm)',
+        type: 'number',
+        span: 6,
+        props: { min: 0, precision: 1, controlsPosition: 'right', class: '!w-full' }
+      },
+      {
+        key: 'lengthM',
+        label: '长度 (m)',
+        type: 'number',
+        span: 6,
+        props: { min: 0.001, precision: 3, controlsPosition: 'right', class: '!w-full' }
+      },
+      {
+        key: 'quantity',
+        label: '数量 (件)',
+        type: 'number',
+        span: 6,
+        props: { min: 1, precision: 0, controlsPosition: 'right', class: '!w-full' }
+      },
+      {
+        key: 'baseUnitId',
+        label: '基本单位',
+        type: 'select',
+        span: 6,
+        options: workspace.units.map((unit) => ({ label: unit.unitName, value: unit.id })),
+        props: { filterable: true }
+      },
+      {
+        key: 'materialTypeId',
+        label: '物料类型',
+        type: 'select',
+        span: 8,
+        options: workspace.types.map((type) => ({ label: type.typeName, value: type.id })),
+        props: { filterable: true }
+      },
+      {
+        key: 'materialSource',
+        label: '物料来源',
+        type: 'select',
+        span: 8,
+        options: materialSourceOptions.value.map((source) => ({
+          label: source.label,
+          value: source.value
         }))
-      ),
-      props: { filterable: true, checkStrictly: true }
-    },
-    { key: 'remark', label: '备注', type: 'input', span: 24 },
-    { key: 'sketchPath', label: '独立加工草图', type: 'uploadImage', span: 24 }
-  ])
+      },
+      {
+        key: 'categoryId',
+        label: '物料分类',
+        type: 'treeSelect',
+        span: 8,
+        options: optionTree.listToTree(
+          workspace.categories.map((category) => ({
+            label: `${category.categoryName} · ${category.categoryCode}`,
+            value: category.id,
+            parentId: category.parentId,
+            disabled: category.status !== 'enabled'
+          }))
+        ),
+        props: { filterable: true, checkStrictly: true }
+      },
+      { key: 'remark', label: '备注', type: 'input', span: 24 },
+      {
+        key: 'sketchPath',
+        label: '独立加工草图',
+        type: 'uploadImage',
+        span: 24,
+        description: `${item.sketchPath ? '已关联独立草图。' : '请上传本件加工草图。'}图片会单独保存，并随对应物料及生产加工单保留。点击图片可预览或删除。`,
+        props: {
+          modelValue: workspace.sketchUrls[index] || '',
+          resourceTenantId: workspace.tenantId,
+          uploadRequest: (file: File) => uploadSketch(file, index),
+          showResourcePicker: false,
+          title: '上传加工草图',
+          previewFit: 'contain',
+          size: 112,
+          'onUpdate:modelValue': (url: string | string[] | null) => {
+            // The field stores a Storage path; resource-change owns writes of uploaded paths.
+            item.sketchPath = sketchPath
+            onSketchModelChanged(url, index)
+          },
+          onResourceChange: (resources: Api.DataCenter.Resources.ResourceListItem[]) =>
+            onSketchUploaded(resources, index)
+        }
+      }
+    ]
+  }
   const defaultCategoryId = computed(
     () =>
       workspace.categories.find(

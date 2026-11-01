@@ -558,7 +558,6 @@
 
 <style scoped lang="scss">
   .holiday-page {
-    gap: 12px;
     min-width: 0;
 
     &__viewbar {

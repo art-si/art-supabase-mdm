@@ -1,1 +1,0 @@
-import{Ar as e,Rr as t,ri as n}from"./supabase-CdJ7aEwC.js";import{t as r}from"./payable-reference-workspace-BPzV1JK0.js";var i=t({name:`MdmPaymentPurpose`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`purpose`,permissions:{View:`MdmPaymentPurpose:View`,Add:`MdmPaymentPurpose:Add`,Edit:`MdmPaymentPurpose:Edit`,Delete:`MdmPaymentPurpose:Delete`}}))}});export{i as default};

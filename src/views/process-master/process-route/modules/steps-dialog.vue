@@ -213,40 +213,6 @@
         :span="24"
         label-position="top"
       >
-        <template #transferInStepId>
-          <ArtTableSingleSelect
-            v-model="transferInStepId"
-            :selected-data="transferInSelection"
-            :data="transferInStepRows"
-            :columns="transferStepColumns"
-            :label-key="transferStepLabel"
-            :description-key="transferStepDescription"
-            title="选择转入工序"
-            subtitle="并行分支从所选标准工序之后开始"
-            placeholder="从标准序列选择转入工序"
-            search-placeholder="搜索工序号、名称或工序编码"
-            empty-text="暂无可选转入工序"
-            empty-description="标准序列的末道工序不能作为并行分支的转入位置。"
-            :show-pagination="false"
-          />
-        </template>
-        <template #transferOutStepId>
-          <ArtTableSingleSelect
-            v-model="transferOutStepId"
-            :selected-data="transferOutSelection"
-            :data="transferOutStepRows"
-            :columns="transferStepColumns"
-            :label-key="transferStepLabel"
-            :description-key="transferStepDescription"
-            title="选择转出工序"
-            subtitle="并行分支在所选标准工序之前汇回"
-            placeholder="从标准序列选择转出工序"
-            search-placeholder="搜索工序号、名称或工序编码"
-            empty-text="暂无可选转出工序"
-            empty-description="标准序列的首道工序不能作为并行分支的转出位置。"
-            :show-pagination="false"
-          />
-        </template>
       </ArtForm>
 
       <div v-if="isCreatingParallelSequence" class="sequence-editor__automation-note">
@@ -480,17 +446,6 @@
             empty-text="—"
           />
           <ArtForm v-else v-model="sopForm" :items="sopItems" :span="24" label-position="top">
-            <template #attachments>
-              <ArtUploadFile
-                v-model="sopForm.attachments"
-                :resource-tenant-id="route?.tenantId || ''"
-                multiple
-                :limit="10"
-                :disabled="editorReadonly || !route?.tenantId"
-                title="上传作业指导书"
-                tip="支持上传附件，也可选择工程主数据中的 ESOP 文档。"
-              />
-            </template>
           </ArtForm>
         </div>
       </section>
@@ -525,8 +480,6 @@
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import type {
@@ -1154,16 +1107,60 @@
       }
     },
     {
+      props: {
+        mode: 'table',
+        multiple: false,
+        showSelectedPanel: false,
+
+        selectedData: transferInSelection.value,
+        modelValue: transferInStepId.value,
+        'onUpdate:modelValue': (value: DataSelectKey | undefined) => {
+          transferInStepId.value = value
+        },
+        data: transferInStepRows.value,
+        columns: transferStepColumns,
+        labelKey: transferStepLabel,
+        descriptionKey: transferStepDescription,
+        title: '选择转入工序',
+        subtitle: '并行分支从所选标准工序之后开始',
+        placeholder: '从标准序列选择转入工序',
+        searchPlaceholder: '搜索工序号、名称或工序编码',
+        emptyText: '暂无可选转入工序',
+        emptyDescription: '标准序列的末道工序不能作为并行分支的转入位置。',
+        showPagination: false
+      },
       key: 'transferInStepId',
       label: '转入工序',
-      type: 'slot',
+      type: 'dataSelect',
       hidden: sequenceForm.value.sequenceType !== 'parallel',
       help: '仅并行序列可设置，不能选择标准工序的末序。'
     },
     {
+      props: {
+        mode: 'table',
+        multiple: false,
+        showSelectedPanel: false,
+
+        selectedData: transferOutSelection.value,
+        modelValue: transferOutStepId.value,
+        'onUpdate:modelValue': (value: DataSelectKey | undefined) => {
+          transferOutStepId.value = value
+        },
+        data: transferOutStepRows.value,
+        columns: transferStepColumns,
+        labelKey: transferStepLabel,
+        descriptionKey: transferStepDescription,
+        title: '选择转出工序',
+        subtitle: '并行分支在所选标准工序之前汇回',
+        placeholder: '从标准序列选择转出工序',
+        searchPlaceholder: '搜索工序号、名称或工序编码',
+        emptyText: '暂无可选转出工序',
+        emptyDescription: '标准序列的首道工序不能作为并行分支的转出位置。',
+        showPagination: false
+      },
       key: 'transferOutStepId',
       label: '转出工序',
-      type: 'slot',
+      type: 'dataSelect',
       hidden: sequenceForm.value.sequenceType !== 'parallel',
       help: '仅并行序列可设置，不能选择标准工序的首序。'
     },
@@ -1479,7 +1476,19 @@
       props: { multiple: true, filterable: true, clearable: true },
       options: references.esopDocuments.map(toNameCodeOption)
     },
-    { key: 'attachments', label: '上传附件', type: 'slot' }
+    {
+      props: {
+        resourceTenantId: route.value?.tenantId || '',
+        multiple: true,
+        limit: 10,
+        disabled: editorReadonly.value || !route.value?.tenantId,
+        title: '上传作业指导书',
+        tip: '支持上传附件，也可选择工程主数据中的 ESOP 文档。'
+      },
+      key: 'attachments',
+      label: '上传附件',
+      type: 'uploadFile'
+    }
   ])
   const basicDetailItems = computed<ArtDescriptionItem<typeof stepForm.value>[]>(() => [
     {
@@ -1730,6 +1739,15 @@
       }
     },
     {
+      type: 'uploadFile',
+      props: {
+        resourceTenantId: route.value?.tenantId || '',
+        multiple: true,
+        limit: 10,
+        disabled: editorReadonly.value || !route.value?.tenantId,
+        title: '上传作业指导书',
+        tip: '支持上传附件，也可选择工程主数据中的 ESOP 文档。'
+      },
       key: 'attachments',
       label: '上传附件',
       field: 'attachments',

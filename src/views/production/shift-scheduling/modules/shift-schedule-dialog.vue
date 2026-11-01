@@ -41,68 +41,6 @@
         :span="12"
         label-position="top"
       >
-        <template #patternId>
-          <ElSelect
-            v-model="form.model.patternId"
-            placeholder="请选择工厂日历中的轮班模式"
-            :loading="state.patternLoading"
-            class="w-full!"
-            @change="handlePatternChange"
-          >
-            <ElOption
-              v-for="pattern in state.patterns"
-              :key="pattern.id"
-              :value="pattern.id"
-              :label="pattern.name"
-            >
-              <div class="shift-schedule-dialog__pattern-option">
-                <i :style="{ background: pattern.color }" />
-                <span>{{ pattern.name }}</span>
-                <small>{{ pattern.shifts.length }} 个班次</small>
-              </div>
-            </ElOption>
-          </ElSelect>
-        </template>
-        <template #shiftIndex>
-          <ElSelect
-            v-model="form.model.shiftIndex"
-            placeholder="请先选择轮班模式"
-            :disabled="!selectedPattern"
-            class="w-full!"
-          >
-            <ElOption
-              v-for="(shift, index) in selectedPattern?.shifts || []"
-              :key="`${index}-${shift.name}`"
-              :value="index + 1"
-              :label="shift.name"
-            >
-              <div class="shift-schedule-dialog__shift-option">
-                <span>{{ shift.name }}</span>
-                <small>{{ shift.startTime }} — {{ shift.endTime }}</small>
-              </div>
-            </ElOption>
-          </ElSelect>
-        </template>
-        <template #personnelIds>
-          <ArtTableMultipleSelect
-            :model-value="form.model.personnelIds"
-            :selected-data="form.members"
-            :api-fn="fetchPeople"
-            :columns="personnelColumns"
-            row-key="id"
-            label-key="employeeName"
-            description-key="employeeNo"
-            title="添加班组人员"
-            :subtitle="`仅显示“${state.departmentName}”及下级组织中的启用人员配置`"
-            search-placeholder="姓名 / 工号 / 岗位"
-            placeholder="添加人员"
-            empty-text="当前范围暂无可选人员"
-            empty-description="请先在“人员配置”中维护人员，或调整左侧部门 / 产线。"
-            :max-tag-count="4"
-            @update:model-value="updatePersonnelIds"
-            @update:selected-data="updateMembers"
-          />
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -112,10 +50,12 @@
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
-  import { computed, reactive, ref } from 'vue'
+  import { computed, h, reactive, ref } from 'vue'
   import dayjs from 'dayjs'
-  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+  import ArtForm, {
+    type FormItem,
+    type FormItemOption
+  } from '@/components/core/forms/art-form/index.vue'
   import type {
     DataSelectColumn,
     DataSelectFetchParams,
@@ -234,8 +174,55 @@
       span: 24,
       description: '轮班模式与班次均来自当前部门 / 产线的工厂日历。'
     },
-    { key: 'patternId', label: '轮班模式', help: '数据来源：工厂日历 · 轮班模式' },
-    { key: 'shiftIndex', label: '班次', help: '选择该轮班模式中的具体班次' },
+    {
+      type: 'select',
+      options: state.patterns.map((pattern) => ({
+        value: pattern.id,
+        label: pattern.name,
+        color: pattern.color,
+        shiftCount: pattern.shifts.length
+      })),
+      optionComponent: ({ option }: { option: FormItemOption }) =>
+        h('div', { class: 'flex items-center gap-2' }, [
+          h('i', {
+            class: 'size-2.5 shrink-0 rounded-full',
+            style: { backgroundColor: String(option.color || '') }
+          }),
+          h('span', String(option.label || '')),
+          h('small', { class: 'ml-auto text-xs text-g-600' }, `${option.shiftCount} 个班次`)
+        ]),
+      props: {
+        placeholder: '请选择工厂日历中的轮班模式',
+        loading: state.patternLoading,
+        class: 'w-full!',
+        onChange: handlePatternChange
+      },
+      key: 'patternId',
+      label: '轮班模式',
+      help: '数据来源：工厂日历 · 轮班模式'
+    },
+    {
+      type: 'select',
+      options: (selectedPattern.value?.shifts || []).map((shift, index) => ({
+        value: index + 1,
+        label: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime
+      })),
+      optionComponent: ({ option }: { option: FormItemOption }) =>
+        h('div', { class: 'flex items-center justify-between gap-3' }, [
+          h('span', String(option.label || '')),
+          h('small', { class: 'text-xs text-g-600' }, `${option.startTime} — ${option.endTime}`)
+        ]),
+      props: {
+        placeholder: '请先选择轮班模式',
+        disabled: !selectedPattern.value,
+        class: 'w-full!'
+      },
+      key: 'shiftIndex',
+      label: '班次',
+      help: '选择该轮班模式中的具体班次'
+    },
     {
       key: 'dateMode',
       label: '有效方式',
@@ -287,7 +274,34 @@
       span: 24,
       description: '支持跨分页多选；仅保存人员配置 ID，不复制人员隐私资料。'
     },
-    { key: 'personnelIds', label: '添加人员', span: 24 },
+    {
+      type: 'dataSelect',
+      props: {
+        mode: 'table',
+        multiple: true,
+        showSelectedPanel: true,
+        showPagination: true,
+        modelValue: form.model.personnelIds,
+        selectedData: form.members,
+        apiFn: fetchPeople,
+        columns: personnelColumns,
+        rowKey: 'id',
+        labelKey: 'employeeName',
+        descriptionKey: 'employeeNo',
+        title: '添加班组人员',
+        subtitle: `仅显示“${state.departmentName}”及下级组织中的启用人员配置`,
+        searchPlaceholder: '姓名 / 工号 / 岗位',
+        placeholder: '添加人员',
+        emptyText: '当前范围暂无可选人员',
+        emptyDescription: '请先在“人员配置”中维护人员，或调整左侧部门 / 产线。',
+        maxTagCount: 4,
+        'onUpdate:modelValue': updatePersonnelIds,
+        'onUpdate:selectedData': updateMembers
+      },
+      key: 'personnelIds',
+      label: '添加人员',
+      span: 24
+    },
     {
       key: 'note',
       label: '备注',
@@ -515,24 +529,6 @@
         margin-block: 2px;
         font-size: 15px;
         color: var(--el-text-color-primary);
-      }
-    }
-
-    &__pattern-option,
-    &__shift-option {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-
-      i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-      }
-
-      small {
-        margin-left: auto;
-        color: var(--el-text-color-secondary);
       }
     }
 

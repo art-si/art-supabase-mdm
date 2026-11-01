@@ -30,29 +30,7 @@
           <small>{{ editingRow.equipment?.equipmentCode || '无设备编号' }}</small>
         </div>
       </div>
-      <ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"
-        ><template #equipmentIds
-          ><ArtTableMultipleSelect
-            :model-value="form.equipmentIds"
-            :selected-data="selection"
-            :api-fn="fetchEquipment"
-            :columns="[
-              { prop: 'equipmentCode', label: '设备编号', minWidth: 140 },
-              { prop: 'equipmentName', label: '设备名称', minWidth: 180 }
-            ]"
-            row-key="id"
-            label-key="equipmentName"
-            description-key="equipmentCode"
-            title="选择设备"
-            subtitle="可一次勾选多台尚未关联工作中心的设备"
-            search-placeholder="设备编号 / 设备名称"
-            placeholder="选择一个或多个设备"
-            empty-text="暂无可关联设备"
-            empty-description="设备可能已被其他工作中心关联，请调整搜索条件。"
-            :max-tag-count="3"
-            @update:model-value="updateEquipmentIds"
-            @update:selected-data="updateSelection" /></template
-      ></ArtForm>
+      <ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"></ArtForm>
     </div>
   </ArtDialog>
 </template>
@@ -62,7 +40,7 @@
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { ElMessage } from 'element-plus'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -100,7 +78,37 @@
   const equipmentPointOptions = useDictionaryOptions('mdmWorkCenterEquipmentPoint')
   const form = ref({ equipmentIds: [] as string[], isMain: false, point: '无' })
   const items = computed<FormItem[]>(() => [
-    { key: 'equipmentIds', label: '设备', hidden: Boolean(editingRow.value) },
+    {
+      type: 'dataSelect',
+      props: {
+        mode: 'table',
+        multiple: true,
+        showSelectedPanel: true,
+        showPagination: true,
+        modelValue: form.value.equipmentIds,
+        selectedData: selection.value,
+        apiFn: fetchEquipment,
+        columns: [
+          { prop: 'equipmentCode', label: '设备编号', minWidth: 140 },
+          { prop: 'equipmentName', label: '设备名称', minWidth: 180 }
+        ],
+        rowKey: 'id',
+        labelKey: 'equipmentName',
+        descriptionKey: 'equipmentCode',
+        title: '选择设备',
+        subtitle: '可一次勾选多台尚未关联工作中心的设备',
+        searchPlaceholder: '设备编号 / 设备名称',
+        placeholder: '选择一个或多个设备',
+        emptyText: '暂无可关联设备',
+        emptyDescription: '设备可能已被其他工作中心关联，请调整搜索条件。',
+        maxTagCount: 3,
+        'onUpdate:modelValue': updateEquipmentIds,
+        'onUpdate:selectedData': updateSelection
+      },
+      key: 'equipmentIds',
+      label: '设备',
+      hidden: Boolean(editingRow.value)
+    },
     {
       key: 'isMain',
       label: editingRow.value ? '主设备' : '首台作为主设备',

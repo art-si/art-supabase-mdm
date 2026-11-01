@@ -114,6 +114,11 @@
         warehouse.id === (isInbound.value ? form.value.warehouseId : context.warehouseId)
     )
   )
+  const hasDestinationTabs = computed(
+    () =>
+      isInbound.value &&
+      Boolean(currentWarehouse.value?.enableZones || currentWarehouse.value?.enableLocations)
+  )
   const inboundDestinationDescription = computed(() =>
     form.value.movementType === 'production_in'
       ? currentWarehouse.value
@@ -153,7 +158,9 @@
       .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id }))
   )
   const formItems = computed<FormItem[]>(() => [
-    { key: 'identity', label: '物料与数量', type: 'tab', span: 24 },
+    ...(hasDestinationTabs.value
+      ? [{ key: 'identity', label: '物料与数量', type: 'tab' as const, span: 24 }]
+      : []),
     {
       label: '业务类型',
       key: 'movementType',
@@ -229,10 +236,7 @@
           }
         ]
       : []),
-    ...(form.value.movementType === 'production_in' ||
-    (isInbound.value &&
-      (currentWarehouse.value?.enableZones || currentWarehouse.value?.enableLocations)) ||
-    form.value.movementType === 'transfer'
+    ...(hasDestinationTabs.value
       ? [{ key: 'destination', label: '库区与库位', type: 'tab' as const }]
       : []),
     ...(form.value.movementType === 'production_in'
@@ -343,7 +347,6 @@
             : [])
         ]
       : []),
-    { key: 'additional', label: '关联与说明', type: 'tab' },
     {
       label: '关联工单',
       key: 'workOrderId',

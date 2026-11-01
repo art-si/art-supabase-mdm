@@ -36,24 +36,6 @@
           :gutter="24"
           label-position="top"
         >
-          <template #ownerId>
-            <ArtEmployeeSelect
-              :model-value="form.model.ownerId ?? undefined"
-              :selected-data="employeeSelection(form.model.ownerId)"
-              :tenant-id="form.model.tenantId"
-              placeholder="选择项目负责人"
-              @update:model-value="form.model.ownerId = $event ?? null"
-            />
-          </template>
-          <template #salespersonId>
-            <ArtEmployeeSelect
-              :model-value="form.model.salespersonId ?? undefined"
-              :selected-data="employeeSelection(form.model.salespersonId)"
-              :tenant-id="form.model.tenantId"
-              placeholder="选择销售员"
-              @update:model-value="form.model.salespersonId = $event ?? null"
-            />
-          </template>
           <template #addressPicker>
             <ArtAddressPicker
               v-model:region-path="addressRegionPath"
@@ -63,27 +45,6 @@
               region-label="省 / 市 / 区"
               detail-label="详细地址"
               :show-coordinate-hint="false"
-            />
-          </template>
-          <template #responsiblePersonId>
-            <ArtTableSingleSelect
-              :model-value="form.model.responsiblePersonId ?? undefined"
-              :selected-data="personnelSelection"
-              :api-fn="fetchPersonnelOptions"
-              :columns="[
-                { prop: 'name', label: '人员姓名', minWidth: 150 },
-                { prop: 'code', label: '人员编号', minWidth: 150 }
-              ]"
-              row-key="id"
-              label-key="name"
-              description-key="code"
-              title="选择生产人员"
-              subtitle="从当前租户已维护的生产人员中选择工位负责人"
-              search-placeholder="搜索姓名或人员编号"
-              placeholder="选择工位负责人"
-              empty-text="暂无可选生产人员"
-              empty-description="请先在生产主数据中维护生产人员。"
-              @update:model-value="form.model.responsiblePersonId = String($event || '') || null"
             />
           </template>
         </ArtForm>
@@ -102,13 +63,12 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtAddressPicker from '@/components/core/forms/art-address-picker/index.vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import type {
     DataSelectFetchParams,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
+
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { fetchRegionOptions } from '@/api/region-options'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
@@ -291,6 +251,62 @@
   }
 
   function createFieldItems(field: MasterFieldConfig): FormItem[] {
+    if (field.key === 'responsiblePersonId')
+      return [
+        {
+          key: 'responsiblePersonId',
+          label: field.label,
+          type: 'dataSelect',
+          span: field.span ?? config.value.formSpan ?? 12,
+          props: {
+            mode: 'table',
+            multiple: false,
+            showSelectedPanel: false,
+            showPagination: true,
+            modelValue: form.model.responsiblePersonId ?? undefined,
+            selectedData: personnelSelection.value,
+            apiFn: fetchPersonnelOptions,
+            columns: [
+              { prop: 'name', label: '人员姓名', minWidth: 150 },
+              { prop: 'code', label: '人员编号', minWidth: 150 }
+            ],
+            rowKey: 'id',
+            labelKey: 'name',
+            descriptionKey: 'code',
+            title: '选择生产人员',
+            subtitle: '从当前租户已维护的生产人员中选择工位负责人',
+            searchPlaceholder: '搜索姓名或人员编号',
+            placeholder: '选择工位负责人',
+            emptyText: '暂无可选生产人员',
+            emptyDescription: '请先在生产主数据中维护生产人员。',
+            'onUpdate:modelValue': (value: unknown) => {
+              form.model.responsiblePersonId = String(value || '') || null
+            }
+          }
+        }
+      ]
+
+    if (field.key === 'ownerId' || field.key === 'salespersonId') {
+      const key = field.key
+      return [
+        {
+          key,
+          label: field.label,
+          type: 'employeeSelect',
+          span: field.span ?? config.value.formSpan ?? 12,
+          props: {
+            modelValue: form.model[key] ?? undefined,
+            selectedData: employeeSelection(form.model[key]),
+            tenantId: form.model.tenantId,
+            placeholder: key === 'ownerId' ? '选择项目负责人' : '选择销售员',
+            'onUpdate:modelValue': (value?: string) => {
+              form.model[key] = value ?? null
+            }
+          }
+        }
+      ]
+    }
+
     if (field.key === 'addressDetail' && ['customer', 'project'].includes(config.value.kind)) {
       return []
     }

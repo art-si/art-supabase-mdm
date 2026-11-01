@@ -31,16 +31,6 @@
         :validate-on-rule-change="false"
         scroll-to-error
       >
-        <template #textColor>
-          <div class="business-type-dialog__color-field">
-            <ElColorPicker
-              v-model="form.data.textColor"
-              :predefine="presetColors"
-              aria-label="选择业务类型文字颜色"
-            />
-            <span>{{ form.data.textColor || '跟随标签默认颜色' }}</span>
-          </div>
-        </template>
       </ArtForm>
     </div>
   </ArtDialog>
@@ -349,7 +339,14 @@
           span: 8,
           props: { clearable: true, placeholder: '请选择标签样式' }
         },
-        { label: '文字颜色', key: 'textColor', type: 'input', span: 12 },
+        {
+          label: '文字颜色',
+          key: 'textColor',
+          type: 'colorPicker',
+          span: 12,
+          description: form.data.textColor || '跟随标签默认颜色',
+          props: { predefine: presetColors, 'aria-label': '选择业务类型文字颜色' }
+        },
         {
           label: '备注',
           key: 'remark',
@@ -597,20 +594,6 @@
 
     :deep(.art-form) {
       padding: 0 !important;
-    }
-
-    &__color-field {
-      display: flex;
-      gap: var(--art-space-3);
-      align-items: center;
-      min-height: 32px;
-
-      span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--el-text-color-secondary);
-        white-space: nowrap;
-      }
     }
   }
 </style>

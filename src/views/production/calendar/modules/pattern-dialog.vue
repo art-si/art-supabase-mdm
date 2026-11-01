@@ -1,8 +1,7 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
     <ArtForm ref="formRef" v-model="form.model" :items="items" :rules="rules" :span="12">
-      <template #color><ElColorPicker v-model="form.model.color" :predefine="colors" /></template>
-      <template #shifts>
+      <template #shifts="{ fields: Fields }">
         <div class="pattern-dialog__shifts">
           <div class="pattern-dialog__summary">
             <span class="art-icon-label"
@@ -23,34 +22,7 @@
                 :disabled="form.model.shifts.length === 1"
                 @click="form.model.shifts.splice(index, 1)"
             /></template>
-            <ArtForm v-model="form.model.shifts[index]" :items="shiftItems" :span="8">
-              <template #breaks>
-                <ElButton @click="openBreaks(index)"
-                  >休息 {{ computedShift(index)?.restMinutes ?? 0 }} 分钟</ElButton
-                >
-              </template>
-              <template #handoverMinutes>
-                <div class="pattern-dialog__handover">
-                  <ElInputNumber
-                    :model-value="
-                      shift.handoverAuto
-                        ? (computedShift(index)?.handoverMinutes ?? 0)
-                        : shift.handoverMinutes
-                    "
-                    @update:model-value="(value) => (shift.handoverMinutes = value ?? 0)"
-                    :disabled="shift.handoverAuto"
-                    :min="0"
-                    :max="1439"
-                    :precision="0"
-                    :aria-label="`班次 ${index + 1} 交班分钟`"
-                  />
-                  <ElCheckbox v-model="shift.handoverAuto">自动计算</ElCheckbox>
-                  <span v-if="shift.handoverAuto"
-                    >{{ computedShift(index)?.handoverMinutes ?? 0 }} 分钟</span
-                  >
-                </div>
-              </template>
-            </ArtForm>
+            <component :is="Fields" :items="shiftItems(index)" :actions="false" />
           </ArtSectionCard>
           <ElButton
             type="primary"
@@ -75,9 +47,9 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { ref, reactive, computed } from 'vue'
+  import { ref, reactive, computed, h } from 'vue'
   import { cloneDeep, pick } from 'lodash-es'
-  import { ElMessage } from 'element-plus'
+  import { ElButton, ElMessage } from 'element-plus'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import {
@@ -114,9 +86,9 @@
     name: [{ required: true, message: '请输入轮班模式名称', trigger: 'blur' }],
     color: [{ required: true, message: '请选择日历颜色', trigger: 'change' }]
   }
-  const items: FormItem[] = [
+  const items = computed<FormItem[]>(() => [
     { key: 'name', label: '轮班模式', type: 'input', props: { maxlength: 120 } },
-    { key: 'color', label: '日历颜色', span: 6 },
+    { type: 'colorPicker', props: { predefine: colors }, key: 'color', label: '日历颜色', span: 6 },
     { key: 'sort', label: '排序', span: 6, type: 'number', props: { min: 0, precision: 0 } },
     { key: 'description', label: '描述', type: 'textarea', props: { rows: 2, maxlength: 1000 } },
     { key: 'shiftSection', label: '班次安排', type: 'divider', span: 24 },
@@ -126,23 +98,58 @@
       span: 24,
       help: '结束时间早于开始时间表示跨午夜班次。自动交班按当前班次与下一班次的重叠时间计算。'
     }
-  ]
-  const shiftItems: FormItem[] = [
-    { key: 'name', label: '班次名称', type: 'input' },
+  ])
+  const shiftItems = (index: number): FormItem[] => [
+    { key: `shifts.${index}.name`, label: '班次名称', type: 'input', span: 8 },
     {
-      key: 'startTime',
+      key: `shifts.${index}.startTime`,
       label: '开始时间',
       type: 'timePicker',
+      span: 8,
       props: { format: 'HH:mm', valueFormat: 'HH:mm', clearable: false }
     },
     {
-      key: 'endTime',
+      key: `shifts.${index}.endTime`,
       label: '结束时间',
       type: 'timePicker',
+      span: 8,
       props: { format: 'HH:mm', valueFormat: 'HH:mm', clearable: false }
     },
-    { key: 'breaks', label: '休息时段' },
-    { key: 'handoverMinutes', label: '交班时长（分钟）', span: 16 }
+    {
+      key: `shifts.${index}.breaks`,
+      label: '休息时段',
+      type: 'text',
+      span: 8,
+      props: { formatter: () => `${computedShift(index)?.restMinutes ?? 0} 分钟` },
+      description: () => h(ElButton, { onClick: () => openBreaks(index) }, () => '设置休息时段')
+    },
+    {
+      key: `shifts.${index}.handoverMinutes`,
+      label: '交班时长（分钟）',
+      type: 'number',
+      span: 8,
+      props: {
+        modelValue: form.model.shifts[index].handoverAuto
+          ? (computedShift(index)?.handoverMinutes ?? 0)
+          : form.model.shifts[index].handoverMinutes,
+        'onUpdate:modelValue': (value: number | undefined) => {
+          form.model.shifts[index].handoverMinutes = value ?? 0
+        },
+        disabled: form.model.shifts[index].handoverAuto,
+        min: 0,
+        max: 1439,
+        precision: 0,
+        class: 'w-full!',
+        'aria-label': `班次 ${index + 1} 交班分钟`
+      }
+    },
+    {
+      key: `shifts.${index}.handoverAuto`,
+      label: '交班计算方式',
+      type: 'checkbox',
+      span: 8,
+      props: { label: '自动计算' }
+    }
   ]
   const calculation = computed(() => {
     try {
@@ -229,18 +236,6 @@
 
       strong {
         color: var(--el-text-color-primary);
-      }
-    }
-
-    &__handover {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-
-      > span {
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
       }
     }
   }
