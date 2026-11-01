@@ -48,11 +48,9 @@
       >
         <template #primary>
           <ArtSectionCard
-            :show-scrollbar="false"
             title="货架库区"
             :subtitle="selectedWarehouse?.enableZones ? `${zones.length} 个库区` : '仓库直挂库位'"
             root-class="flex min-h-0 flex-col"
-            body-class="min-h-0 flex-1"
             :loading="loadingWarehouses"
             :error="warehouseError"
             :empty="!loadingWarehouses && !warehouseError && !warehouses.length"
@@ -60,70 +58,64 @@
             empty-description="先在仓库主数据中建立仓库，再查看货架库区。"
             @retry="loadWarehouses"
           >
-            <ElScrollbar height="100%">
-              <nav class="space-y-3 pr-1" aria-label="货架库区导航">
-                <div v-for="warehouse in warehouses" :key="warehouse.id" class="space-y-1">
-                  <button
-                    type="button"
-                    class="nav-warehouse flex w-full items-center gap-2 rounded-surface px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
-                    :class="{ 'is-current': selectedWarehouseId === warehouse.id }"
-                    :aria-expanded="selectedWarehouseId === warehouse.id"
-                    @click="selectWarehouse(warehouse.id)"
+            <nav class="space-y-3" aria-label="货架库区导航">
+              <div v-for="warehouse in warehouses" :key="warehouse.id" class="space-y-1">
+                <button
+                  type="button"
+                  class="nav-warehouse flex w-full items-center gap-2 rounded-surface px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                  :class="{ 'is-current': selectedWarehouseId === warehouse.id }"
+                  :aria-expanded="selectedWarehouseId === warehouse.id"
+                  @click="selectWarehouse(warehouse.id)"
+                >
+                  <ArtSvgIcon icon="ri:store-2-line" class="shrink-0" aria-hidden="true" />
+                  <span
+                    class="min-w-0 flex-1 truncate text-sm font-semibold"
+                    :title="warehouse.warehouseName"
+                    >{{ warehouse.warehouseName }}</span
                   >
-                    <ArtSvgIcon icon="ri:store-2-line" class="shrink-0" aria-hidden="true" />
-                    <span
-                      class="min-w-0 flex-1 truncate text-sm font-semibold"
-                      :title="warehouse.warehouseName"
-                      >{{ warehouse.warehouseName }}</span
-                    >
-                    <ArtSvgIcon
-                      :icon="
-                        selectedWarehouseId === warehouse.id
-                          ? 'ri:arrow-down-s-line'
-                          : 'ri:arrow-right-s-line'
-                      "
-                      class="shrink-0"
-                      aria-hidden="true"
-                    />
-                  </button>
+                  <ArtSvgIcon
+                    :icon="
+                      selectedWarehouseId === warehouse.id
+                        ? 'ri:arrow-down-s-line'
+                        : 'ri:arrow-right-s-line'
+                    "
+                    class="shrink-0"
+                    aria-hidden="true"
+                  />
+                </button>
+                <div
+                  v-if="selectedWarehouseId === warehouse.id"
+                  class="space-y-1 border-l border-[var(--el-border-color)] pl-3"
+                >
                   <div
-                    v-if="selectedWarehouseId === warehouse.id"
-                    class="space-y-1 border-l border-[var(--el-border-color)] pl-3"
+                    v-if="!warehouse.enableZones"
+                    class="nav-zone is-current flex items-center justify-between rounded-surface px-3 py-2 text-sm"
+                    aria-current="page"
                   >
-                    <div
-                      v-if="!warehouse.enableZones"
-                      class="nav-zone is-current flex items-center justify-between rounded-surface px-3 py-2 text-sm"
-                      aria-current="page"
-                    >
-                      仓库直挂<span class="text-xs tabular-nums">{{ zoneShelfCount(null) }}</span>
-                    </div>
-                    <button
-                      v-for="zone in zones"
-                      :key="zone.id"
-                      type="button"
-                      class="nav-zone flex w-full items-center justify-between gap-2 rounded-surface px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
-                      :class="{ 'is-current': selectedZoneId === zone.id }"
-                      :aria-current="selectedZoneId === zone.id ? 'page' : undefined"
-                      @click="selectZone(zone.id)"
-                    >
-                      <span class="min-w-0 truncate" :title="zone.zoneName">{{
-                        zone.zoneName
-                      }}</span>
-                      <span class="shrink-0 text-xs tabular-nums">{{
-                        zoneShelfCount(zone.id)
-                      }}</span>
-                    </button>
-                    <ArtEmptyState
-                      v-if="warehouse.enableZones && !loadingBins && !zones.length"
-                      size="compact"
-                      :visual-size="56"
-                      title="暂无库区"
-                      description="请先在“库区”菜单中维护。"
-                    />
+                    仓库直挂<span class="text-xs tabular-nums">{{ zoneShelfCount(null) }}</span>
                   </div>
+                  <button
+                    v-for="zone in zones"
+                    :key="zone.id"
+                    type="button"
+                    class="nav-zone flex w-full items-center justify-between gap-2 rounded-surface px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                    :class="{ 'is-current': selectedZoneId === zone.id }"
+                    :aria-current="selectedZoneId === zone.id ? 'page' : undefined"
+                    @click="selectZone(zone.id)"
+                  >
+                    <span class="min-w-0 truncate" :title="zone.zoneName">{{ zone.zoneName }}</span>
+                    <span class="shrink-0 text-xs tabular-nums">{{ zoneShelfCount(zone.id) }}</span>
+                  </button>
+                  <ArtEmptyState
+                    v-if="warehouse.enableZones && !loadingBins && !zones.length"
+                    size="compact"
+                    :visual-size="56"
+                    title="暂无库区"
+                    description="请先在“库区”菜单中维护。"
+                  />
                 </div>
-              </nav>
-            </ElScrollbar>
+              </div>
+            </nav>
           </ArtSectionCard>
         </template>
 
@@ -141,6 +133,7 @@
           <template #primary>
             <ArtSectionCard
               title="库位空间"
+              :show-scrollbar="false"
               :subtitle="
                 selectedZone
                   ? `${selectedWarehouse?.warehouseName} · ${selectedZone.zoneName}`
@@ -294,106 +287,100 @@
 
           <template #default>
             <ArtSectionCard
-              :show-scrollbar="false"
               title="货架详情"
               :subtitle="selectedRack ? `${selectedRack.code} 货架` : '选择货架或层位'"
               root-class="flex min-h-0 flex-col"
-              body-class="min-h-0 flex-1"
             >
-              <ElScrollbar height="100%">
-                <div v-if="selectedRack" class="space-y-5 pr-1">
-                  <div class="detail-identity">
-                    <span class="text-xs text-[var(--el-text-color-secondary)]">当前货架</span>
-                    <strong class="block truncate text-xl" :title="selectedRack.code">{{
-                      selectedRack.code
-                    }}</strong>
-                    <span class="text-xs text-[var(--el-text-color-secondary)]"
-                      >{{ selectedRack.columns.length }} 列 · {{ selectedRack.levelCount }} 层 ·
-                      {{ selectedRack.binCount }} 个库位</span
-                    >
-                  </div>
-                  <div class="detail-section">
-                    <div class="detail-section__heading"
-                      ><strong>层位导航</strong><span>点击定位</span></div
-                    >
-                    <ElScrollbar class="detail-bin-scroll" max-height="190px">
-                      <div class="detail-bin-list">
-                        <div
-                          v-for="column in selectedRack.columns"
-                          :key="column.number"
-                          class="space-y-1.5"
-                        >
-                          <span
-                            class="block text-center text-[11px] text-[var(--el-text-color-secondary)]"
-                            >{{ column.number }} 列</span
-                          >
-                          <button
-                            v-for="bin in column.bins"
-                            :key="bin.id"
-                            type="button"
-                            class="detail-bin"
-                            :class="[
-                              `tone-${binTone(bin)}`,
-                              { 'is-selected': selectedBinId === bin.id }
-                            ]"
-                            :title="`${bin.binCode} · ${toneLabel(binTone(bin))}`"
-                            :aria-label="`${bin.binCode}，${toneLabel(binTone(bin))}`"
-                            :aria-pressed="selectedBinId === bin.id"
-                            @click="focusBinFromNavigation(bin, selectedRack.code)"
-                          >
-                            {{ bin.levelNo || 1 }}F
-                          </button>
-                        </div>
-                      </div>
-                    </ElScrollbar>
-                  </div>
-                  <div v-if="selectedBin" class="detail-section">
-                    <div class="detail-section__heading"
-                      ><strong>库位信息</strong
-                      ><span>{{ toneLabel(binTone(selectedBin)) }}</span></div
-                    >
-                    <dl class="detail-list">
-                      <div
-                        ><dt>库位编码</dt
-                        ><dd class="break-all font-medium">{{ selectedBin.binCode }}</dd></div
-                      >
-                      <div
-                        ><dt>名称</dt><dd>{{ selectedBin.binName }}</dd></div
-                      >
-                      <div
-                        ><dt>位置</dt
-                        ><dd
-                          >{{ selectedBin.levelNo || 1 }} 层 ·
-                          {{ selectedBin.columnNo || 1 }} 列</dd
-                        ></div
-                      >
-                      <div
-                        ><dt>在库物料</dt
-                        ><dd>{{ binStat(selectedBin.id).materialCount }} 种</dd></div
-                      >
-                      <div
-                        ><dt>在库数量</dt><dd>{{ binStat(selectedBin.id).quantity }}</dd></div
-                      >
-                      <div
-                        ><dt>最大数量</dt><dd>{{ selectedBin.maxQuantity ?? '未设置' }}</dd></div
-                      >
-                    </dl>
-                    <ElButton type="primary" plain class="mt-4 w-full" @click="openInventoryDetail"
-                      >查看库存明细</ElButton
-                    >
-                  </div>
-                  <p v-else class="text-xs text-[var(--el-text-color-secondary)]"
-                    >点击立体场景或上方层位，查看该库位的库存与容量。</p
+              <div v-if="selectedRack" class="space-y-5">
+                <div class="detail-identity">
+                  <span class="text-xs text-[var(--el-text-color-secondary)]">当前货架</span>
+                  <strong class="block truncate text-xl" :title="selectedRack.code">{{
+                    selectedRack.code
+                  }}</strong>
+                  <span class="text-xs text-[var(--el-text-color-secondary)]"
+                    >{{ selectedRack.columns.length }} 列 · {{ selectedRack.levelCount }} 层 ·
+                    {{ selectedRack.binCount }} 个库位</span
                   >
                 </div>
-                <ArtEmptyState
-                  v-else
-                  title="请选择货架"
-                  description="从左侧选择库区，再点击中间的货架。"
-                  size="compact"
-                  :visual-size="64"
-                />
-              </ElScrollbar>
+                <div class="detail-section">
+                  <div class="detail-section__heading"
+                    ><strong>层位导航</strong><span>点击定位</span></div
+                  >
+                  <ElScrollbar class="detail-bin-scroll" max-height="190px">
+                    <div class="detail-bin-list">
+                      <div
+                        v-for="column in selectedRack.columns"
+                        :key="column.number"
+                        class="space-y-1.5"
+                      >
+                        <span
+                          class="block text-center text-[11px] text-[var(--el-text-color-secondary)]"
+                          >{{ column.number }} 列</span
+                        >
+                        <button
+                          v-for="bin in column.bins"
+                          :key="bin.id"
+                          type="button"
+                          class="detail-bin"
+                          :class="[
+                            `tone-${binTone(bin)}`,
+                            { 'is-selected': selectedBinId === bin.id }
+                          ]"
+                          :title="`${bin.binCode} · ${toneLabel(binTone(bin))}`"
+                          :aria-label="`${bin.binCode}，${toneLabel(binTone(bin))}`"
+                          :aria-pressed="selectedBinId === bin.id"
+                          @click="focusBinFromNavigation(bin, selectedRack.code)"
+                        >
+                          {{ bin.levelNo || 1 }}F
+                        </button>
+                      </div>
+                    </div>
+                  </ElScrollbar>
+                </div>
+                <div v-if="selectedBin" class="detail-section">
+                  <div class="detail-section__heading"
+                    ><strong>库位信息</strong
+                    ><span>{{ toneLabel(binTone(selectedBin)) }}</span></div
+                  >
+                  <dl class="detail-list">
+                    <div
+                      ><dt>库位编码</dt
+                      ><dd class="break-all font-medium">{{ selectedBin.binCode }}</dd></div
+                    >
+                    <div
+                      ><dt>名称</dt><dd>{{ selectedBin.binName }}</dd></div
+                    >
+                    <div
+                      ><dt>位置</dt
+                      ><dd
+                        >{{ selectedBin.levelNo || 1 }} 层 · {{ selectedBin.columnNo || 1 }} 列</dd
+                      ></div
+                    >
+                    <div
+                      ><dt>在库物料</dt><dd>{{ binStat(selectedBin.id).materialCount }} 种</dd></div
+                    >
+                    <div
+                      ><dt>在库数量</dt><dd>{{ binStat(selectedBin.id).quantity }}</dd></div
+                    >
+                    <div
+                      ><dt>最大数量</dt><dd>{{ selectedBin.maxQuantity ?? '未设置' }}</dd></div
+                    >
+                  </dl>
+                  <ElButton type="primary" plain class="mt-4 w-full" @click="openInventoryDetail"
+                    >查看库存明细</ElButton
+                  >
+                </div>
+                <p v-else class="text-xs text-[var(--el-text-color-secondary)]"
+                  >点击立体场景或上方层位，查看该库位的库存与容量。</p
+                >
+              </div>
+              <ArtEmptyState
+                v-else
+                title="请选择货架"
+                description="从左侧选择库区，再点击中间的货架。"
+                size="compact"
+                :visual-size="64"
+              />
             </ArtSectionCard>
           </template>
         </ArtWorkspaceSplitter>

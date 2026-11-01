@@ -21,9 +21,7 @@
         >
           <template #primary>
             <ArtSectionCard
-              :show-scrollbar="false"
               class="component-type-page__navigation"
-              body-class="component-type-page__navigation-body"
               title="行业分组"
               subtitle="选择分组联动筛选组件类型"
               :loading="groupLoading"
@@ -51,91 +49,92 @@
                   <ArtIconButton icon="ri:refresh-line" label="刷新行业分组" @click="loadGroups" />
                 </div>
               </template>
-              <ElInput
-                v-model="groupKeyword"
-                clearable
-                placeholder="搜索行业名称或编码"
-                aria-label="搜索行业分组"
+              <template #toolbar
+                ><div class="component-type-page__navigation-toolbar"
+                  ><ElInput
+                    v-model="groupKeyword"
+                    clearable
+                    placeholder="搜索行业名称或编码"
+                    aria-label="搜索行业分组"
+                  >
+                    <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+                  </ElInput>
+                  <button
+                    type="button"
+                    class="component-type-page__all-group art-master-group-all-button"
+                    :class="{ 'is-current': !selectedGroupId }"
+                    :aria-pressed="!selectedGroupId"
+                    @click="selectGroup('')"
+                  >
+                    <span aria-hidden="true">
+                      <ArtSvgIcon icon="ri:apps-2-line" />
+                    </span>
+                    <span
+                      ><strong>全部分组</strong><small>{{ groups.length }} 个行业节点</small></span
+                    >
+                    <ArtSvgIcon v-if="!selectedGroupId" icon="ri:check-line" aria-hidden="true" />
+                  </button> </div
+              ></template>
+              <ElTree
+                class="component-type-page__tree"
+                ref="treeRef"
+                :data="groupTree"
+                node-key="id"
+                :props="{ label: 'name', children: 'children' }"
+                :current-node-key="selectedGroupId || undefined"
+                :filter-node-method="filterGroup"
+                :default-expand-all="groups.length < 18"
+                :expand-on-click-node="false"
+                highlight-current
+                @node-click="selectGroup($event.id)"
               >
-                <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-              </ElInput>
-              <button
-                type="button"
-                class="component-type-page__all-group art-master-group-all-button"
-                :class="{ 'is-current': !selectedGroupId }"
-                :aria-pressed="!selectedGroupId"
-                @click="selectGroup('')"
-              >
-                <span aria-hidden="true">
-                  <ArtSvgIcon icon="ri:apps-2-line" />
-                </span>
-                <span
-                  ><strong>全部分组</strong><small>{{ groups.length }} 个行业节点</small></span
-                >
-                <ArtSvgIcon v-if="!selectedGroupId" icon="ri:check-line" aria-hidden="true" />
-              </button>
-              <ElScrollbar class="component-type-page__tree-scroll">
-                <ElTree
-                  ref="treeRef"
-                  :data="groupTree"
-                  node-key="id"
-                  :props="{ label: 'name', children: 'children' }"
-                  :current-node-key="selectedGroupId || undefined"
-                  :filter-node-method="filterGroup"
-                  :default-expand-all="groups.length < 18"
-                  :expand-on-click-node="false"
-                  highlight-current
-                  @node-click="selectGroup($event.id)"
-                >
-                  <template #default="{ data }">
-                    <div class="component-type-page__tree-node">
-                      <span class="component-type-page__folder" aria-hidden="true">
-                        <ArtSvgIcon icon="ri:folder-3-line" />
-                      </span>
-                      <span
-                        ><strong :title="data.name">{{ data.name }}</strong
-                        ><small>{{ data.code }}</small></span
-                      >
-                      <span class="component-type-page__node-actions">
-                        <ArtIconButton
-                          v-auth="'MdmComponentType:ManageGroup'"
-                          icon="ri:add-line"
-                          label="新增下级分组"
-                          @click.stop="openGroupDialog(undefined, data)"
-                        />
-                        <ArtIconButton
-                          v-auth="'MdmComponentType:ManageGroup'"
-                          icon="ri:edit-line"
-                          label="编辑行业分组"
-                          @click.stop="openGroupDialog(data)"
-                        />
-                        <ArtIconButton
-                          v-auth="'MdmComponentType:ManageGroup'"
-                          icon="ri:delete-bin-6-line"
-                          label="删除行业分组"
-                          tone="danger"
-                          @click.stop="removeGroup(data)"
-                        />
-                      </span>
-                    </div>
-                  </template>
-                  <template #empty>
-                    <ArtEmptyState
-                      title="未找到匹配项"
-                      description="请调整关键词或清空筛选条件。"
-                      size="compact"
-                      :visual-size="64"
-                    />
-                  </template>
-                </ElTree>
-              </ElScrollbar>
+                <template #default="{ data }">
+                  <div class="component-type-page__tree-node">
+                    <span class="component-type-page__folder" aria-hidden="true">
+                      <ArtSvgIcon icon="ri:folder-3-line" />
+                    </span>
+                    <span
+                      ><strong :title="data.name">{{ data.name }}</strong
+                      ><small>{{ data.code }}</small></span
+                    >
+                    <span class="component-type-page__node-actions">
+                      <ArtIconButton
+                        v-auth="'MdmComponentType:ManageGroup'"
+                        icon="ri:add-line"
+                        label="新增下级分组"
+                        @click.stop="openGroupDialog(undefined, data)"
+                      />
+                      <ArtIconButton
+                        v-auth="'MdmComponentType:ManageGroup'"
+                        icon="ri:edit-line"
+                        label="编辑行业分组"
+                        @click.stop="openGroupDialog(data)"
+                      />
+                      <ArtIconButton
+                        v-auth="'MdmComponentType:ManageGroup'"
+                        icon="ri:delete-bin-6-line"
+                        label="删除行业分组"
+                        tone="danger"
+                        @click.stop="removeGroup(data)"
+                      />
+                    </span>
+                  </div>
+                </template>
+                <template #empty>
+                  <ArtEmptyState
+                    title="未找到匹配项"
+                    description="请调整关键词或清空筛选条件。"
+                    size="compact"
+                    :visual-size="64"
+                  />
+                </template>
+              </ElTree>
             </ArtSectionCard>
           </template>
           <div class="component-type-page__table-pane">
             <ArtTableQuery
               ref="tableRef"
-              :model-value="search"
-              @update:model-value="replaceReactiveModel(search, $event)"
+              v-model="search"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -158,15 +157,17 @@
       <IndustryGroupDialog ref="groupDialogRef" @success="handleGroupSaved" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
+  <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElTag, type ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -206,7 +207,14 @@
   )
 
   defineOptions({ name: 'MdmComponentType' })
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef: groupDeleteGuardRef, deleteRecords: deleteGroups } = useRecordDeleteGuard(
+    'mdm_master_group',
+    '行业分组'
+  )
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_component_type',
+    '组件类型'
+  )
   const { hasAnyAuth } = useAuth()
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tableRef = ref<ArtTableQueryExpose>()
@@ -220,7 +228,7 @@
   const groupKeyword = ref('')
   const selectedGroupId = ref('')
   const totalTypes = ref(0)
-  const search = reactive({ keyword: '', enabled: undefined as boolean | undefined })
+  const search = ref({ keyword: '', enabled: undefined as boolean | undefined })
   const groupTree = computed(
     () =>
       treeUtils.listToTree(
@@ -335,17 +343,27 @@
     await refresh()
   }
   const removeGroup = async (row: ComponentIndustryGroup) => {
-    await confirmDelete(`确定删除行业分组“${row.name}”吗？下级分组和已引用的类型需先处理。`)
-    await deleteComponentIndustryGroup(row.id)
-    if (selectedGroupId.value === row.id) selectedGroupId.value = ''
-    await refresh()
+    await deleteGroups({
+      resources: [{ id: row.id, label: `${row.name} · ${row.code}` }],
+      permission: 'MdmComponentType:ManageGroup',
+      remove: () => deleteComponentIndustryGroup(row.id),
+      successMessage: '行业分组已删除',
+      onDeleted: async () => {
+        if (selectedGroupId.value === row.id) selectedGroupId.value = ''
+        await refresh()
+      }
+    })
   }
   const removeType = async (row: ComponentTypeRecord) => {
-    await confirmDelete(
-      `确定删除组件类型“${row.componentTypeName}”吗？已被 BOM 引用的类型不能删除。`
-    )
-    await deleteComponentType(row.id)
-    await tableRef.value?.getData()
+    await deleteRecords({
+      resources: [{ id: row.id, label: `${row.componentTypeName} · ${row.componentTypeCode}` }],
+      permission: 'MdmComponentType:Delete',
+      remove: () => deleteComponentType(row.id),
+      successMessage: '组件类型已删除',
+      onDeleted: async () => {
+        await tableRef.value?.getData()
+      }
+    })
   }
   const headerActions: ArtTableQueryHeaderAction[] = [
     {
@@ -369,6 +387,7 @@
         />
         <ArtButtonTable
           type="delete"
+          disabled={deleteBusy.value}
           permission="MdmComponentType:Delete"
           onClick={() => void removeType(row)}
         />
@@ -442,12 +461,10 @@
       min-height: 0;
     }
 
-    :deep(.component-type-page__navigation-body) {
+    &__navigation-toolbar {
       display: flex;
-      flex: 1;
       flex-direction: column;
       gap: 12px;
-      min-height: 0;
     }
 
     &__navigation-actions,
@@ -457,12 +474,7 @@
       align-items: center;
     }
 
-    &__tree-scroll {
-      flex: 1;
-      min-height: 0;
-    }
-
-    &__tree-scroll :deep(.el-tree-node__content) {
+    &__tree :deep(.el-tree-node__content) {
       height: auto;
       min-height: 48px;
       padding-block: 5px;
@@ -485,7 +497,7 @@
       }
     }
 
-    &__tree-scroll :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    &__tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
       border-color: color-mix(in srgb, var(--theme-color) 18%, transparent);

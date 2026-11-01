@@ -1,6 +1,5 @@
 <template>
   <ArtSectionCard
-    :show-scrollbar="false"
     class="material-category-tree"
     title="分类层级"
     subtitle="选择节点联动筛选右侧分类"
@@ -10,7 +9,6 @@
     empty-title="尚未建立分类"
     empty-description="可先建立顶级分类，再逐层补充分支。"
     retryable
-    body-class="material-category-tree__body"
     @retry="$emit('refresh')"
   >
     <template #actions>
@@ -32,70 +30,71 @@
       </div>
     </template>
 
-    <ElInput v-model="keyword" clearable placeholder="搜索分类名称或编码" aria-label="搜索分类">
-      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-    </ElInput>
+    <template #toolbar>
+      <div class="material-category-tree__toolbar">
+        <ElInput v-model="keyword" clearable placeholder="搜索分类名称或编码" aria-label="搜索分类">
+          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+        </ElInput>
 
-    <button
-      type="button"
-      class="material-category-tree__all art-master-group-all-button"
-      :class="{ 'is-current': !selectedId }"
-      :aria-pressed="!selectedId"
-      @click="$emit('select', '')"
+        <button
+          type="button"
+          class="material-category-tree__all art-master-group-all-button"
+          :class="{ 'is-current': !selectedId }"
+          :aria-pressed="!selectedId"
+          @click="$emit('select', '')"
+        >
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:apps-2-line" /></span>
+          <span
+            ><strong>全部分类</strong><small>{{ categories.length }} 个分类节点</small></span
+          >
+          <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
+        </button>
+      </div>
+    </template>
+    <ElTree
+      ref="treeRef"
+      :data="treeData"
+      node-key="id"
+      :props="{ label: 'categoryName', children: 'children' }"
+      :current-node-key="selectedId || undefined"
+      :filter-node-method="filterNode"
+      :default-expand-all="categories.length < 24"
+      highlight-current
+      :expand-on-click-node="false"
+      @node-click="$emit('select', $event.id)"
     >
-      <span aria-hidden="true"><ArtSvgIcon icon="ri:apps-2-line" /></span>
-      <span
-        ><strong>全部分类</strong><small>{{ categories.length }} 个分类节点</small></span
-      >
-      <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
-    </button>
-
-    <ElScrollbar class="material-category-tree__scroll">
-      <ElTree
-        ref="treeRef"
-        :data="treeData"
-        node-key="id"
-        :props="{ label: 'categoryName', children: 'children' }"
-        :current-node-key="selectedId || undefined"
-        :filter-node-method="filterNode"
-        :default-expand-all="categories.length < 24"
-        highlight-current
-        :expand-on-click-node="false"
-        @node-click="$emit('select', $event.id)"
-      >
-        <template #default="{ data }">
-          <div class="material-category-tree__node">
-            <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
-            <span>
-              <strong :title="data.categoryName">{{ data.categoryName }}</strong>
-              <small>{{ data.categoryCode }}</small>
-            </span>
-            <span v-if="!navigationOnly" class="material-category-tree__node-actions">
-              <ArtIconButton
-                v-auth="'MdmMaterialCategory:Add'"
-                icon="ri:add-line"
-                label="新增下级分类"
-                @click.stop="$emit('add', data.id)"
-              />
-              <ArtIconButton
-                v-auth="'MdmMaterialCategory:Edit'"
-                icon="ri:edit-line"
-                label="编辑分类"
-                @click.stop="$emit('edit', data)"
-              />
-            </span>
-          </div>
-        </template>
-        <template #empty>
-          <ArtEmptyState
-            title="未找到匹配项"
-            description="请调整关键词或清空筛选条件。"
-            size="compact"
-            :visual-size="64"
-          />
-        </template>
-      </ElTree>
-    </ElScrollbar>
+      <template #default="{ data }">
+        <div class="material-category-tree__node">
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
+          <span>
+            <strong :title="data.categoryName">{{ data.categoryName }}</strong>
+            <small>{{ data.categoryCode }}</small>
+          </span>
+          <span v-if="!navigationOnly" class="material-category-tree__node-actions">
+            <ArtIconButton
+              v-auth="'MdmMaterialCategory:Add'"
+              icon="ri:add-line"
+              label="新增下级分类"
+              @click.stop="$emit('add', data.id)"
+            />
+            <ArtIconButton
+              v-auth="'MdmMaterialCategory:Edit'"
+              icon="ri:edit-line"
+              label="编辑分类"
+              @click.stop="$emit('edit', data)"
+            />
+          </span>
+        </div>
+      </template>
+      <template #empty>
+        <ArtEmptyState
+          title="未找到匹配项"
+          description="请调整关键词或清空筛选条件。"
+          size="compact"
+          :visual-size="64"
+        />
+      </template>
+    </ElTree>
   </ArtSectionCard>
 </template>
 
@@ -160,12 +159,9 @@
     height: 100%;
     min-height: 0;
 
-    :deep(.material-category-tree__body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
+    &__toolbar {
+      display: grid;
       gap: 12px;
-      min-height: 0;
     }
 
     &__actions,
@@ -189,11 +185,6 @@
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
-    }
-
-    &__scroll {
-      flex: 1;
-      min-height: 0;
     }
 
     &__node {

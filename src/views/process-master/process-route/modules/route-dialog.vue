@@ -15,15 +15,12 @@
       <div class="process-route-dialog__form-panel">
         <ArtForm
           ref="formRef"
-          :model-value="form"
-          @update:model-value="replaceReactiveModel(form, $event)"
+          v-model="form"
           :items="items"
           :rules="rules"
           :span="12"
           :gutter="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
         >
           <template #materialId>
             <ArtMaterialSelect
@@ -59,9 +56,8 @@
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { toNameCodeOption } from '@/utils/form/option'
-
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
@@ -96,6 +92,7 @@
   } from '@mdm/api'
   import { buildProcessRoutePayload } from './process-route-payload'
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [] }>()
   const user = useUserStore()
   const dialogRef = ref<ArtDialogExpose>()
@@ -139,7 +136,7 @@
     path: '',
     remark: ''
   })
-  const form = reactive<ProcessRouteInput>(initialForm())
+  const form = ref<ProcessRouteInput>(initialForm())
   const booleanOptions = useDictionaryOptions(
     'commonBoolean',
     (value) => value === 'true' || value === '1'
@@ -148,10 +145,10 @@
   const allocationModeOptions = useDictionaryOptions('mdmProcessRouteAllocationMode')
   const sourceOptions = useDictionaryOptions('mdmProcessRouteSource')
   const routeIdentityTitle = computed(
-    () => form.name.trim() || selection.value[0]?.materialName || '新工艺路线'
+    () => form.value.name.trim() || selection.value[0]?.materialName || '新工艺路线'
   )
   const routeIdentityDescription = computed(() => {
-    if (form.code.trim()) return `路线编码：${form.code.trim()}`
+    if (form.value.code.trim()) return `路线编码：${form.value.code.trim()}`
     const materialName = selection.value[0]?.materialName
     return materialName
       ? `适用物料：${materialName}`
@@ -165,7 +162,7 @@
   })
 
   const items = computed<FormItem[]>(() => [
-    { key: 'identity', label: '路线识别', type: 'divider', span: 24 },
+    { key: 'identity', label: '路线识别', type: 'tab', span: 24 },
     {
       key: 'code',
       label: '路线编码',
@@ -180,9 +177,15 @@
     {
       key: 'groupId',
       label: '路线分组',
-      type: 'select',
-      options: references.value.groups.map(toNameCodeOption),
-      props: { clearable: true, filterable: true }
+      type: 'treeSelect',
+      options: optionTree.listToTree(
+        references.value.groups.map((item) => ({
+          ...toNameCodeOption(item),
+          parentId: item.parentId,
+          disabled: item.disabled
+        }))
+      ),
+      props: { clearable: true, filterable: true, checkStrictly: true }
     },
     {
       key: 'routeType',
@@ -212,7 +215,7 @@
         placeholder: '按层级选择生产车间'
       }
     },
-    { key: 'scope', label: '批量与有效期', type: 'divider', span: 24 },
+    { key: 'scope', label: '批量与有效期', type: 'tab', span: 24 },
     {
       key: 'batchFrom',
       label: '批量从',
@@ -247,7 +250,7 @@
     {
       key: 'strategy',
       label: '策略与状态',
-      type: 'divider',
+      type: 'tab',
       span: 24
     },
     {
@@ -295,7 +298,9 @@
     batchTo: [
       {
         validator: (_rule: unknown, value: number, callback: (error?: Error) => void) =>
-          value >= (form.batchFrom ?? 0) ? callback() : callback(new Error('批量至不能小于批量从')),
+          value >= (form.value.batchFrom ?? 0)
+            ? callback()
+            : callback(new Error('批量至不能小于批量从')),
         trigger: 'blur'
       }
     ],
@@ -303,7 +308,7 @@
     expiryDate: [
       {
         validator: (_rule: unknown, value: string, callback: (error?: Error) => void) =>
-          !value || !form.effectiveDate || value >= form.effectiveDate
+          !value || !form.value.effectiveDate || value >= form.value.effectiveDate
             ? callback()
             : callback(new Error('失效日期不能早于生效日期')),
         trigger: 'change'
@@ -312,7 +317,7 @@
   }
   const fetchMaterials = (p: DataSelectFetchParams) =>
     fetchProcessRouteMaterialOptions({
-      tenantId: form.tenantId,
+      tenantId: form.value.tenantId,
       keyword: p.keyword,
       categoryId: String(p.filters.categoryId || '') || undefined,
       current: p.page,
@@ -327,19 +332,19 @@
   ) => {
     selection.value = rows as ProcessRouteMaterialOption[]
     materialIds.value = selection.value.map((item) => item.id)
-    form.materialId = selection.value[0]?.id || ''
+    form.value.materialId = selection.value[0]?.id || ''
     if (productionUnitOverridden.value) return
     const unitIds = uniq(selection.value.map((item) => item.productionUnitId).filter(Boolean))
-    form.productionUnitId = unitIds.length === 1 ? unitIds[0]! : null
+    form.value.productionUnitId = unitIds.length === 1 ? unitIds[0]! : null
   }
 
   async function handleOpen(row?: ProcessRoute, tenantId?: string, copy = false) {
-    Object.assign(form, row ? cloneDeep(row) : initialForm())
+    Object.assign(form.value, row ? cloneDeep(row) : initialForm())
     isCreating.value = !row || copy
     productionUnitOverridden.value = false
-    form.tenantId = row?.tenantId || tenantId || user.info.tenantId || ''
+    form.value.tenantId = row?.tenantId || tenantId || user.info.tenantId || ''
     if (copy)
-      Object.assign(form, {
+      Object.assign(form.value, {
         code: '',
         name: row?.name ? `${row.name} - 副本` : '',
         path: '',
@@ -367,7 +372,7 @@
               'commonBoolean'
             ].map((code) => user.ensureDictLoaded(code))
           )
-          const targetTenantId = row?.tenantId || tenantId || form.tenantId
+          const targetTenantId = row?.tenantId || tenantId || form.value.tenantId
           const [nextReferences, nextDepartmentTree, nextMaterialCategories, currentPath] =
             await Promise.all([
               fetchProcessRouteReferences(targetTenantId),
@@ -378,7 +383,7 @@
           references.value = nextReferences
           departmentTree.value = nextDepartmentTree
           materialCategories.value = nextMaterialCategories
-          form.path = currentPath
+          form.value.path = currentPath
           formRef.value?.clearValidate()
         } finally {
           api.setLoading(false)
@@ -390,16 +395,16 @@
           if (isCreating.value) {
             const targets = selection.value.map((material) =>
               buildProcessRoutePayload({
-                ...form,
+                ...form.value,
                 materialId: material.id,
                 productionUnitId: productionUnitOverridden.value
-                  ? form.productionUnitId
+                  ? form.value.productionUnitId
                   : material.productionUnitId || null
               })
             )
             await saveProcessRoutes(targets)
           } else {
-            await saveProcessRoute(buildProcessRoutePayload(form), row?.id)
+            await saveProcessRoute(buildProcessRoutePayload(form.value), row?.id)
           }
           emit('success')
           return true

@@ -22,10 +22,8 @@
       >
         <template #primary>
           <ArtSectionCard
-            :show-scrollbar="false"
             title="仓库"
             root-class="flex min-h-0 flex-col"
-            body-class="min-h-0 flex-1"
             :loading="loadingWarehouses"
             :error="warehouseError"
             :empty="!loadingWarehouses && !warehouseError && !warehouses.length"
@@ -33,37 +31,35 @@
             empty-description="先在仓库主数据中建立仓库，再管理库区与库位。"
             @retry="loadWarehouses"
           >
-            <ElScrollbar height="100%">
-              <div class="space-y-2 pr-1">
-                <button
-                  v-for="warehouse in warehouses"
-                  :key="warehouse.id"
-                  type="button"
-                  class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
-                  :class="
-                    selectedWarehouseId === warehouse.id
-                      ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-                      : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
-                  "
-                  :aria-pressed="selectedWarehouseId === warehouse.id"
-                  @click="selectWarehouse(warehouse.id)"
+            <div class="space-y-2">
+              <button
+                v-for="warehouse in warehouses"
+                :key="warehouse.id"
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                :class="
+                  selectedWarehouseId === warehouse.id
+                    ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
+                    : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
+                "
+                :aria-pressed="selectedWarehouseId === warehouse.id"
+                @click="selectWarehouse(warehouse.id)"
+              >
+                <span
+                  class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
+                  aria-hidden="true"
                 >
-                  <span
-                    class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
-                    aria-hidden="true"
-                  >
-                    <ArtSvgIcon icon="ri:store-2-line" />
-                  </span>
-                  <span class="min-w-0 flex-1" :title="warehouse.warehouseName">
-                    <strong class="block truncate text-sm">{{ warehouse.warehouseName }}</strong>
-                    <small class="block truncate text-[var(--el-text-color-secondary)]">
-                      {{ warehouse.warehouseCode }} ·
-                      {{ warehouse.enableLocations ? '库位已启用' : '库位未启用' }}
-                    </small>
-                  </span>
-                </button>
-              </div>
-            </ElScrollbar>
+                  <ArtSvgIcon icon="ri:store-2-line" />
+                </span>
+                <span class="min-w-0 flex-1" :title="warehouse.warehouseName">
+                  <strong class="block truncate text-sm">{{ warehouse.warehouseName }}</strong>
+                  <small class="block truncate text-[var(--el-text-color-secondary)]">
+                    {{ warehouse.warehouseCode }} ·
+                    {{ warehouse.enableLocations ? '库位已启用' : '库位未启用' }}
+                  </small>
+                </span>
+              </button>
+            </div>
           </ArtSectionCard>
         </template>
 
@@ -76,10 +72,8 @@
         >
           <template #primary>
             <ArtSectionCard
-              :show-scrollbar="false"
               title="库区"
               root-class="flex min-h-0 flex-col"
-              body-class="min-h-0 flex-1"
               :subtitle="selectedWarehouse?.enableZones ? '选择库区查看库位' : '库位直接归属仓库'"
               :loading="loadingBins"
               :error="binError"
@@ -90,52 +84,47 @@
               :min-height="160"
               @retry="loadBins"
             >
-              <ElScrollbar height="100%">
-                <div class="space-y-2 pr-1">
-                  <button
-                    v-if="selectedWarehouse && !selectedWarehouse.enableZones"
-                    type="button"
-                    class="w-full rounded-lg border border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)] px-3 py-3 text-left text-sm focus-visible:outline-2"
-                    aria-pressed="true"
+              <div class="space-y-2">
+                <button
+                  v-if="selectedWarehouse && !selectedWarehouse.enableZones"
+                  type="button"
+                  class="w-full rounded-lg border border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)] px-3 py-3 text-left text-sm focus-visible:outline-2"
+                  aria-pressed="true"
+                >
+                  仓库直挂
+                  <small class="mt-1 block text-[var(--el-text-color-secondary)]">无库区层级</small>
+                </button>
+                <button
+                  v-for="zone in zones"
+                  :key="zone.id"
+                  type="button"
+                  class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+                  :class="
+                    selectedZoneId === zone.id
+                      ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
+                      : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
+                  "
+                  :aria-pressed="selectedZoneId === zone.id"
+                  @click="selectedZoneId = zone.id"
+                >
+                  <span
+                    class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
+                    aria-hidden="true"
                   >
-                    仓库直挂
-                    <small class="mt-1 block text-[var(--el-text-color-secondary)]"
-                      >无库区层级</small
-                    >
-                  </button>
-                  <button
-                    v-for="zone in zones"
-                    :key="zone.id"
-                    type="button"
-                    class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
-                    :class="
-                      selectedZoneId === zone.id
-                        ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-                        : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
-                    "
-                    :aria-pressed="selectedZoneId === zone.id"
-                    @click="selectedZoneId = zone.id"
-                  >
-                    <span
-                      class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
-                      aria-hidden="true"
-                    >
-                      <ArtSvgIcon icon="ri:layout-grid-line" />
-                    </span>
-                    <span class="min-w-0 flex-1" :title="zone.zoneName">
-                      <strong class="block truncate text-sm">{{ zone.zoneName }}</strong>
-                      <small class="block truncate text-[var(--el-text-color-secondary)]">{{
-                        zone.zoneCode
-                      }}</small>
-                    </span>
-                  </button>
-                </div>
-              </ElScrollbar>
+                    <ArtSvgIcon icon="ri:layout-grid-line" />
+                  </span>
+                  <span class="min-w-0 flex-1" :title="zone.zoneName">
+                    <strong class="block truncate text-sm">{{ zone.zoneName }}</strong>
+                    <small class="block truncate text-[var(--el-text-color-secondary)]">{{
+                      zone.zoneCode
+                    }}</small>
+                  </span>
+                </button>
+              </div>
             </ArtSectionCard>
           </template>
 
           <ArtSectionCard
-            :show-scrollbar="false"
             title="库位"
             :subtitle="
               selectedWarehouse?.enableLocations
@@ -143,7 +132,6 @@
                 : '请先在仓库定义中启用库位。'
             "
             root-class="flex min-h-0 flex-col"
-            body-class="flex min-h-0 flex-1 flex-col"
             :loading="loadingBins"
             :error="binError"
             @retry="loadBins"
@@ -194,37 +182,38 @@
               </div>
             </template>
 
-            <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <ElCheckbox
-                v-if="selectionMode"
-                :model-value="allVisibleSelected"
-                :indeterminate="someVisibleSelected && !allVisibleSelected"
-                :disabled="deleteBusy || loadingBins"
-                @change="toggleVisibleSelection"
-                >全选当前筛选库位</ElCheckbox
-              >
-              <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
-              <ElCheckboxGroup v-model="selectedTones" size="small">
+            <template #toolbar
+              ><div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <ElCheckbox
-                  v-for="option in toneOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  :style="{
-                    '--el-checkbox-checked-bg-color': option.color,
-                    '--el-checkbox-checked-input-border-color': option.color,
-                    '--el-checkbox-checked-text-color': option.color,
-                    '--el-checkbox-input-border-color-hover': option.color
-                  }"
+                  v-if="selectionMode"
+                  :model-value="allVisibleSelected"
+                  :indeterminate="someVisibleSelected && !allVisibleSelected"
+                  :disabled="deleteBusy || loadingBins"
+                  @change="toggleVisibleSelection"
+                  >全选当前筛选库位</ElCheckbox
                 >
-                  {{ option.label }}
-                </ElCheckbox>
-              </ElCheckboxGroup>
-              <ElCheckbox v-model="fixedOnly" size="small">仅看定容</ElCheckbox>
-              <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
-                重置筛选
-              </ElButton>
-            </div>
-
+                <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
+                <ElCheckboxGroup v-model="selectedTones" size="small">
+                  <ElCheckbox
+                    v-for="option in toneOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    :style="{
+                      '--el-checkbox-checked-bg-color': option.color,
+                      '--el-checkbox-checked-input-border-color': option.color,
+                      '--el-checkbox-checked-text-color': option.color,
+                      '--el-checkbox-input-border-color-hover': option.color
+                    }"
+                  >
+                    {{ option.label }}
+                  </ElCheckbox>
+                </ElCheckboxGroup>
+                <ElCheckbox v-model="fixedOnly" size="small">仅看定容</ElCheckbox>
+                <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
+                  重置筛选
+                </ElButton>
+              </div></template
+            >
             <ArtEmptyState
               v-if="!visibleBins.length"
               class="min-h-0 flex-1"
@@ -243,63 +232,61 @@
                 重置筛选
               </ElButton>
             </ArtEmptyState>
-            <ElScrollbar v-else class="min-h-0 flex-1">
-              <div class="space-y-5 pr-2 pb-2">
-                <RackFacade
-                  v-for="group in shelfGroups"
-                  :key="group.code"
-                  :code="group.code"
-                  :expanded="isShelfExpanded(group.code)"
-                  :levels="group.levels"
-                  :bin-count="group.bins.length"
-                  :children="group.children"
-                  :tone-for="binTone"
-                  :stock-for="binStat"
-                  :stale-days="overview.staleDays"
-                  :parent-code-for="parentCodeFor"
-                  :selection-mode="selectionMode"
-                  :selected-bin-ids="selectedBinIds"
-                  :selection-disabled="deleteBusy || loadingBins"
-                  @check="toggleBinSelection"
-                  @check-shelf="toggleShelfSelection(group.code)"
-                  @select="selectBin"
-                  @detail="openDetail"
-                  @edit="openBinDialog"
-                  @child="openBinDialog(undefined, $event.id)"
-                  @remove="removeBin"
-                  @toggle="toggleShelf(group.code)"
-                  @edit-shelf="openShelfEditor(group.code)"
-                />
+            <div v-else class="space-y-5">
+              <RackFacade
+                v-for="group in shelfGroups"
+                :key="group.code"
+                :code="group.code"
+                :expanded="isShelfExpanded(group.code)"
+                :levels="group.levels"
+                :bin-count="group.bins.length"
+                :children="group.children"
+                :tone-for="binTone"
+                :stock-for="binStat"
+                :stale-days="overview.staleDays"
+                :parent-code-for="parentCodeFor"
+                :selection-mode="selectionMode"
+                :selected-bin-ids="selectedBinIds"
+                :selection-disabled="deleteBusy || loadingBins"
+                @check="toggleBinSelection"
+                @check-shelf="toggleShelfSelection(group.code)"
+                @select="selectBin"
+                @detail="openDetail"
+                @edit="openBinDialog"
+                @child="openBinDialog(undefined, $event.id)"
+                @remove="removeBin"
+                @toggle="toggleShelf(group.code)"
+                @edit-shelf="openShelfEditor(group.code)"
+              />
 
-                <section v-if="blockBins.length" class="min-w-0">
-                  <header
-                    class="mb-2 border-b border-[var(--el-border-color)] pb-2 text-sm font-semibold"
-                  >
-                    平面 / 垛位 / 暂存
-                  </header>
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    <div v-for="bin in blockBins" :key="bin.id" class="min-w-0">
-                      <BinNode
-                        :bin="bin"
-                        :tone-for="binTone"
-                        :stock-for="binStat"
-                        :stale-days="overview.staleDays"
-                        :parent-code="bin.parentId ? binById[bin.parentId]?.binCode : undefined"
-                        :selection-mode="selectionMode"
-                        :selected-bin-ids="selectedBinIds"
-                        :selection-disabled="deleteBusy || loadingBins"
-                        @check="toggleBinSelection"
-                        @select="selectBin"
-                        @detail="openDetail"
-                        @edit="openBinDialog"
-                        @child="openBinDialog(undefined, $event.id)"
-                        @remove="removeBin"
-                      />
-                    </div>
+              <section v-if="blockBins.length" class="min-w-0">
+                <header
+                  class="mb-2 border-b border-[var(--el-border-color)] pb-2 text-sm font-semibold"
+                >
+                  平面 / 垛位 / 暂存
+                </header>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div v-for="bin in blockBins" :key="bin.id" class="min-w-0">
+                    <BinNode
+                      :bin="bin"
+                      :tone-for="binTone"
+                      :stock-for="binStat"
+                      :stale-days="overview.staleDays"
+                      :parent-code="bin.parentId ? binById[bin.parentId]?.binCode : undefined"
+                      :selection-mode="selectionMode"
+                      :selected-bin-ids="selectedBinIds"
+                      :selection-disabled="deleteBusy || loadingBins"
+                      @check="toggleBinSelection"
+                      @select="selectBin"
+                      @detail="openDetail"
+                      @edit="openBinDialog"
+                      @child="openBinDialog(undefined, $event.id)"
+                      @remove="removeBin"
+                    />
                   </div>
-                </section>
-              </div>
-            </ElScrollbar>
+                </div>
+              </section>
+            </div>
           </ArtSectionCard>
         </ArtWorkspaceSplitter>
       </ArtWorkspaceSplitter>

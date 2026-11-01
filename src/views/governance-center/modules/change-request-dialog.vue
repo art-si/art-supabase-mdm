@@ -10,13 +10,10 @@
       </div>
       <ArtForm
         ref="formRef"
-        :model-value="form"
-        @update:model-value="replaceReactiveModel(form, $event)"
+        v-model="form"
         :items="formItems"
         :rules="formRules"
         :span="12"
-        :show-reset="false"
-        :show-submit="false"
         label-position="top"
         scroll-to-error
       />
@@ -25,7 +22,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -62,7 +58,7 @@
   const emit = defineEmits<{ (event: 'success'): void }>()
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
-  const form = reactive<ChangeForm>({
+  const form = ref<ChangeForm>({
     domainKey: 'organization',
     sourceType: '',
     sourceRecordId: '',
@@ -85,14 +81,14 @@
         asset: ['vehicle', 'equipment'],
         material: ['material']
       }
-    const domainSources = scopeByDomain[form.domainKey]
+    const domainSources = scopeByDomain[form.value.domainKey]
       .flatMap((scope) => mdmCatalogSourceDefinitions[scope])
       .filter((source) => source.kind === 'master')
     return domainSources.map((source) => ({ label: source.label, value: source.type }))
   })
 
   const formItems = computed<FormItem[]>(() => [
-    { label: '变更范围', key: 'scopeDivider', type: 'divider', span: 24 },
+    { label: '变更范围', key: 'scopeDivider', type: 'tab', span: 24 },
     {
       label: '治理域',
       key: 'domainKey',
@@ -100,7 +96,7 @@
       options: domainOptions,
       props: {
         onChange: () => {
-          form.sourceType = ''
+          form.value.sourceType = ''
         }
       }
     },
@@ -116,10 +112,10 @@
       label: '来源记录 ID',
       key: 'sourceRecordId',
       type: 'input',
-      description: form.operation === 'create' ? '新增主档可留空' : '非新增动作必须填写 UUID',
+      description: form.value.operation === 'create' ? '新增主档可留空' : '非新增动作必须填写 UUID',
       props: { clearable: true, placeholder: '来源记录 UUID' }
     },
-    { label: '申请内容', key: 'contentDivider', type: 'divider', span: 24 },
+    { label: '申请内容', key: 'contentDivider', type: 'tab', span: 24 },
     {
       label: '变更标题',
       key: 'title',
@@ -171,7 +167,7 @@
     domainKey: [{ required: true, message: '请选择治理域', trigger: 'change' }],
     sourceType: [{ required: true, message: '请选择主档类型', trigger: 'change' }],
     sourceRecordId:
-      form.operation === 'create'
+      form.value.operation === 'create'
         ? []
         : [
             { required: true, message: '请输入来源记录 ID', trigger: 'blur' },
@@ -199,21 +195,21 @@
       return false
     }
     try {
-      const proposedData = JSON.parse(form.proposedDataText) as Record<string, unknown>
+      const proposedData = JSON.parse(form.value.proposedDataText) as Record<string, unknown>
       if (!Object.keys(proposedData).length) {
         ElMessage.warning('拟变更数据不能为空，请填写字段后重试')
         return false
       }
       await createMdmChangeRequest({
-        domainKey: form.domainKey,
-        sourceType: form.sourceType,
-        sourceRecordId: normalizeNullableText(form.sourceRecordId),
-        operation: form.operation,
-        title: form.title.trim(),
-        reason: form.reason.trim(),
-        beforeData: JSON.parse(form.beforeDataText) as Record<string, unknown>,
+        domainKey: form.value.domainKey,
+        sourceType: form.value.sourceType,
+        sourceRecordId: normalizeNullableText(form.value.sourceRecordId),
+        operation: form.value.operation,
+        title: form.value.title.trim(),
+        reason: form.value.reason.trim(),
+        beforeData: JSON.parse(form.value.beforeDataText) as Record<string, unknown>,
         proposedData,
-        effectiveAt: form.effectiveAt
+        effectiveAt: form.value.effectiveAt
       })
       emit('success')
       return true
@@ -224,7 +220,7 @@
   }
 
   async function handleOpen(): Promise<void> {
-    Object.assign(form, {
+    Object.assign(form.value, {
       domainKey: 'organization',
       sourceType: '',
       sourceRecordId: '',

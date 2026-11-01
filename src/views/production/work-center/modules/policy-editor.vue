@@ -1,14 +1,6 @@
 <template>
   <ArtDescriptions v-if="readonly" :data="display" :items="displayItems" :columns="2" />
-  <ArtForm
-    v-else
-    v-model="model"
-    :items="items"
-    :span="12"
-    label-position="top"
-    :show-reset="false"
-    :show-submit="false"
-  />
+  <ArtForm v-else v-model="model" :items="items" :span="12" label-position="top" />
 </template>
 <script setup lang="ts">
   import { computed } from 'vue'

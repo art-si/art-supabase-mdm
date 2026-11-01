@@ -8,8 +8,6 @@
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     />
     <div
       class="mt-3 rounded-[var(--el-border-radius-base)] bg-[var(--el-fill-color-light)] p-4"

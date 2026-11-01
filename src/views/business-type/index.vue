@@ -935,6 +935,7 @@
 
   :global(.business-type-menu-filter-drawer__body) {
     --art-drawer-content-padding: 0;
+    --art-scroll-viewport-inset: 0px;
 
     padding: 0 !important;
     overflow: hidden !important;

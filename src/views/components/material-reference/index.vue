@@ -31,6 +31,7 @@
       <ReferenceDialog ref="dialogRef" @success="refresh" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
@@ -38,7 +39,8 @@
 
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -176,7 +178,18 @@
     () => configs[String(route.path.split('/').at(-1))] ?? configs['unit-of-measure']
   )
   defineOptions({ name: 'MdmMaterialReference' })
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    computed(
+      () =>
+        ({
+          'unit-of-measure': 'mdm_unit_of_measure',
+          'material-type': 'mdm_material_type',
+          'attribute-group': 'mdm_material_attribute_group',
+          'code-rule': 'mdm_material_code_rule'
+        })[config.value.kind]
+    ),
+    computed(() => config.value.title)
+  )
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
@@ -259,12 +272,13 @@
         label: '启用',
         icon: 'ri:checkbox-circle-line',
         selectionRequired: true,
+        hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
         disabled: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
           config.value.kind === 'code-rule' && selectedCount !== 1,
         onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
           await setMaterialReferencesEnabled(
             config.value.kind,
-            selectedRows.map((row) => String(row.id)),
+            selectedRows.filter((row) => row.status === 'disabled').map((row) => String(row.id)),
             true
           )
           await api.refreshUpdate()
@@ -275,10 +289,11 @@
         label: '停用',
         icon: 'ri:forbid-line',
         selectionRequired: true,
+        hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
         onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
           await setMaterialReferencesEnabled(
             config.value.kind,
-            selectedRows.map((row) => String(row.id)),
+            selectedRows.filter((row) => row.status === 'enabled').map((row) => String(row.id)),
             false
           )
           await api.refreshUpdate()
@@ -287,18 +302,44 @@
       {
         permission: permission('Delete'),
         type: 'delete',
+        confirm: false,
+        disabled: () => deleteBusy.value,
         content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
           `确定删除选中的 ${selectedCount} 条${config.value.title}吗？已被业务引用的记录无法删除。`,
         onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-          await deleteMaterialReferences(
-            config.value.kind,
-            selectedRows.map((row) => String(row.id))
-          )
-          await api.refreshRemove()
+          await removeRows(selectedRows as MaterialReferenceRecord[], () => api.refreshRemove())
         }
       }
     ])
   })
+  async function removeRows(
+    rows: MaterialReferenceRecord[],
+    refresh: () => unknown
+  ): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({
+        id: row.id,
+        label:
+          'unitName' in row
+            ? row.unitName
+            : 'typeName' in row
+              ? row.typeName
+              : 'groupName' in row
+                ? row.groupName
+                : row.ruleName
+      })),
+      permission: permission('Delete'),
+      remove: () =>
+        deleteMaterialReferences(
+          config.value.kind,
+          rows.map((row) => row.id)
+        ),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
+  }
   const columnsFactory = (): ColumnOption<MaterialReferenceRecord>[] => {
     const shared: ColumnOption<MaterialReferenceRecord>[] = [
       { type: 'selection', width: 48 },
@@ -468,13 +509,8 @@
             <ArtButtonTable
               permission={permission('Delete')}
               type="delete"
-              onClick={async () => {
-                await confirmDelete(
-                  `确定删除“${'unitName' in row ? row.unitName : 'typeName' in row ? row.typeName : 'groupName' in row ? row.groupName : row.ruleName}”吗？`
-                )
-                await deleteMaterialReferences(config.value.kind, [row.id])
-                await tableRef.value?.getData()
-              }}
+              disabled={deleteBusy.value}
+              onClick={() => removeRows([row], () => tableRef.value?.getData())}
             />
           </BusinessTableRowActions>
         )

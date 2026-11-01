@@ -32,7 +32,7 @@
 
       <div class="route-maintenance__workspace">
         <ArtSectionCard
-          :show-scrollbar="false"
+          :scroll-max-height="sequenceStacked ? 200 : undefined"
           class="route-maintenance__sequences"
           title="工序序列"
           :subtitle="`${sequenceState.rows.length} 条路径 · 标准主线与并行分支`"
@@ -40,7 +40,6 @@
           :empty="!sequenceState.loading && !sequenceState.rows.length"
           empty-title="暂无工序序列"
           empty-description="先创建一条标准序列，再添加路线中的工序节点。"
-          body-class="route-maintenance__sequence-body"
           :min-height="320"
         >
           <template v-if="!readonly" #actions>
@@ -57,86 +56,83 @@
               创建标准序列
             </ElButton>
           </template>
-          <ElScrollbar class="route-maintenance__sequence-scroll">
-            <ul class="route-maintenance__sequence-tree" aria-label="工序序列层次">
-              <li
-                v-for="item in sequenceState.rows"
-                :key="item.id"
-                class="route-maintenance__sequence-branch"
+          <ul class="route-maintenance__sequence-tree" aria-label="工序序列层次">
+            <li
+              v-for="item in sequenceState.rows"
+              :key="item.id"
+              class="route-maintenance__sequence-branch"
+            >
+              <div
+                class="route-maintenance__sequence"
+                :class="{ 'is-current': sequenceState.selectedId === item.id }"
               >
-                <div
-                  class="route-maintenance__sequence"
-                  :class="{ 'is-current': sequenceState.selectedId === item.id }"
+                <button
+                  type="button"
+                  class="route-maintenance__sequence-select"
+                  :aria-current="sequenceState.selectedId === item.id ? 'true' : undefined"
+                  @click="selectSequence(item.id)"
                 >
+                  <span class="route-maintenance__sequence-index">{{ item.sequenceNo }}</span>
+                  <span class="route-maintenance__sequence-copy">
+                    <strong>{{ getProcessRouteSequenceLabel(item.sequenceType) }}</strong>
+                    <small>{{ sequenceNodeDescription(item) }}</small>
+                  </span>
+                </button>
+                <span v-if="!readonly" class="route-maintenance__sequence-actions">
+                  <ArtIconButton
+                    v-auth="'MdmProcessRoute:Edit'"
+                    icon="ri:edit-line"
+                    label="编辑序列"
+                    @click.stop="openSequence(item)"
+                  />
+                  <ArtIconButton
+                    v-if="item.sequenceType !== 'main'"
+                    v-auth="'MdmProcessRoute:Edit'"
+                    icon="ri:delete-bin-6-line"
+                    label="删除序列"
+                    tone="danger"
+                    @click.stop="removeSequence(item)"
+                  />
+                </span>
+              </div>
+
+              <ul
+                v-if="getSequenceSteps(item.id).length"
+                class="route-maintenance__sequence-children"
+                :aria-label="`${getProcessRouteSequenceLabel(item.sequenceType)}包含的工序`"
+              >
+                <li v-for="step in getSequenceSteps(item.id)" :key="step.id">
                   <button
                     type="button"
-                    class="route-maintenance__sequence-select"
-                    :aria-current="sequenceState.selectedId === item.id ? 'true' : undefined"
+                    class="route-maintenance__sequence-step"
+                    :title="`${step.code} ${step.name}${step.operation?.code ? `｜${step.operation.code}` : ''}`"
                     @click="selectSequence(item.id)"
                   >
-                    <span class="route-maintenance__sequence-index">{{ item.sequenceNo }}</span>
-                    <span class="route-maintenance__sequence-copy">
-                      <strong>{{ getProcessRouteSequenceLabel(item.sequenceType) }}</strong>
-                      <small>{{ sequenceNodeDescription(item) }}</small>
+                    <span class="route-maintenance__sequence-step-code">{{ step.code }}</span>
+                    <span class="route-maintenance__sequence-step-name">{{ step.name }}</span>
+                    <span
+                      v-if="step.operation?.code"
+                      class="route-maintenance__sequence-step-operation"
+                    >
+                      {{ step.operation.code }}
                     </span>
                   </button>
-                  <span v-if="!readonly" class="route-maintenance__sequence-actions">
-                    <ArtIconButton
-                      v-auth="'MdmProcessRoute:Edit'"
-                      icon="ri:edit-line"
-                      label="编辑序列"
-                      @click.stop="openSequence(item)"
-                    />
-                    <ArtIconButton
-                      v-if="item.sequenceType !== 'main'"
-                      v-auth="'MdmProcessRoute:Edit'"
-                      icon="ri:delete-bin-6-line"
-                      label="删除序列"
-                      tone="danger"
-                      @click.stop="removeSequence(item)"
-                    />
-                  </span>
-                </div>
-
-                <ul
-                  v-if="getSequenceSteps(item.id).length"
-                  class="route-maintenance__sequence-children"
-                  :aria-label="`${getProcessRouteSequenceLabel(item.sequenceType)}包含的工序`"
-                >
-                  <li v-for="step in getSequenceSteps(item.id)" :key="step.id">
-                    <button
-                      type="button"
-                      class="route-maintenance__sequence-step"
-                      :title="`${step.code} ${step.name}${step.operation?.code ? `｜${step.operation.code}` : ''}`"
-                      @click="selectSequence(item.id)"
-                    >
-                      <span class="route-maintenance__sequence-step-code">{{ step.code }}</span>
-                      <span class="route-maintenance__sequence-step-name">{{ step.name }}</span>
-                      <span
-                        v-if="step.operation?.code"
-                        class="route-maintenance__sequence-step-operation"
-                      >
-                        {{ step.operation.code }}
-                      </span>
-                    </button>
-                  </li>
-                </ul>
-                <ArtEmptyState
-                  v-else
-                  title="暂无工序"
-                  description="为当前序列添加工序后即可配置执行顺序。"
-                  size="compact"
-                  :visual-size="52"
-                />
-              </li>
-            </ul>
-          </ElScrollbar>
+                </li>
+              </ul>
+              <ArtEmptyState
+                v-else
+                title="暂无工序"
+                description="为当前序列添加工序后即可配置执行顺序。"
+                size="compact"
+                :visual-size="52"
+              />
+            </li>
+          </ul>
         </ArtSectionCard>
 
         <ArtTableQuery
           ref="tableRef"
-          :model-value="search"
-          @update:model-value="replaceReactiveModel(search, $event)"
+          v-model="search"
           class="route-maintenance__steps"
           :api-fn="fetchRows"
           :columns-factory="columns"
@@ -211,14 +207,11 @@
 
       <ArtForm
         ref="sequenceFormRef"
-        :model-value="sequenceForm"
-        @update:model-value="replaceReactiveModel(sequenceForm, $event)"
+        v-model="sequenceForm"
         :items="sequenceItems"
         :rules="sequenceRules"
         :span="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #transferInStepId>
           <ArtTableSingleSelect
@@ -320,15 +313,12 @@
           <ArtForm
             v-else
             ref="formRef"
-            :model-value="stepForm"
-            @update:model-value="replaceReactiveModel(stepForm, $event)"
+            v-model="stepForm"
             :items="stepItems"
             :rules="stepRules"
             :span="12"
             :gutter="24"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           >
             <template #humanMachineRatio>
               <div class="step-editor__ratio-field">
@@ -374,14 +364,11 @@
           />
           <ArtForm
             v-else
-            :model-value="unitForm"
-            @update:model-value="replaceReactiveModel(unitForm, $event)"
+            v-model="unitForm"
             :items="unitItems"
             :span="12"
             :gutter="24"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           />
           <div class="step-editor__equation" role="status">
             <span>相当于</span>
@@ -455,13 +442,10 @@
           />
           <ArtForm
             v-else
-            :model-value="outsourcingForm"
-            @update:model-value="replaceReactiveModel(outsourcingForm, $event)"
+            v-model="outsourcingForm"
             :items="outsourcingItems"
             :span="24"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           />
         </div>
 
@@ -477,14 +461,11 @@
           />
           <ArtForm
             v-else
-            :model-value="inspectionForm"
-            @update:model-value="replaceReactiveModel(inspectionForm, $event)"
+            v-model="inspectionForm"
             :items="inspectionItems"
             :span="12"
             :gutter="24"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           />
         </div>
 
@@ -498,16 +479,7 @@
             :mobile-columns="1"
             empty-text="—"
           />
-          <ArtForm
-            v-else
-            :model-value="sopForm"
-            @update:model-value="replaceReactiveModel(sopForm, $event)"
-            :items="sopItems"
-            :span="24"
-            label-position="top"
-            :show-reset="false"
-            :show-submit="false"
-          >
+          <ArtForm v-else v-model="sopForm" :items="sopItems" :span="24" label-position="top">
             <template #attachments>
               <ArtUploadFile
                 v-model="sopForm.attachments"
@@ -524,9 +496,14 @@
       </section>
     </div>
   </ArtDialog>
+  <MasterDataDeleteGuard ref="stepDeleteGuardRef" />
+  <MasterDataDeleteGuard ref="sequenceDeleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useMediaQuery } from '@vueuse/core'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { getProcessRouteSequenceLabel } from '@mdm/domain/process-route-display'
   import { toNameCodeOption } from '@/utils/form/option'
   import { formatArtValue, formatNumberValue } from '@/utils/ui/format'
@@ -535,10 +512,9 @@
   import { ElInput, ElInputNumber, ElSelect, ElOption, ElSwitch } from 'element-plus'
   import TreeUtils from '@/utils/tree'
 
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { cloneDeep, groupBy } from 'lodash-es'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -604,7 +580,12 @@
   }
 
   const user = useUserStore()
-  const { confirmAction } = useArtFeedback()
+  const { deleteGuardRef: stepDeleteGuardRef, deleteRecords: deleteSteps } = useRecordDeleteGuard(
+    'mdm_process_route_step',
+    '工序'
+  )
+  const { deleteGuardRef: sequenceDeleteGuardRef, deleteRecords: deleteSequences } =
+    useRecordDeleteGuard('mdm_process_route_sequence', '工序序列')
   const dialogRef = ref<ArtDialogExpose>()
   const sequenceDialog = ref<ArtDialogExpose>()
   const editDialog = ref<ArtDialogExpose>()
@@ -615,8 +596,9 @@
   const route = shallowRef<ProcessRoute>()
   const readonly = ref(false)
   const maintenanceFullscreen = ref(false)
+  const sequenceStacked = useMediaQuery('(max-width: 900px)')
   const editorReadonly = ref(false)
-  const search = reactive({ keyword: '' })
+  const search = ref({ keyword: '' })
   const activeTab = ref('basic')
   const departmentTree = ref<DepartmentTreeOption[]>([])
   const departmentTreeUtils = new TreeUtils({ parentKey: 'parentId' })
@@ -650,7 +632,7 @@
     transferOutStepId: null as string | null,
     remark: '标准序列'
   })
-  const sequenceForm = reactive(initialSequence())
+  const sequenceForm = ref(initialSequence())
   const sequenceEditId = ref('')
   const sequenceCreateType = ref<'main' | 'parallel'>('main')
   const initialStep = (): Omit<ProcessStepInput, 'routeId'> => ({
@@ -694,18 +676,18 @@
     sopDocuments: [],
     sort: 10
   })
-  const stepForm = reactive(initialStep())
+  const stepForm = ref(initialStep())
   const stepEditId = ref('')
-  const unitForm = reactive({ productionFactor: 1, operationFactor: 1, operationUnitId: '' })
-  const outsourcingForm = reactive({
+  const unitForm = ref({ productionFactor: 1, operationFactor: 1, operationUnitId: '' })
+  const outsourcingForm = ref({
     enabled: false,
     purchaseOrganization: '',
     supplierId: '',
     unitPrice: null as number | null,
     remark: ''
   })
-  const inspectionForm = reactive({ method: '', standard: '', samplingRule: '', remark: '' })
-  const sopForm = reactive({ documentIds: [] as string[], attachments: [] as string[] })
+  const inspectionForm = ref({ method: '', standard: '', samplingRule: '', remark: '' })
+  const sopForm = ref({ documentIds: [] as string[], attachments: [] as string[] })
   const activityRows = ref<ActivityRow[]>([])
   const processRouteSequenceTypeOptions = useDictionaryOptions('mdmProcessRouteSequenceType')
   const processOperationModeOptions = useDictionaryOptions('mdmProcessOperationMode')
@@ -936,8 +918,8 @@
       : [])
   ])
   const departmentWorkCenters = computed(() =>
-    stepForm.departmentId
-      ? references.workCenters.filter((item) => item.departmentId === stepForm.departmentId)
+    stepForm.value.departmentId
+      ? references.workCenters.filter((item) => item.departmentId === stepForm.value.departmentId)
       : references.workCenters
   )
   const meaningfulSequenceRemark = (item: ProcessSequence): string => {
@@ -961,22 +943,22 @@
   const transferInStepRows = computed(() => mainStepRows.value.filter((item) => !item.isLast))
   const transferOutStepRows = computed(() => mainStepRows.value.filter((item) => !item.isFirst))
   const transferInStepId = computed<DataSelectKey | undefined>({
-    get: () => sequenceForm.transferInStepId || undefined,
+    get: () => sequenceForm.value.transferInStepId || undefined,
     set: (value) => {
-      sequenceForm.transferInStepId = value ? String(value) : null
+      sequenceForm.value.transferInStepId = value ? String(value) : null
     }
   })
   const transferOutStepId = computed<DataSelectKey | undefined>({
-    get: () => sequenceForm.transferOutStepId || undefined,
+    get: () => sequenceForm.value.transferOutStepId || undefined,
     set: (value) => {
-      sequenceForm.transferOutStepId = value ? String(value) : null
+      sequenceForm.value.transferOutStepId = value ? String(value) : null
     }
   })
   const transferInSelection = computed(() =>
-    transferInStepRows.value.filter((item) => item.id === sequenceForm.transferInStepId)
+    transferInStepRows.value.filter((item) => item.id === sequenceForm.value.transferInStepId)
   )
   const transferOutSelection = computed(() =>
-    transferOutStepRows.value.filter((item) => item.id === sequenceForm.transferOutStepId)
+    transferOutStepRows.value.filter((item) => item.id === sequenceForm.value.transferOutStepId)
   )
   const transferStepColumns = [
     { prop: 'code', label: '工序号', minWidth: 110 },
@@ -1029,30 +1011,30 @@
       name: 'outsourcing',
       label: '委外信息',
       icon: 'ri:truck-line',
-      count: outsourcingForm.enabled ? 1 : 0
+      count: outsourcingForm.value.enabled ? 1 : 0
     },
     {
       name: 'inspection',
       label: '检验信息',
       icon: 'ri:shield-check-line',
-      count: stepForm.needInspection ? 1 : 0
+      count: stepForm.value.needInspection ? 1 : 0
     },
     {
       name: 'sop',
       label: '作业指导书',
       icon: 'ri:file-shield-2-line',
-      count: sopForm.documentIds.length + sopForm.attachments.length
+      count: sopForm.value.documentIds.length + sopForm.value.attachments.length
     }
   ])
   const operationUnitName = computed(
     () =>
-      references.units.find((item) => item.id === unitForm.operationUnitId)?.name ||
-      references.units.find((item) => item.id === stepForm.unitId)?.name ||
+      references.units.find((item) => item.id === unitForm.value.operationUnitId)?.name ||
+      references.units.find((item) => item.id === stepForm.value.unitId)?.name ||
       '工序单位'
   )
   const unitConversionRatio = computed(() => {
-    const productionFactor = Number(unitForm.productionFactor) || 1
-    const operationFactor = Number(unitForm.operationFactor) || 1
+    const productionFactor = Number(unitForm.value.productionFactor) || 1
+    const operationFactor = Number(unitForm.value.operationFactor) || 1
     return productionFactor / operationFactor
   })
   const unitConversionPreview = computed(() =>
@@ -1061,7 +1043,7 @@
     })
   )
   const activeStepPanel = computed(() => {
-    const count = sopForm.documentIds.length + sopForm.attachments.length
+    const count = sopForm.value.documentIds.length + sopForm.value.attachments.length
     return (
       {
         basic: {
@@ -1082,12 +1064,12 @@
         outsourcing: {
           title: '委外加工约束',
           description: '启用委外时，指定供应商并记录业务说明。',
-          status: outsourcingForm.enabled ? '已启用委外' : '未启用委外'
+          status: outsourcingForm.value.enabled ? '已启用委外' : '未启用委外'
         },
         inspection: {
           title: '质量检验要求',
           description: '维护检验方式、标准、抽样规则与首检控制。',
-          status: stepForm.needInspection ? '需要检验' : '无需检验'
+          status: stepForm.value.needInspection ? '需要检验' : '无需检验'
         },
         sop: {
           title: '受控作业指导资料',
@@ -1116,7 +1098,7 @@
       : '请先在左侧选择或新增一条工序序列。'
   )
   const stepSearchItems = computed<SearchFormItem[]>(() =>
-    stepRows.value.length || search.keyword
+    stepRows.value.length || search.value.keyword
       ? [
           {
             key: 'keyword',
@@ -1136,7 +1118,7 @@
   const workCenterSelectionLabel = (ids: string[]): string =>
     ids.length
       ? ids.map((id) => referenceLabel(references.workCenters, id)).join('、')
-      : stepForm.departmentId
+      : stepForm.value.departmentId
         ? '全部工作中心'
         : '未指定车间'
   const fetchOperationOptions = (params: DataSelectFetchParams) =>
@@ -1157,7 +1139,7 @@
         min: 1,
         precision: 0,
         class: '!w-full',
-        disabled: Boolean(sequenceEditId.value) && sequenceForm.sequenceType === 'main'
+        disabled: Boolean(sequenceEditId.value) && sequenceForm.value.sequenceType === 'main'
       }
     },
     {
@@ -1168,21 +1150,21 @@
       props: {
         disabled:
           !sequenceEditId.value ||
-          (Boolean(sequenceEditId.value) && sequenceForm.sequenceType === 'main')
+          (Boolean(sequenceEditId.value) && sequenceForm.value.sequenceType === 'main')
       }
     },
     {
       key: 'transferInStepId',
       label: '转入工序',
       type: 'slot',
-      hidden: sequenceForm.sequenceType !== 'parallel',
+      hidden: sequenceForm.value.sequenceType !== 'parallel',
       help: '仅并行序列可设置，不能选择标准工序的末序。'
     },
     {
       key: 'transferOutStepId',
       label: '转出工序',
       type: 'slot',
-      hidden: sequenceForm.sequenceType !== 'parallel',
+      hidden: sequenceForm.value.sequenceType !== 'parallel',
       help: '仅并行序列可设置，不能选择标准工序的首序。'
     },
     { key: 'remark', label: '备注', type: 'textarea', props: { rows: 3, maxlength: 500 } }
@@ -1193,7 +1175,9 @@
     transferOutStepId: [
       {
         validator: (_rule: unknown, value: string | null, callback: (error?: Error) => void) =>
-          sequenceForm.sequenceType !== 'parallel' || sequenceForm.transferInStepId || value
+          sequenceForm.value.sequenceType !== 'parallel' ||
+          sequenceForm.value.transferInStepId ||
+          value
             ? callback()
             : callback(new Error('并行序列的转入工序和转出工序不能同时为空')),
         trigger: 'change'
@@ -1268,8 +1252,8 @@
         collapseTagsTooltip: true,
         clearable: true,
         filterable: true,
-        placeholder: stepForm.departmentId ? '不选代表全部工作中心' : '请先选择车间',
-        disabled: !stepForm.departmentId,
+        placeholder: stepForm.value.departmentId ? '不选代表全部工作中心' : '请先选择车间',
+        disabled: !stepForm.value.departmentId,
         onChange: applyWorkCenters
       }
     },
@@ -1442,14 +1426,14 @@
       label: '采购组织',
       type: 'select',
       options: materialPurchaseOrganizationOptions,
-      props: { clearable: true, disabled: !outsourcingForm.enabled }
+      props: { clearable: true, disabled: !outsourcingForm.value.enabled }
     },
     {
       key: 'supplierId',
       label: '供应商',
       type: 'select',
       options: references.suppliers.map(toNameCodeOption),
-      props: { clearable: true, filterable: true, disabled: !outsourcingForm.enabled }
+      props: { clearable: true, filterable: true, disabled: !outsourcingForm.value.enabled }
     },
     {
       key: 'unitPrice',
@@ -1459,7 +1443,7 @@
         min: 0,
         precision: 4,
         class: '!w-full',
-        disabled: !outsourcingForm.enabled
+        disabled: !outsourcingForm.value.enabled
       }
     },
     { key: 'remark', label: '委外说明', type: 'textarea', props: { rows: 4, maxlength: 1000 } }
@@ -1497,7 +1481,7 @@
     },
     { key: 'attachments', label: '上传附件', type: 'slot' }
   ])
-  const basicDetailItems = computed<ArtDescriptionItem<typeof stepForm>[]>(() => [
+  const basicDetailItems = computed<ArtDescriptionItem<typeof stepForm.value>[]>(() => [
     {
       key: 'sequenceId',
       label: '工序序列',
@@ -1541,37 +1525,37 @@
       key: 'runOutputQuantity',
       label: '单趟产出数量',
       value: () =>
-        `${formatNumberValue(stepForm.runOutputQuantity || 0, 'zh-CN', { maximumFractionDigits: 6 })} pcs`
+        `${formatNumberValue(stepForm.value.runOutputQuantity || 0, 'zh-CN', { maximumFractionDigits: 6 })} pcs`
     },
     {
       key: 'runProcessingMinutes',
       label: '单趟加工时长',
       value: () =>
-        `${formatNumberValue(stepForm.runProcessingMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
+        `${formatNumberValue(stepForm.value.runProcessingMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'runGreenMinutes',
       label: '单趟绿灯时长',
       value: () =>
-        `${formatNumberValue(stepForm.runGreenMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
+        `${formatNumberValue(stepForm.value.runGreenMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'setupMinutes',
       label: '调机时长',
       value: () =>
-        `${formatNumberValue(stepForm.setupMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
+        `${formatNumberValue(stepForm.value.setupMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'queueMinutes',
       label: '排队时长',
       value: () =>
-        `${formatNumberValue(stepForm.queueMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
+        `${formatNumberValue(stepForm.value.queueMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'transferMinutes',
       label: '转运时长',
       value: () =>
-        `${formatNumberValue(stepForm.transferMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
+        `${formatNumberValue(stepForm.value.transferMinutes || 0, 'zh-CN', { maximumFractionDigits: 6 })} 分钟`
     },
     {
       key: 'minimumTransferQuantity',
@@ -1588,7 +1572,7 @@
     {
       key: 'humanMachineRatio',
       label: '人机系数',
-      value: () => `${stepForm.operatorCount} 人 : ${stepForm.machineCount} 台`
+      value: () => `${stepForm.value.operatorCount} 人 : ${stepForm.value.machineCount} 台`
     },
     {
       key: 'operationMode',
@@ -1660,13 +1644,13 @@
       key: 'position',
       label: '序列位置',
       value: () =>
-        [stepForm.isFirst ? '首序' : '', stepForm.isLast ? '末序' : '']
+        [stepForm.value.isFirst ? '首序' : '', stepForm.value.isLast ? '末序' : '']
           .filter(Boolean)
           .join('、') || '普通工序'
     },
     { key: 'sort', label: '排序', field: 'sort', format: 'number' }
   ])
-  const unitDetailItems = computed<ArtDescriptionItem<typeof unitForm>[]>(() => [
+  const unitDetailItems = computed<ArtDescriptionItem<typeof unitForm.value>[]>(() => [
     {
       key: 'productionUnit',
       label: '生产单位',
@@ -1699,29 +1683,31 @@
         })
     }
   ])
-  const outsourcingDetailItems = computed<ArtDescriptionItem<typeof outsourcingForm>[]>(() => [
-    {
-      key: 'enabled',
-      label: '委外状态',
-      field: 'enabled',
-      formatter: (value) => (value ? '已启用' : '未启用')
-    },
-    {
-      key: 'purchaseOrganization',
-      label: '采购组织',
-      field: 'purchaseOrganization',
-      dictCode: 'mdmMaterialPurchaseOrganization'
-    },
-    {
-      key: 'supplierId',
-      label: '供应商',
-      field: 'supplierId',
-      formatter: (value) => referenceLabel(references.suppliers, value)
-    },
-    { key: 'unitPrice', label: '委外单价（元）', field: 'unitPrice', format: 'number' },
-    { key: 'remark', label: '委外说明', field: 'remark', span: 2 }
-  ])
-  const inspectionDetailItems = computed<ArtDescriptionItem<typeof inspectionForm>[]>(() => [
+  const outsourcingDetailItems = computed<ArtDescriptionItem<typeof outsourcingForm.value>[]>(
+    () => [
+      {
+        key: 'enabled',
+        label: '委外状态',
+        field: 'enabled',
+        formatter: (value) => (value ? '已启用' : '未启用')
+      },
+      {
+        key: 'purchaseOrganization',
+        label: '采购组织',
+        field: 'purchaseOrganization',
+        dictCode: 'mdmMaterialPurchaseOrganization'
+      },
+      {
+        key: 'supplierId',
+        label: '供应商',
+        field: 'supplierId',
+        formatter: (value) => referenceLabel(references.suppliers, value)
+      },
+      { key: 'unitPrice', label: '委外单价（元）', field: 'unitPrice', format: 'number' },
+      { key: 'remark', label: '委外说明', field: 'remark', span: 2 }
+    ]
+  )
+  const inspectionDetailItems = computed<ArtDescriptionItem<typeof inspectionForm.value>[]>(() => [
     {
       key: 'method',
       label: '检验方式',
@@ -1732,7 +1718,7 @@
     { key: 'standard', label: '检验标准', field: 'standard', span: 2 },
     { key: 'remark', label: '检验备注', field: 'remark', span: 2 }
   ])
-  const sopDetailItems = computed<ArtDescriptionItem<typeof sopForm>[]>(() => [
+  const sopDetailItems = computed<ArtDescriptionItem<typeof sopForm.value>[]>(() => [
     {
       key: 'documentIds',
       label: '工程主数据 ESOP',
@@ -2024,13 +2010,13 @@
           },
           {
             type: 'delete',
+            confirm: false,
             label: '删除',
             permission: 'MdmProcessRoute:Edit',
             content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
               `确认删除选中的 ${selectedCount} 道工序？`,
-            onClick: async ({ selectedRows, api }) => {
-              await deleteProcessSteps((selectedRows as ProcessStep[]).map((item) => item.id))
-              await Promise.all([api.refreshRemove(), loadSequences()])
+            onClick: async ({ selectedRows }) => {
+              await removeSteps(selectedRows as ProcessStep[])
             }
           }
         ]
@@ -2069,7 +2055,7 @@
         ? 'parallel'
         : 'main'
     Object.assign(
-      sequenceForm,
+      sequenceForm.value,
       row
         ? cloneDeep(row)
         : {
@@ -2103,12 +2089,12 @@
           return false
         }
         try {
-          if (sequenceForm.sequenceType !== 'parallel') {
-            sequenceForm.transferInStepId = null
-            sequenceForm.transferOutStepId = null
+          if (sequenceForm.value.sequenceType !== 'parallel') {
+            sequenceForm.value.transferInStepId = null
+            sequenceForm.value.transferOutStepId = null
           }
           const createdSequenceId = await saveProcessSequence(
-            buildProcessSequencePayload({ routeId: route.value!.id, ...sequenceForm }),
+            buildProcessSequencePayload({ routeId: route.value!.id, ...sequenceForm.value }),
             sequenceEditId.value || undefined
           )
           if (isCreatingParallelSequence.value) {
@@ -2156,38 +2142,40 @@
   }
   async function removeSequence(row: ProcessSequence) {
     if (row.sequenceType === 'main') return
-    try {
-      await confirmAction(
-        `确认删除序列“${row.sequenceNo} · ${getProcessRouteSequenceLabel(row.sequenceType)}”？`,
-        '删除工序序列',
-        { type: 'warning' }
-      )
-      await deleteProcessSequence(row.id)
-      await loadSequences()
-      await tableRef.value?.refreshData()
-    } catch {
-      /* API owns feedback. */
-    }
+    await deleteSequences({
+      resources: [
+        {
+          id: row.id,
+          label: `${row.sequenceNo} · ${getProcessRouteSequenceLabel(row.sequenceType)}`
+        }
+      ],
+      permission: 'MdmProcessRoute:Edit',
+      remove: () => deleteProcessSequence(row.id),
+      successMessage: '工序序列已删除',
+      onDeleted: async () => {
+        await Promise.all([loadSequences(), tableRef.value?.refreshData()])
+      }
+    })
   }
   function applyOperation(value: string) {
     const operation = references.operations.find((item) => item.id === value)
     if (!operation) return
-    stepForm.name = operation.name
-    if (!stepForm.description) stepForm.description = operation.name
+    stepForm.value.name = operation.name
+    if (!stepForm.value.description) stepForm.value.description = operation.name
   }
   async function applyDepartment(value: string) {
-    stepForm.departmentId = value || null
-    const validIds = stepForm.workCenterIds.filter((id) =>
+    stepForm.value.departmentId = value || null
+    const validIds = stepForm.value.workCenterIds.filter((id) =>
       departmentWorkCenters.value.some((item) => item.id === id)
     )
     await applyWorkCenters(validIds)
   }
   async function applyWorkCenters(value: string[]) {
-    stepForm.workCenterIds = value
-    stepForm.workCenterId = value[0] ?? null
+    stepForm.value.workCenterIds = value
+    stepForm.value.workCenterId = value[0] ?? null
     const sourceIds = value.length
       ? value
-      : stepForm.departmentId
+      : stepForm.value.departmentId
         ? departmentWorkCenters.value.map((item) => item.id)
         : []
     const activitiesByCenter = await Promise.all(
@@ -2217,7 +2205,7 @@
   }
   function applyControlCode(value: string) {
     const controlCode = references.controlCodes.find((item) => item.id === value)
-    Object.assign(stepForm, {
+    Object.assign(stepForm.value, {
       processingMode: controlCode?.processingMode || '',
       reportMode: controlCode?.reportMode || '',
       inspectionMode: controlCode?.inspectionMode || '',
@@ -2335,7 +2323,7 @@
     const nextCode = nextStepNumber()
     const nextSort = Math.max(0, ...stepRows.value.map((item) => item.sort)) + 10
     Object.assign(
-      stepForm,
+      stepForm.value,
       row && !inserting
         ? {
             ...cloneDeep(row),
@@ -2354,7 +2342,7 @@
             isLast: true
           }
     )
-    stepForm.workCenterIds =
+    stepForm.value.workCenterIds =
       row && !inserting
         ? [
             ...(row.workCenterIds?.length
@@ -2364,15 +2352,15 @@
                 : [])
           ]
         : []
-    stepForm.runGreenMinutes ??= 0
-    stepForm.workCenterId = stepForm.workCenterIds[0] ?? null
-    Object.assign(unitForm, {
+    stepForm.value.runGreenMinutes ??= 0
+    stepForm.value.workCenterId = stepForm.value.workCenterIds[0] ?? null
+    Object.assign(unitForm.value, {
       productionFactor: 1,
       operationFactor: 1,
-      operationUnitId: stepForm.unitId || '',
+      operationUnitId: stepForm.value.unitId || '',
       ...(!inserting && row?.unitConversion ? row.unitConversion : {})
     })
-    Object.assign(outsourcingForm, {
+    Object.assign(outsourcingForm.value, {
       enabled: false,
       purchaseOrganization: '',
       supplierId: '',
@@ -2380,7 +2368,7 @@
       remark: '',
       ...(!inserting && row?.outsourcing ? row.outsourcing : {})
     })
-    Object.assign(inspectionForm, {
+    Object.assign(inspectionForm.value, {
       method: '',
       standard: '',
       samplingRule: '',
@@ -2389,8 +2377,10 @@
     })
     activityRows.value = (!inserting ? row?.activities || [] : []).map(normalizeActivity)
     const sop = !inserting ? row?.sopDocuments || [] : []
-    sopForm.documentIds = sop.filter((item) => item.type === 'esop').map((item) => String(item.id))
-    sopForm.attachments = sop
+    sopForm.value.documentIds = sop
+      .filter((item) => item.type === 'esop')
+      .map((item) => String(item.id))
+    sopForm.value.attachments = sop
       .filter((item) => item.type === 'upload')
       .map((item) => String(item.url))
     activeTab.value = 'basic'
@@ -2420,8 +2410,8 @@
         }
         try {
           if (
-            stepForm.runGreenMinutes !== null &&
-            (!Number.isFinite(stepForm.runGreenMinutes) || stepForm.runGreenMinutes < 0)
+            stepForm.value.runGreenMinutes !== null &&
+            (!Number.isFinite(stepForm.value.runGreenMinutes) || stepForm.value.runGreenMinutes < 0)
           ) {
             ElMessage.warning('单趟绿灯时长不能小于 0')
             activeTab.value = 'basic'
@@ -2430,8 +2420,8 @@
           await saveProcessStep(
             buildProcessStepPayload({
               routeId: route.value!.id,
-              ...stepForm,
-              unitConversion: cloneDeep(unitForm),
+              ...stepForm.value,
+              unitConversion: cloneDeep(unitForm.value),
               activities: activityRows.value.map((item) => ({
                 sourceWorkCenterId: item.sourceWorkCenterId,
                 sourceWorkCenterName: item.sourceWorkCenterName,
@@ -2446,11 +2436,11 @@
                 remark: item.remark,
                 sort: activityRows.value.indexOf(item)
               })),
-              outsourcing: cloneDeep(outsourcingForm),
-              inspection: cloneDeep(inspectionForm),
+              outsourcing: cloneDeep(outsourcingForm.value),
+              inspection: cloneDeep(inspectionForm.value),
               sopDocuments: [
-                ...sopForm.documentIds.map((id) => ({ type: 'esop', id })),
-                ...sopForm.attachments.map((url) => ({ type: 'upload', url }))
+                ...sopForm.value.documentIds.map((id) => ({ type: 'esop', id })),
+                ...sopForm.value.attachments.map((url) => ({ type: 'upload', url }))
               ]
             }),
             stepEditId.value || undefined
@@ -2469,21 +2459,27 @@
     })
   }
   async function removeStep(row: ProcessStep) {
-    try {
-      await confirmAction(`确认删除工序“${row.code}｜${row.name}”？`, '删除工序', {
-        type: 'warning'
-      })
-      await deleteProcessStep(row.id)
-      await Promise.all([tableRef.value?.refreshData(), loadSequences()])
-    } catch {
-      /* API owns feedback. */
-    }
+    await removeSteps([row])
+  }
+  async function removeSteps(rows: ProcessStep[]): Promise<void> {
+    await deleteSteps({
+      resources: rows.map((row) => ({ id: row.id, label: `${row.code} · ${row.name}` })),
+      permission: 'MdmProcessRoute:Edit',
+      remove: () =>
+        rows.length === 1
+          ? deleteProcessStep(rows[0]!.id)
+          : deleteProcessSteps(rows.map((row) => row.id)),
+      successMessage: '工序已删除',
+      onDeleted: async () => {
+        await Promise.all([tableRef.value?.refreshData(), loadSequences()])
+      }
+    })
   }
   async function handleOpen(row: ProcessRoute, viewOnly = false) {
     route.value = row
     readonly.value = viewOnly
     maintenanceFullscreen.value = false
-    search.keyword = ''
+    search.value.keyword = ''
     sequenceState.selectedId = ''
     sequenceStepRows.value = []
     mainStepRows.value = []
@@ -2578,19 +2574,6 @@
       :deep(.art-section-card__subtitle) {
         padding-left: 0;
       }
-    }
-
-    :deep(.route-maintenance__sequence-body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    &__sequence-scroll {
-      flex: 1;
-      height: 100%;
-      min-height: 0;
     }
 
     &__sequence-tree,
@@ -3152,10 +3135,6 @@
       &__workspace {
         grid-template-columns: minmax(0, 1fr);
         height: auto;
-      }
-
-      &__sequence-scroll {
-        height: 200px;
       }
 
       &__steps {

@@ -2,21 +2,17 @@
   <ArtDialog ref="dialogRef" size="lg">
     <ArtForm
       ref="formRef"
-      :model-value="model"
-      @update:model-value="replaceReactiveModel(model, $event)"
+      v-model="model"
       :items="items"
       :rules="rules"
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     />
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -55,9 +51,8 @@
     payeeAddress: '',
     payeePhone: ''
   })
-  const model = reactive<FormModel>(initial())
+  const model = ref<FormModel>(initial())
   const items = computed<FormItem[]>(() => [
-    { key: 'account', label: '账户信息', type: 'divider', span: 24 },
     {
       key: 'bankAccount',
       label: '银行账号',
@@ -92,7 +87,6 @@
         options: currencyOptions
       }
     },
-    { key: 'payee', label: '收款方联系信息', type: 'divider', span: 24 },
     {
       key: 'payeeAddress',
       label: '收款方详细地址',
@@ -115,7 +109,7 @@
   }
 
   async function handleOpen(data: OpenData): Promise<void> {
-    Object.assign(model, initial(), data.row || {}, { supplierId: data.supplierId })
+    Object.assign(model.value, initial(), data.row || {}, { supplierId: data.supplierId })
     editingId.value = data.row?.id || ''
     await dialogRef.value?.handleOpen(data, {
       title: data.row ? '编辑银行信息' : '新增银行信息',
@@ -128,14 +122,14 @@
         try {
           if (!(await validateArtFormForSubmit(formRef.value))) return false
           const payload: SupplierBankInput = {
-            supplierId: model.supplierId,
-            bankAccount: model.bankAccount.trim(),
-            accountName: model.accountName.trim(),
-            iban: normalizeNullableText(model.iban),
-            bankName: model.bankName.trim(),
-            currencyCode: model.currencyCode,
-            payeeAddress: normalizeNullableText(model.payeeAddress),
-            payeePhone: normalizeNullableText(model.payeePhone)
+            supplierId: model.value.supplierId,
+            bankAccount: model.value.bankAccount.trim(),
+            accountName: model.value.accountName.trim(),
+            iban: normalizeNullableText(model.value.iban),
+            bankName: model.value.bankName.trim(),
+            currencyCode: model.value.currencyCode,
+            payeeAddress: normalizeNullableText(model.value.payeeAddress),
+            payeePhone: normalizeNullableText(model.value.payeePhone)
           }
           await saveSupplierBank(payload, editingId.value || undefined)
           emit('success')

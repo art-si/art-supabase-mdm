@@ -15,15 +15,12 @@
       />
       <ArtForm
         ref="formRef"
-        :model-value="form"
-        @update:model-value="replaceReactiveModel(form, $event)"
+        v-model="form"
         :items="formItems"
         :rules="rules"
         :span="12"
         :gutter="20"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #movementType>
           <ArtDictDisplay
@@ -55,7 +52,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -89,7 +85,7 @@
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const userStore = useUserStore()
   const context = reactive<StorageActionContext>({ warehouseId: '', tenantId: '', label: '' })
-  const form = reactive<InventoryMovementInput>({
+  const form = ref<InventoryMovementInput>({
     movementType: 'purchase_in',
     quantity: 1
   })
@@ -104,17 +100,22 @@
   const selectedMaterial = ref<StorageMaterialSelectRecord[]>([])
   const inboundWarehouseError = ref('')
   let destinationRevision = 0
-  const isInbound = computed(() => form.movementType.endsWith('_in'))
+  const isInbound = computed(() => form.value.movementType.endsWith('_in'))
   const movementLabel = computed(() =>
-    userStore.getDictDisplayLabelByValue('mdmInventoryMovementType', form.movementType, '库存业务')
+    userStore.getDictDisplayLabelByValue(
+      'mdmInventoryMovementType',
+      form.value.movementType,
+      '库存业务'
+    )
   )
   const currentWarehouse = computed(() =>
     warehouses.value.find(
-      (warehouse) => warehouse.id === (isInbound.value ? form.warehouseId : context.warehouseId)
+      (warehouse) =>
+        warehouse.id === (isInbound.value ? form.value.warehouseId : context.warehouseId)
     )
   )
   const inboundDestinationDescription = computed(() =>
-    form.movementType === 'production_in'
+    form.value.movementType === 'production_in'
       ? currentWarehouse.value
         ? `入库目标：${currentWarehouse.value.warehouseName} · ${currentWarehouse.value.warehouseCode}`
         : '选择成品物料后自动确定入库仓库'
@@ -130,11 +131,11 @@
     )
   )
   const targetWarehouse = computed(() =>
-    warehouses.value.find((warehouse) => warehouse.id === form.targetWarehouseId)
+    warehouses.value.find((warehouse) => warehouse.id === form.value.targetWarehouseId)
   )
   const availableSourceBins = computed(() =>
     currentWarehouse.value?.enableZones
-      ? sourceBins.value.filter((bin) => bin.zoneId === form.zoneId)
+      ? sourceBins.value.filter((bin) => bin.zoneId === form.value.zoneId)
       : sourceBins.value
   )
   const sourceBinOptions = computed(() =>
@@ -147,12 +148,12 @@
       .filter(
         (bin) =>
           bin.status === 'available' &&
-          (!targetWarehouse.value?.enableZones || bin.zoneId === form.targetZoneId)
+          (!targetWarehouse.value?.enableZones || bin.zoneId === form.value.targetZoneId)
       )
       .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id }))
   )
   const formItems = computed<FormItem[]>(() => [
-    { key: 'identity', label: '业务信息', type: 'divider', span: 24 },
+    { key: 'identity', label: '物料与数量', type: 'tab', span: 24 },
     {
       label: '业务类型',
       key: 'movementType',
@@ -228,7 +229,13 @@
           }
         ]
       : []),
-    ...(form.movementType === 'production_in'
+    ...(form.value.movementType === 'production_in' ||
+    (isInbound.value &&
+      (currentWarehouse.value?.enableZones || currentWarehouse.value?.enableLocations)) ||
+    form.value.movementType === 'transfer'
+      ? [{ key: 'destination', label: '库区与库位', type: 'tab' as const }]
+      : []),
+    ...(form.value.movementType === 'production_in'
       ? [
           {
             label: '入库仓库',
@@ -260,7 +267,7 @@
                 ? '请选择库区'
                 : '不选则存放在仓库',
               onChange: () => {
-                form.binId = null
+                form.value.binId = null
               }
             }
           }
@@ -275,13 +282,13 @@
             options: sourceBinOptions.value,
             props: {
               filterable: true,
-              disabled: Boolean(context.binId && form.warehouseId === context.warehouseId),
+              disabled: Boolean(context.binId && form.value.warehouseId === context.warehouseId),
               placeholder: '选择库位'
             }
           }
         ]
       : []),
-    ...(form.movementType === 'transfer'
+    ...(form.value.movementType === 'transfer'
       ? [
           {
             label: '目标仓库',
@@ -317,7 +324,7 @@
                       ? '请选择库区'
                       : '不选则存放在仓库',
                     onChange: () => {
-                      form.targetBinId = null
+                      form.value.targetBinId = null
                     }
                   }
                 }
@@ -336,6 +343,7 @@
             : [])
         ]
       : []),
+    { key: 'additional', label: '关联与说明', type: 'tab' },
     {
       label: '关联工单',
       key: 'workOrderId',
@@ -360,7 +368,7 @@
       : [],
     batchNo: isInbound.value ? [{ required: true, message: '请输入批号', trigger: 'blur' }] : [],
     warehouseId:
-      form.movementType === 'production_in'
+      form.value.movementType === 'production_in'
         ? [{ required: true, message: '请先配置可用于成品入库的仓库', trigger: 'change' }]
         : [],
     batchId: !isInbound.value
@@ -386,15 +394,15 @@
         ? [{ required: true, message: '请选择入库库区', trigger: 'change' }]
         : [],
     targetWarehouseId:
-      form.movementType === 'transfer'
+      form.value.movementType === 'transfer'
         ? [{ required: true, message: '请选择目标仓库', trigger: 'change' }]
         : [],
     targetBinId:
-      form.movementType === 'transfer' && targetWarehouse.value?.enableLocations
+      form.value.movementType === 'transfer' && targetWarehouse.value?.enableLocations
         ? [{ required: true, message: '请选择目标库位', trigger: 'change' }]
         : [],
     targetZoneId:
-      form.movementType === 'transfer' &&
+      form.value.movementType === 'transfer' &&
       targetWarehouse.value?.enableLocations &&
       targetWarehouse.value.enableZones
         ? [{ required: true, message: '请选择目标库区', trigger: 'change' }]
@@ -406,14 +414,14 @@
 
   async function handleMaterialSelection(rows: MaterialSelectRecord[]): Promise<void> {
     selectedMaterial.value = rows
-    if (form.movementType !== 'production_in') return
+    if (form.value.movementType !== 'production_in') return
     const revision = ++destinationRevision
     const material = selectedMaterial.value[0]
     if (material?.materialType !== 'FERT') {
       inboundWarehouseError.value = ''
-      form.warehouseId = context.warehouseId
-      form.zoneId = context.zoneId ?? null
-      form.binId = context.binId ?? null
+      form.value.warehouseId = context.warehouseId
+      form.value.zoneId = context.zoneId ?? null
+      form.value.binId = context.binId ?? null
       const [bins, zones] = await Promise.all([
         fetchStorageBins(context.warehouseId),
         fetchStorageZones(context.warehouseId)
@@ -434,17 +442,17 @@
       inboundWarehouseError.value = finishedWarehouses.length
         ? '存在多个成品仓，请先在物料主数据中指定入库仓库。'
         : '暂无可用于业务的成品仓，请先启用成品仓并配置入库仓库。'
-      form.warehouseId = null
-      form.zoneId = null
-      form.binId = null
+      form.value.warehouseId = null
+      form.value.zoneId = null
+      form.value.binId = null
       sourceBins.value = []
       sourceZones.value = []
       return
     }
     inboundWarehouseError.value = ''
-    form.warehouseId = destination.id
-    form.zoneId = destination.id === context.warehouseId ? (context.zoneId ?? null) : null
-    form.binId = destination.id === context.warehouseId ? (context.binId ?? null) : null
+    form.value.warehouseId = destination.id
+    form.value.zoneId = destination.id === context.warehouseId ? (context.zoneId ?? null) : null
+    form.value.binId = destination.id === context.warehouseId ? (context.binId ?? null) : null
     const [bins, zones] = await Promise.all([
       fetchStorageBins(destination.id),
       fetchStorageZones(destination.id)
@@ -456,10 +464,10 @@
   }
 
   watch(
-    () => form.targetWarehouseId,
+    () => form.value.targetWarehouseId,
     async (id) => {
-      form.targetBinId = null
-      form.targetZoneId = null
+      form.value.targetBinId = null
+      form.value.targetZoneId = null
       const [bins, zones] = id
         ? await Promise.all([fetchStorageBins(id), fetchStorageZones(id)])
         : [[], []]
@@ -478,13 +486,16 @@
     }
     try {
       await postInventoryMovement({
-        ...form,
-        warehouseId: isInbound.value ? form.warehouseId : undefined,
-        zoneId: isInbound.value ? (form.zoneId ?? null) : undefined,
-        binId: isInbound.value ? (form.binId ?? null) : undefined,
-        targetWarehouseId: form.movementType === 'transfer' ? form.targetWarehouseId : undefined,
-        targetZoneId: form.movementType === 'transfer' ? (form.targetZoneId ?? null) : undefined,
-        targetBinId: form.movementType === 'transfer' ? (form.targetBinId ?? null) : undefined
+        ...form.value,
+        warehouseId: isInbound.value ? form.value.warehouseId : undefined,
+        zoneId: isInbound.value ? (form.value.zoneId ?? null) : undefined,
+        binId: isInbound.value ? (form.value.binId ?? null) : undefined,
+        targetWarehouseId:
+          form.value.movementType === 'transfer' ? form.value.targetWarehouseId : undefined,
+        targetZoneId:
+          form.value.movementType === 'transfer' ? (form.value.targetZoneId ?? null) : undefined,
+        targetBinId:
+          form.value.movementType === 'transfer' ? (form.value.targetBinId ?? null) : undefined
       })
       emit('success')
       return true
@@ -498,7 +509,7 @@
     const openingRevision = ++destinationRevision
     inboundWarehouseError.value = ''
     Object.assign(context, { zoneId: undefined, binId: undefined }, data)
-    Object.assign(form, {
+    Object.assign(form.value, {
       movementType: type,
       quantity: 1,
       areaSqm: null,

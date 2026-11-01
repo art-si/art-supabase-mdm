@@ -2,21 +2,17 @@
   <ArtDialog ref="dialogRef" size="lg">
     <ArtForm
       ref="formRef"
-      :model-value="model"
-      @update:model-value="replaceReactiveModel(model, $event)"
+      v-model="model"
       :items="items"
       :rules="rules"
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     />
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -63,9 +59,9 @@
     email: '',
     remark: ''
   })
-  const model = reactive<FormModel>(initial())
+  const model = ref<FormModel>(initial())
   const items = computed<FormItem[]>(() => [
-    { key: 'identity', label: '联系人身份', type: 'divider', span: 24 },
+    { key: 'identity', label: '联系人身份', type: 'tab', span: 24 },
     { key: 'name', label: '姓名', type: 'input', props: { maxlength: 60 } },
     { key: 'alias', label: '别名', type: 'input', props: { maxlength: 60 } },
     {
@@ -79,7 +75,7 @@
     },
     { key: 'position', label: '职务', type: 'input', props: { maxlength: 80 } },
     { key: 'department', label: '部门', type: 'input', props: { maxlength: 80 } },
-    { key: 'contact', label: '联系方式', type: 'divider', span: 24 },
+    { key: 'contact', label: '联系方式', type: 'tab', span: 24 },
     { key: 'phone', label: '联系电话', type: 'input', props: { maxlength: 40 } },
     { key: 'fax', label: '传真', type: 'input', props: { maxlength: 40 } },
     { key: 'wechat', label: '微信', type: 'input', props: { maxlength: 80 } },
@@ -99,7 +95,7 @@
   }
 
   async function handleOpen(data: OpenData): Promise<void> {
-    Object.assign(model, initial(), data.row || {}, { supplierId: data.supplierId })
+    Object.assign(model.value, initial(), data.row || {}, { supplierId: data.supplierId })
     editingId.value = data.row?.id || ''
     await dialogRef.value?.handleOpen(data, {
       title: data.row ? '编辑联系人' : '新增联系人',
@@ -112,18 +108,18 @@
         try {
           if (!(await validateArtFormForSubmit(formRef.value))) return false
           const payload: SupplierContactInput = {
-            supplierId: model.supplierId,
-            name: model.name.trim(),
-            alias: normalizeNullableText(model.alias),
-            gender: normalizeNullableText(model.gender),
-            position: normalizeNullableText(model.position),
-            department: normalizeNullableText(model.department),
-            phone: normalizeNullableText(model.phone),
-            fax: normalizeNullableText(model.fax),
-            wechat: normalizeNullableText(model.wechat),
-            qq: normalizeNullableText(model.qq),
-            email: normalizeNullableText(model.email),
-            remark: normalizeNullableText(model.remark)
+            supplierId: model.value.supplierId,
+            name: model.value.name.trim(),
+            alias: normalizeNullableText(model.value.alias),
+            gender: normalizeNullableText(model.value.gender),
+            position: normalizeNullableText(model.value.position),
+            department: normalizeNullableText(model.value.department),
+            phone: normalizeNullableText(model.value.phone),
+            fax: normalizeNullableText(model.value.fax),
+            wechat: normalizeNullableText(model.value.wechat),
+            qq: normalizeNullableText(model.value.qq),
+            email: normalizeNullableText(model.value.email),
+            remark: normalizeNullableText(model.value.remark)
           }
           await saveSupplierContact(payload, editingId.value || undefined)
           emit('success')

@@ -35,8 +35,7 @@
         />
         <ArtTableQuery
           ref="tableRef"
-          :model-value="search"
-          @update:model-value="replaceReactiveModel(search, $event)"
+          v-model="search"
           :api-fn="fetchData"
           :search-items="searchItems"
           :columns-factory="columnsFactory"
@@ -69,7 +68,6 @@
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
-  import { replaceReactiveModel } from '@/utils/form/model'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions,
     type MasterDataDeleteResource
@@ -193,7 +191,7 @@
   const groupTreeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId' })
   const groupTree = computed(() => groupTreeUtils.listToTree(groups.value) as BomGroup[])
   const overview = reactive({ total: 0, rows: [] as BomRecord[] })
-  const search = reactive({
+  const search = ref({
     keyword: '',
     purpose: undefined as BomQuery['purpose'],
     status: undefined as BomQuery['status']
@@ -631,7 +629,7 @@
   ]
   const exportRows = async () => {
     const rows = await loadAllLinePages(fetchBoms, {
-      ...search,
+      ...search.value,
       tenantId: tenantId.value,
       id: targetBomId.value || undefined,
       groupIds: selectedGroupId.value ? descendantIds(selectedGroupId.value) : undefined,
@@ -673,7 +671,7 @@
   )
   watch(targetBomId, () => {
     selectedGroupId.value = ''
-    Object.assign(search, { keyword: '', purpose: undefined, status: undefined })
+    Object.assign(search.value, { keyword: '', purpose: undefined, status: undefined })
     void tableRef.value?.refreshCreate()
   })
   watch(

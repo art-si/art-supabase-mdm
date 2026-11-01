@@ -105,6 +105,9 @@ export async function deleteProductionDepartment(id: string) {
         .select('id'),
     {
       ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
       message: '部门已删除',
       errorMessage: '删除失败，请先移除下级部门、人员和日历等关联数据'
     }
@@ -179,7 +182,13 @@ export async function deleteProductionPeople(ids: string[]) {
         .delete({ count: 'exact' })
         .in('id', ids)
         .select('id'),
-    { ...writeOptions, message: '人员配置已删除' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '人员配置已删除'
+    }
   )
 }
 export async function setProductionPeopleEnabled(ids: string[], enabled: boolean) {
@@ -276,7 +285,13 @@ export async function deleteShiftPattern(id: string) {
         .delete({ count: 'exact' })
         .eq('id', id)
         .select('id'),
-    { ...writeOptions, message: '轮班模式及对应日历已清除' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '轮班模式及对应日历已清除'
+    }
   )
 }
 export async function referenceShiftPatterns(
@@ -419,7 +434,13 @@ export async function saveStatutoryHoliday(params: StatutoryHolidaySavePayload) 
 export async function deleteStatutoryHolidays(ids: string[]) {
   return await responseHandle<number>(
     () => supabase.rpc('mdm_delete_statutory_holidays_secure', { p_ids: ids }),
-    { showMessage: true, breakReturn: true, message: '节假日安排已删除' }
+    {
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      breakReturn: true,
+      message: '节假日安排已删除'
+    }
   )
 }
 export async function fetchCalendarReminder(

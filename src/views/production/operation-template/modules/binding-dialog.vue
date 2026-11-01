@@ -11,8 +11,6 @@
       <ArtForm
         v-model="form"
         :items="[{ key: 'templateId', label: '作业模板', span: 24 }]"
-        :show-reset="false"
-        :show-submit="false"
         label-position="top"
       >
         <template #templateId>

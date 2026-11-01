@@ -1,37 +1,40 @@
 <template>
   <div class="operational-master-detail">
-    <section class="operational-master-detail__section">
-      <ArtSectionTitle title="主档信息" />
-      <ArtDescriptions
-        :label-width="132"
-        :data="record"
-        :items="primaryItems"
-        :columns="2"
-        :tablet-columns="2"
-        :mobile-columns="1"
-        empty-text="—"
-      />
-    </section>
-
-    <section class="operational-master-detail__section">
-      <ArtSectionTitle title="补充与审计" />
-      <ArtDescriptions
-        :label-width="132"
-        :data="record"
-        :items="auditItems"
-        :columns="2"
-        :tablet-columns="2"
-        :mobile-columns="1"
-        empty-text="—"
-      />
-    </section>
+    <ElTabs v-if="sections.length > 1" v-model="activeTab">
+      <ElTabPane
+        v-for="section in sections"
+        :key="section.key"
+        :name="section.key"
+        :label="section.title"
+        :lazy="false"
+      >
+        <ArtDescriptions
+          :label-width="132"
+          :data="record"
+          :items="section.items"
+          :columns="2"
+          :tablet-columns="2"
+          :mobile-columns="1"
+          empty-text="—"
+        />
+      </ElTabPane>
+    </ElTabs>
+    <ArtDescriptions
+      v-else
+      :label-width="132"
+      :data="record"
+      :items="sections[0]?.items || []"
+      :columns="2"
+      :tablet-columns="2"
+      :mobile-columns="1"
+      empty-text="—"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
-  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import type {
     MasterGroup,
     MasterReferenceOption,
@@ -90,26 +93,7 @@
     }
   }
 
-  const primaryItems = computed<ArtDescriptionItem<OperationalMasterRecord>[]>(() => [
-    {
-      key: 'tenantId',
-      label: '所属租户',
-      field: 'tenantId',
-      formatter: (value) =>
-        props.tenantOptions.find((item) => item.value === value)?.label || '当前租户'
-    },
-    ...props.config.fields
-      .filter((field) => !['remark'].includes(String(field.key)))
-      .map(toDescriptionItem)
-  ])
-
-  const auditItems = computed<ArtDescriptionItem<OperationalMasterRecord>[]>(() => [
-    {
-      key: 'remark',
-      label: '备注',
-      field: 'remark',
-      span: 2
-    },
+  const auditItems: ArtDescriptionItem<OperationalMasterRecord>[] = [
     {
       key: 'createTime',
       label: '创建时间',
@@ -122,16 +106,43 @@
       field: 'updateTime',
       format: 'datetime'
     }
-  ])
+  ]
+  const sections = computed(() => {
+    const assigned = new Set(props.config.formSections.flatMap((section) => section.fieldKeys))
+    return props.config.formSections.map((section, index) => {
+      const fields = section.fieldKeys.flatMap((key) => {
+        const field = props.config.fields.find((field) => field.key === key)
+        return field ? [field] : []
+      })
+      if (index === 0)
+        fields.push(...props.config.fields.filter((field) => !assigned.has(field.key)))
+      const items = fields.map(toDescriptionItem)
+      if (index === 0) {
+        items.unshift({
+          key: 'tenantId',
+          label: '所属租户',
+          field: 'tenantId',
+          formatter: (value) =>
+            props.tenantOptions.find((item) => item.value === value)?.label || '当前租户'
+        })
+        items.push(...auditItems)
+      }
+      return { key: section.key, title: section.title, items }
+    })
+  })
+  const activeTab = ref('')
+  watch(
+    () => [props.config.kind, props.record.id],
+    () => {
+      activeTab.value = sections.value[0]?.key || ''
+    },
+    { immediate: true }
+  )
 </script>
 
 <style scoped lang="scss">
   .operational-master-detail {
     display: grid;
-    gap: 22px;
-
-    &__section {
-      min-width: 0;
-    }
+    min-width: 0;
   }
 </style>

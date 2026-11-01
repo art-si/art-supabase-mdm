@@ -25,14 +25,13 @@
         :span="12"
         :gutter="20"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       />
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
@@ -56,6 +55,7 @@
     parent?: MasterGroup
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [] }>()
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
   const dialogRef = ref<ArtDialogExpose<GroupDialogOpenData>>()
@@ -109,7 +109,6 @@
     (value) => value === 'true' || value === '1'
   )
   const items = computed<FormItem[]>(() => [
-    { key: 'hierarchy', label: '分组层级', type: 'divider', span: 24 },
     {
       key: 'tenantId',
       label: '所属租户',
@@ -123,15 +122,20 @@
       label: '上级分组',
       type: 'treeSelect',
       span: 24,
-      options: form.groups
-        .filter((row) => row.id !== form.id && row.tenantId === form.model.tenantId)
-        .map((row) => ({
-          label: `${row.name}（${row.code}）`,
-          value: row.id,
-          parentId: row.parentId
-        }))
+      options: optionTree.removeNodesByCondition(
+        optionTree.listToTree(
+          form.groups
+            .filter((row) => row.tenantId === form.model.tenantId)
+            .map((row) => ({
+              label: `${row.name}（${row.code}）`,
+              value: row.id,
+              parentId: row.parentId
+            }))
+        ),
+        (node) => node.value === form.id
+      ).tree,
+      props: { clearable: true, filterable: true, checkStrictly: true }
     },
-    { key: 'identity', label: '分组信息', type: 'divider', span: 24 },
     { key: 'code', label: '分组编码', type: 'input', props: { maxlength: 60 } },
     { key: 'name', label: '分组名称', type: 'input', props: { maxlength: 100 } },
     {

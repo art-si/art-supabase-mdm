@@ -5,12 +5,7 @@
       type="info"
       :closable="false"
     />
-    <ArtForm
-      v-model="form"
-      :items="[{ key: 'rows', label: '休息时段', span: 24 }]"
-      :show-submit="false"
-      :show-reset="false"
-    >
+    <ArtForm v-model="form" :items="[{ key: 'rows', label: '休息时段', span: 24 }]">
       <template #rows>
         <div class="break-dialog">
           <div v-for="(row, index) in form.rows" :key="index" class="break-dialog__row">

@@ -29,8 +29,7 @@
           <MasterDeleteProcessingNotice :table="tableRef" />
           <ArtTableQuery
             ref="tableRef"
-            :model-value="search"
-            @update:model-value="replaceReactiveModel(search, $event)"
+            v-model="search"
             :api-fn="fetchData"
             :search-items="searchItems"
             :columns-factory="columnsFactory"
@@ -230,9 +229,9 @@
           </ElTabs>
         </div>
       </ArtDrawer>
-      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
@@ -248,7 +247,6 @@
   import { formatMaterialSource } from '@/utils/business/material-source'
 
   import { ElImage, ElTag } from 'element-plus'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -301,9 +299,7 @@
     handleOpen: (data: ArchiveDialogOpenData) => Promise<void>
   }
   type QueryParams = Omit<MaterialArchiveQuery, 'tenantId'> & Api.Common.PaginationParams
-  const { confirmDelete } = useArtFeedback()
-  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard('mdm_material', '物料')
-  const deleteBusy = ref(false)
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard('mdm_material', '物料')
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
@@ -336,7 +332,7 @@
   const optionsError = ref('')
   const optionsLoaded = ref(false)
   const overview = reactive({ total: 0, enabled: 0, purchase: 0 })
-  const search = reactive({
+  const search = ref({
     keyword: '',
     materialTypeId: undefined as string | undefined,
     status: undefined as 'enabled' | 'disabled' | undefined
@@ -455,9 +451,10 @@
       label: '启用',
       icon: 'ri:checkbox-circle-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setMaterialArchivesEnabled(
-          selectedRows.map((item) => String(item.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((item) => String(item.id)),
           true
         )
         await api.refreshUpdate()
@@ -468,9 +465,10 @@
       label: '停用',
       icon: 'ri:forbid-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setMaterialArchivesEnabled(
-          selectedRows.map((item) => String(item.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((item) => String(item.id)),
           false
         )
         await api.refreshUpdate()
@@ -826,28 +824,18 @@
   const removeMaterials = async (
     rows: Array<Pick<MaterialArchive, 'id' | 'materialName' | 'materialCode'>>
   ): Promise<void> => {
-    if (deleteBusy.value || !rows.length) return
-    deleteBusy.value = true
-    const resources = rows.map((row) => ({
-      id: row.id,
-      label: `${row.materialName} · ${row.materialCode}`
-    }))
-    try {
-      if (await inspectDeleteReferences(resources)) return
-      await confirmDelete(
-        rows.length === 1
-          ? `确定删除物料“${rows[0].materialName}”吗？`
-          : `确定删除选中的 ${rows.length} 条物料档案吗？`
-      )
-      await deleteMaterialArchives(rows.map((row) => row.id))
-      await tableRef.value?.refreshRemove()
-    } catch (cause) {
-      if (cause !== 'cancel' && cause !== 'close') {
-        ElMessage.error(getFriendlySupabaseErrorMessage(cause, '物料删除失败，请重试'))
+    await deleteRecords({
+      resources: rows.map((row) => ({
+        id: row.id,
+        label: `${row.materialName} · ${row.materialCode}`
+      })),
+      permission: 'MdmMaterialArchive:Delete',
+      remove: () => deleteMaterialArchives(rows.map((row) => row.id)),
+      successMessage: '物料已删除',
+      onDeleted: async () => {
+        await tableRef.value?.refreshRemove()
       }
-    } finally {
-      deleteBusy.value = false
-    }
+    })
   }
   const removeMaterial = (row: MaterialArchive): Promise<void> => removeMaterials([row])
   const descendantCategoryIds = (id: string): string[] => {
@@ -998,7 +986,11 @@
     ],
     () => {
       selectedCategoryId.value = ''
-      replaceReactiveModel(search, { keyword: '', materialTypeId: undefined, status: undefined })
+      replaceReactiveModel(search.value, {
+        keyword: '',
+        materialTypeId: undefined,
+        status: undefined
+      })
       void tableRef.value?.refreshContext()
     }
   )

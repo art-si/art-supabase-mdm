@@ -58,8 +58,12 @@
       ref="qrDialog"
     />
   </div>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   const { confirmAction } = useArtFeedback()
   import { ref, reactive, computed, watch } from 'vue'
@@ -110,6 +114,7 @@
   import DevicesDialog from './modules/devices-dialog.vue'
   import DefaultsDialog from './modules/defaults-dialog.vue'
   import QrDialog from './modules/qr-dialog.vue'
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard('mdm_work_center', '工作中心')
   defineOptions({ name: 'MdmWorkCenter' })
   const user = useUserStore()
   const tenantScopeStore = useTenantScopeStore()
@@ -235,17 +240,15 @@
       departmentId: scope.selected
     })
   async function remove(row: WorkCenter) {
-    try {
-      await confirmAction(`确认删除“${row.name}”？设备和临时人员配置将一并移除。`, '删除工作中心', {
-        type: 'warning'
-      })
-      await deleteWorkCenters([row.id])
-      await refresh()
-      return true
-    } catch {
-      /* API owns feedback. */
-      return false
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmWorkCenter:Delete',
+      remove: () => deleteWorkCenters([row.id]),
+      successMessage: '工作中心已删除',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
   }
   async function updateProcesses(row: WorkCenter) {
     try {
@@ -526,10 +529,18 @@
   const selectionActions: ArtTableQueryHeaderAction[] = [
     {
       type: 'delete',
+      confirm: false,
       permission: 'MdmWorkCenter:Delete',
       onClick: async (c) => {
-        await deleteWorkCenters(c.selectedRows.map((r) => String(r.id)))
-        await refresh()
+        await deleteRecords({
+          resources: c.selectedRows.map((row) => ({ id: String(row.id), label: String(row.name) })),
+          permission: 'MdmWorkCenter:Delete',
+          remove: () => deleteWorkCenters(c.selectedRows.map((row) => String(row.id))),
+          successMessage: '工作中心已删除',
+          onDeleted: async () => {
+            await refresh()
+          }
+        })
       }
     }
   ]

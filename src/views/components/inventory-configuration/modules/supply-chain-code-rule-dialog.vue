@@ -26,8 +26,6 @@
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #scope>
           <div class="code-rule-dialog__scope" role="group" aria-label="适用范围">
@@ -202,7 +200,6 @@
         placeholder: '请选择规则归属租户'
       }
     },
-    { label: '基本信息', key: 'identity', type: 'divider', span: 24 },
     {
       label: '规则编码',
       key: 'ruleCode',
@@ -228,7 +225,6 @@
       type: 'segment',
       options: statusOptions
     },
-    { label: '适用范围', key: 'scopeDivider', type: 'divider', span: 24 },
     { label: '业务对象', key: 'scope', type: 'slot', span: 16 },
     {
       label: '每个物料单独编码',
@@ -302,6 +298,7 @@
     {
       prop: 'format',
       label: '格式 / 设置值',
+      headerTooltip: '常量属性必须填写设置值；日期属性选择日期格式，其余属性可按业务需要配置。',
       minWidth: 160,
       rules: {
         validator: ({ row }) =>
@@ -327,6 +324,11 @@
     {
       prop: 'length',
       label: '长度',
+      headerTooltip: '可选，填写时为 1–60 位；留空按属性完整值生成。',
+      rules: {
+        validator: ({ value }) => value == null || (Number(value) >= 1 && Number(value) <= 60),
+        message: '编码段长度须为 1–60 位'
+      },
       width: 96,
       formatter: (row) => (
         <ElInputNumber

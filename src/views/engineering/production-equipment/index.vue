@@ -122,8 +122,7 @@
             </div>
             <ArtTableQuery
               ref="tableRef"
-              :model-value="search"
-              @update:model-value="replaceReactiveModel(search, $event)"
+              v-model="search"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -211,50 +210,64 @@
               }}</strong></div
             >
           </div>
-          <ArtSectionCard
-            title="设备身份"
-            subtitle="跨生产与设备运维共享的识别信息"
-            preserve-content-structure
-          >
-            <ArtDescriptions
-              :data="detailRow"
-              :columns="2"
-              :items="identityDetails"
-              empty-text="—"
-            />
-          </ArtSectionCard>
-          <ArtSectionCard
-            title="现场接入"
-            subtitle="三色灯、安灯与数据采集基线"
-            preserve-content-structure
-          >
-            <ArtDescriptions
-              :data="detailRow"
-              :columns="2"
-              :items="connectionDetails"
-              empty-text="—"
-            />
-          </ArtSectionCard>
-          <ArtSectionCard
-            title="审计信息"
-            subtitle="最近一次主档维护记录"
-            preserve-content-structure
-          >
-            <ArtDescriptions :data="detailRow" :columns="2" :items="auditDetails" empty-text="—" />
-          </ArtSectionCard>
+          <ElTabs v-model="activeDetailTab">
+            <ElTabPane name="identity" label="设备身份">
+              <ArtSectionCard
+                title="设备身份"
+                subtitle="跨生产与设备运维共享的识别信息"
+                preserve-content-structure
+              >
+                <ArtDescriptions
+                  :data="detailRow"
+                  :columns="2"
+                  :items="identityDetails"
+                  empty-text="—"
+                />
+              </ArtSectionCard>
+            </ElTabPane>
+            <ElTabPane name="connection" label="现场与维护">
+              <div class="space-y-4">
+                <ArtSectionCard
+                  title="现场接入"
+                  subtitle="三色灯、安灯与数据采集基线"
+                  preserve-content-structure
+                >
+                  <ArtDescriptions
+                    :data="detailRow"
+                    :columns="2"
+                    :items="connectionDetails"
+                    empty-text="—"
+                  />
+                </ArtSectionCard>
+                <ArtSectionCard
+                  title="审计信息"
+                  subtitle="最近一次主档维护记录"
+                  preserve-content-structure
+                >
+                  <ArtDescriptions
+                    :data="detailRow"
+                    :columns="2"
+                    :items="auditDetails"
+                    empty-text="—"
+                  />
+                </ArtSectionCard>
+              </div>
+            </ElTabPane>
+          </ElTabs>
         </div>
       </ArtDrawer>
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElAvatar, ElImage, ElTag } from 'element-plus'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -306,11 +319,15 @@
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const configuredScopeModeOptions = useDictionaryOptions('mdmProductionEquipmentScopeMode')
   const tenantScopeStore = useTenantScopeStore()
-  const { confirmAction } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_production_equipment',
+    '生产设备'
+  )
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
   const drawerRef = ref<ArtDrawerExpose<ProductionEquipment>>()
+  const activeDetailTab = ref('identity')
   const detailRow = shallowRef<ProductionEquipment>()
   const scopeMode = ref<ScopeMode>('category')
   const activeScopeId = ref('')
@@ -329,7 +346,7 @@
     unassigned: 0
   })
   const currentTotal = ref(0)
-  const search = reactive({ keyword: '', status: undefined as ProductionEquipmentQuery['status'] })
+  const search = ref({ keyword: '', status: undefined as ProductionEquipmentQuery['status'] })
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const visibleTenantId = computed(() => effectiveTenantId.value ?? '')
   const departmentTree = computed(
@@ -474,6 +491,7 @@
   watch(scopeMode, clearScope)
 
   const showDetail = async (row: ProductionEquipment): Promise<void> => {
+    activeDetailTab.value = 'identity'
     detailRow.value = row
     await nextTick()
     await drawerRef.value?.handleOpen(row, {
@@ -502,20 +520,27 @@
       label: '删除',
       icon: 'ri:delete-bin-6-line',
       color: 'var(--el-color-danger)',
-      auth: 'MdmProductionEquipment:Delete'
+      auth: 'MdmProductionEquipment:Delete',
+      disabled: deleteBusy.value
     }
   ]
+  async function removeRows(
+    rows: ProductionEquipment[],
+    onDeleted: () => unknown = refresh
+  ): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.equipmentName })),
+      permission: 'MdmProductionEquipment:Delete',
+      remove: () => deleteProductionEquipment(rows.map((row) => row.id)),
+      successMessage: '生产设备已删除',
+      onDeleted: async () => {
+        await onDeleted()
+      }
+    })
+  }
   const handleMore = async (item: ButtonMoreItem, row: ProductionEquipment): Promise<void> => {
     if (item.key === 'copy') return openDialog(row, true)
-    if (item.key === 'delete') {
-      await confirmAction(
-        `确定删除生产设备“${row.equipmentName}”吗？已被工作中心引用的设备需先解除绑定。`,
-        '删除生产设备',
-        { type: 'warning' }
-      )
-      await deleteProductionEquipment([row.id])
-      return refresh()
-    }
+    if (item.key === 'delete') return removeRows([row])
     await setProductionEquipmentEnabled([row.id], item.key === 'enable')
     refresh()
   }
@@ -638,9 +663,10 @@
       icon: 'ri:checkbox-circle-line',
       permission: 'MdmProductionEquipment:Enable',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setProductionEquipmentEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((row) => String(row.id)),
           true
         )
         await api.refreshUpdate()
@@ -651,9 +677,10 @@
       icon: 'ri:forbid-line',
       permission: 'MdmProductionEquipment:Disable',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setProductionEquipmentEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((row) => String(row.id)),
           false
         )
         await api.refreshUpdate()
@@ -661,12 +688,13 @@
     },
     {
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       permission: 'MdmProductionEquipment:Delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 台生产设备吗？`,
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteProductionEquipment(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
+        await removeRows(selectedRows as ProductionEquipment[], () => api.refreshRemove())
       }
     }
   ]
@@ -1076,12 +1104,15 @@
     }
 
     .equipment-detail__hero {
-      grid-template-columns: 80px minmax(0, 1fr);
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: var(--art-space-3);
+      padding: var(--art-space-3);
     }
 
     .equipment-detail__image {
-      width: 80px;
-      height: 80px;
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
     }
 
     .equipment-detail__hero .el-tag {
@@ -1090,16 +1121,22 @@
     }
 
     .equipment-detail__identity dl {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--art-space-2);
     }
 
     .equipment-detail__summary {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .equipment-detail__summary > div + div {
-      border-top: 1px solid var(--el-border-color-lighter);
-      border-left: 0;
+    .equipment-detail__summary > div {
+      min-width: 0;
+      padding: var(--art-space-2);
+
+      strong {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
     }
   }
 </style>

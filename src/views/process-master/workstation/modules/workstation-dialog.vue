@@ -22,8 +22,6 @@
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #responsiblePersonId>
           <ArtEmployeeSelect
@@ -108,7 +106,6 @@
   )
 
   const formItems = computed<FormItem[]>(() => [
-    { key: 'identity', label: '工位识别', type: 'divider', span: 24 },
     {
       key: 'workstationCode',
       label: '工位编号',
@@ -122,7 +119,6 @@
       type: 'input',
       props: { maxlength: 120, placeholder: '如 驾驶室装配一号位', clearable: true }
     },
-    { key: 'assignment', label: '责任与设备', type: 'divider', span: 24 },
     {
       key: 'responsiblePersonId',
       label: '工位负责人',
@@ -135,7 +131,6 @@
       type: 'input',
       props: { maxlength: 64, placeholder: '输入完整 SIM 编号', clearable: true }
     },
-    { key: 'control', label: '可用性控制', type: 'divider', span: 24 },
     {
       key: 'enabled',
       label: '启用状态',

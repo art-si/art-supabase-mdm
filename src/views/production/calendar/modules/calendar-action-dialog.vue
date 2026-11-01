@@ -15,15 +15,7 @@
         :closable="false"
         show-icon
       />
-      <ArtForm
-        ref="formRef"
-        v-model="form.model"
-        :items="items"
-        :show-submit="false"
-        :show-reset="false"
-        :span="24"
-        label-position="top"
-      />
+      <ArtForm ref="formRef" v-model="form.model" :items="items" :span="24" label-position="top" />
     </div>
   </ArtDialog>
 </template>

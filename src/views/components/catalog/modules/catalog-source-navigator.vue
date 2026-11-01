@@ -1,61 +1,57 @@
 <template>
-  <ArtSectionCard
-    :show-scrollbar="false"
-    class="catalog-navigator"
-    title="主档分类"
-    subtitle="按业务类型定位资料"
-    body-class="catalog-navigator__body"
-  >
+  <ArtSectionCard class="catalog-navigator" title="主档分类" subtitle="按业务类型定位资料">
     <template #actions
       ><ElTag type="info" effect="plain">{{ sources.length }} 类</ElTag></template
     >
-    <ElInput
-      v-if="sources.length > 4"
-      v-model="keyword"
-      clearable
-      placeholder="搜索主档分类"
-      aria-label="搜索主档分类"
-    >
-      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-    </ElInput>
-    <ElScrollbar class="catalog-navigator__scroll">
-      <nav aria-label="主档分类">
-        <button
-          type="button"
-          :class="{ 'is-current': !selected }"
-          :aria-current="!selected ? 'true' : undefined"
-          @click="$emit('select', undefined)"
-        >
-          <ArtSvgIcon icon="ri:stack-line" /><span
-            ><strong>全部主档</strong><small>查看本目录全部类型</small></span
-          ><ArtSvgIcon v-if="!selected" icon="ri:check-line" />
-        </button>
-        <button
-          v-for="source in visibleSources"
-          :key="source.type"
-          type="button"
-          :class="{ 'is-current': selected === source.type }"
-          :aria-current="selected === source.type ? 'true' : undefined"
-          @click="$emit('select', source.type)"
-        >
-          <ArtSvgIcon icon="ri:folder-3-line" /><span
-            ><strong>{{ source.label }}</strong
-            ><small
-              >{{ source.app === 'platform' ? '平台' : source.app.toUpperCase() }} ·
-              {{ source.kind === 'relation' ? '关系明细' : '权威主档' }}</small
-            ></span
-          ><ArtSvgIcon v-if="selected === source.type" icon="ri:check-line" />
-        </button>
-        <ArtEmptyState
-          v-if="!visibleSources.length"
-          size="compact"
-          title="未找到分类"
-          description="试试其他分类名称。"
-        />
-      </nav>
-    </ElScrollbar>
-    <p class="catalog-navigator__note"
-      ><ArtSvgIcon icon="ri:information-line" />主档资料由来源系统维护，本页用于查询与核对。</p
+    <template v-if="sources.length > 4" #toolbar
+      ><ElInput
+        v-if="sources.length > 4"
+        v-model="keyword"
+        clearable
+        placeholder="搜索主档分类"
+        aria-label="搜索主档分类"
+      >
+        <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+      </ElInput>
+    </template>
+    <nav aria-label="主档分类">
+      <button
+        type="button"
+        :class="{ 'is-current': !selected }"
+        :aria-current="!selected ? 'true' : undefined"
+        @click="$emit('select', undefined)"
+      >
+        <ArtSvgIcon icon="ri:stack-line" /><span
+          ><strong>全部主档</strong><small>查看本目录全部类型</small></span
+        ><ArtSvgIcon v-if="!selected" icon="ri:check-line" />
+      </button>
+      <button
+        v-for="source in visibleSources"
+        :key="source.type"
+        type="button"
+        :class="{ 'is-current': selected === source.type }"
+        :aria-current="selected === source.type ? 'true' : undefined"
+        @click="$emit('select', source.type)"
+      >
+        <ArtSvgIcon icon="ri:folder-3-line" /><span
+          ><strong>{{ source.label }}</strong
+          ><small
+            >{{ source.app === 'platform' ? '平台' : source.app.toUpperCase() }} ·
+            {{ source.kind === 'relation' ? '关系明细' : '权威主档' }}</small
+          ></span
+        ><ArtSvgIcon v-if="selected === source.type" icon="ri:check-line" />
+      </button>
+      <ArtEmptyState
+        v-if="!visibleSources.length"
+        size="compact"
+        title="未找到分类"
+        description="试试其他分类名称。"
+      />
+    </nav>
+    <template #footer
+      ><p class="catalog-navigator__note"
+        ><ArtSvgIcon icon="ri:information-line" />主档资料由来源系统维护，本页用于查询与核对。</p
+      ></template
     >
   </ArtSectionCard>
 </template>
@@ -81,19 +77,6 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-
-    :deep(.catalog-navigator__body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      gap: 16px;
-      min-height: 0;
-    }
-
-    &__scroll {
-      flex: 1;
-      min-height: 0;
-    }
 
     nav {
       display: grid;

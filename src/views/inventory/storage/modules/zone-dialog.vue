@@ -2,21 +2,18 @@
   <ArtDialog ref="dialogRef" size="lg">
     <ArtForm
       ref="formRef"
-      :model-value="form"
-      @update:model-value="replaceReactiveModel(form, $event)"
+      v-model="form"
       :items="items"
       :rules="rules"
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     />
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
+  import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -37,6 +34,7 @@
     warehouse: StorageWarehouse
     row?: StorageZone
   }
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<ZoneDialogContext>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -44,7 +42,7 @@
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const context = shallowRef<ZoneDialogContext>()
   const categories = ref<MaterialCategory[]>([])
-  const form = reactive<StorageZoneInput>({
+  const form = ref<StorageZoneInput>({
     warehouseId: '',
     zoneCode: '',
     zoneName: '',
@@ -59,7 +57,7 @@
     remark: null
   })
   const items = computed<FormItem[]>(() => [
-    { key: 'identity', label: '库区身份', type: 'divider', span: 24 },
+    { key: 'identity', label: '库区身份', type: 'tab', span: 24 },
     {
       key: 'zoneCode',
       label: '库区编码',
@@ -75,14 +73,16 @@
     {
       key: 'categoryId',
       label: '存放物料分类',
-      type: 'select',
-      options: categories.value
-        .filter((category) => category.status === 'enabled')
-        .map((category) => ({
+      type: 'treeSelect',
+      options: optionTree.listToTree(
+        categories.value.map((category) => ({
           label: `${category.categoryName} · ${category.categoryCode}`,
-          value: category.id
-        })),
-      props: { clearable: true, filterable: true, placeholder: '不限物料分类' }
+          value: category.id,
+          parentId: category.parentId,
+          disabled: category.status !== 'enabled'
+        }))
+      ),
+      props: { clearable: true, filterable: true, checkStrictly: true, placeholder: '不限物料分类' }
     },
     {
       key: 'purpose',
@@ -91,7 +91,7 @@
       options: purposeOptions,
       props: { clearable: true, placeholder: '选择用途' }
     },
-    { key: 'policy', label: '存放控制', type: 'divider', span: 24 },
+    { key: 'policy', label: '存放控制', type: 'tab', span: 24 },
     { key: 'allowMix', label: '允许混放物料', type: 'switch' },
     { key: 'requiresInspection', label: '需要质检', type: 'switch' },
     { key: 'allowLock', label: '允许锁库', type: 'switch' },
@@ -131,12 +131,12 @@
       await saveStorageZone(
         context.value.warehouse.tenantId,
         {
-          ...form,
-          zoneCode: form.zoneCode.trim().toUpperCase(),
-          zoneName: form.zoneName.trim(),
-          categoryId: normalizeNullableText(form.categoryId),
-          purpose: normalizeNullableText(form.purpose),
-          remark: normalizeNullableText(form.remark)
+          ...form.value,
+          zoneCode: form.value.zoneCode.trim().toUpperCase(),
+          zoneName: form.value.zoneName.trim(),
+          categoryId: normalizeNullableText(form.value.categoryId),
+          purpose: normalizeNullableText(form.value.purpose),
+          remark: normalizeNullableText(form.value.remark)
         },
         context.value.row?.id
       )
@@ -149,7 +149,7 @@
   }
   async function handleOpen(data: ZoneDialogContext): Promise<void> {
     context.value = data
-    Object.assign(form, {
+    Object.assign(form.value, {
       warehouseId: data.warehouse.id,
       zoneCode: data.row?.zoneCode ?? '',
       zoneName: data.row?.zoneName ?? '',

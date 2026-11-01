@@ -1,4 +1,5 @@
 import type { RecordDeleteDependency } from '@/api/master-data-delete'
+import { fetchMasterGroups } from '@/api/master-groups'
 import { useSupabase, type RunQueryOptions } from '@/hooks/core/useSupabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
@@ -35,6 +36,7 @@ import type {
   ProcessSequenceInput,
   ProcessStep,
   ProcessStepInput,
+  ProcessRouteReference,
   ProcessRouteReferences,
   CenterPolicy,
   PersonnelCommonWorkCenterInput,
@@ -137,7 +139,13 @@ export async function saveOperationTemplate(input: OperationTemplateInput, id?: 
 export async function deleteOperationTemplates(ids: string[]) {
   await responseHandle(
     () => supabase.from('mdm_operation_template').delete().in('id', ids).select('id'),
-    { ...write, errorMessage: '删除失败，请先解除工艺路线绑定' }
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      errorMessage: '删除失败，请先解除工艺路线绑定'
+    }
   )
 }
 export async function setOperationTemplatesEnabled(ids: string[], enabled: boolean) {
@@ -320,6 +328,9 @@ export async function importWorkCenters(inputs: Array<WorkCenterInput & { tenant
 export async function deleteWorkCenters(ids: string[]) {
   await responseHandle(() => supabase.from('mdm_work_center').delete().in('id', ids).select('id'), {
     ...write,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     errorMessage: '删除失败，请先解除主工序位和工艺路线关联'
   })
 }
@@ -448,7 +459,7 @@ export async function saveCenterAdjustment(input: CenterAdjustmentInput) {
 export async function deleteCenterAdjustment(id: string) {
   await responseHandle(
     () => supabase.from('mdm_work_center_adjustment').delete().eq('id', id).select('id'),
-    write
+    { ...write, showMessage: false, showErrorMessage: false, showReferenceFeedback: false }
   )
 }
 export async function setCenterPeople(id: string, personIds: string[]) {
@@ -499,7 +510,7 @@ export async function addCenterDevices(input: {
 export async function deleteCenterDevice(id: string) {
   await responseHandle(
     () => supabase.from('mdm_work_center_device').delete().eq('id', id).select('id'),
-    write
+    { ...write, showMessage: false, showErrorMessage: false, showReferenceFeedback: false }
   )
 }
 export async function fetchProductionPersonSelector(
@@ -588,7 +599,10 @@ export async function fetchUnconfiguredPersonnelSelector(
     fieldAccess: { contactDetails: 'read', identityDetails: 'hidden' }
   }
 }
-export async function savePersonnelCommonWorkCenters(input: PersonnelCommonWorkCenterInput) {
+export async function savePersonnelCommonWorkCenters(
+  input: PersonnelCommonWorkCenterInput,
+  options: Pick<RunQueryOptions, 'showMessage' | 'showErrorMessage' | 'showReferenceFeedback'> = {}
+) {
   await responseHandle<number>(
     () =>
       supabase.rpc('mdm_save_personnel_common_work_centers', {
@@ -596,16 +610,55 @@ export async function savePersonnelCommonWorkCenters(input: PersonnelCommonWorkC
         p_department_id: input.departmentId,
         p_work_center_ids: uniq(input.workCenterIds)
       }),
-    { ...write, requireAffected: false, message: '常用工作中心已保存' }
+    { ...write, ...options, requireAffected: false, message: '常用工作中心已保存' }
   )
 }
+export async function fetchPersonnelWorkCenterDeleteResources(
+  personnelIds: string[],
+  workCenterId?: string
+): Promise<Array<{ id: string; personnelId: string; workCenterId: string }>> {
+  const { data, error } = await fetchAllRangePages<{
+    id: string
+    personnelId: string
+    workCenterId: string
+  }>(({ from, to }) =>
+    responseHandle(
+      () => {
+        let query = supabase
+          .from('mdm_personnel_common_work_center')
+          .select('id,personnel_id,work_center_id')
+          .in('personnel_id', personnelIds)
+          .order('id')
+          .range(from, to)
+        if (workCenterId) query = query.eq('work_center_id', workCenterId)
+        return query
+      },
+      {
+        breakReturn: true,
+        showErrorMessage: false,
+        errorMessage: '常用工作中心配置检查失败，请重试'
+      }
+    )
+  )
+  if (error || !data?.length)
+    throw new Error('未能读取待删除的常用工作中心配置，请刷新列表后重试', { cause: error })
+  return data
+}
+
 export async function deletePersonnelCommonWorkCenters(personnelIds: string[]) {
   await responseHandle<number>(
     () =>
       supabase.rpc('mdm_delete_personnel_common_work_centers', {
         p_personnel_ids: uniq(personnelIds)
       }),
-    { ...write, requireAffected: false, message: '常用工作中心配置已删除' }
+    {
+      ...write,
+      requireAffected: false,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '常用工作中心配置已删除'
+    }
   )
 }
 export async function fetchProductionReferences(
@@ -843,7 +896,13 @@ export async function saveProcessSequence(input: ProcessSequenceInput, id?: stri
 export async function deleteProcessSequence(id: string) {
   await responseHandle(
     () => supabase.from('mdm_process_route_sequence').delete().eq('id', id).select('id'),
-    { ...write, errorMessage: '删除失败，请先移除该序列下的工序' }
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      errorMessage: '删除失败，请先移除该序列下的工序'
+    }
   )
 }
 export async function fetchProcessSteps(
@@ -946,20 +1005,47 @@ export async function saveProcessSteps(inputs: ProcessStepInput[]) {
 export async function deleteProcessStep(id: string) {
   await responseHandle(
     () => supabase.from('mdm_process_route_step').delete().eq('id', id).select('id'),
-    { ...write, errorMessage: '删除失败，请先将 BOM 组件改分配到其他工序' }
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      errorMessage: '删除失败，请先将 BOM 组件改分配到其他工序'
+    }
   )
 }
 export async function deleteProcessSteps(ids: string[]) {
   await responseHandle(
     () => supabase.from('mdm_process_route_step').delete().in('id', ids).select('id'),
-    { ...write, message: `已删除 ${ids.length} 道工序` }
+    {
+      ...write,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: `已删除 ${ids.length} 道工序`
+    }
   )
 }
 export async function fetchProcessRouteReferences(tenantId?: string) {
-  const { data } = await responseHandle<ProcessRouteReferences>(
-    () => supabase.rpc('mdm_process_route_references', { p_tenant_id: tenantId || null }),
-    read
-  )
+  const { data } = await responseHandle<
+    Omit<ProcessRouteReferences, 'groups'> & { groups: ProcessRouteReference[] }
+  >(() => supabase.rpc('mdm_process_route_references', { p_tenant_id: tenantId || null }), read)
+  if (data) {
+    const groups = data.groups.length ? await fetchMasterGroups('process-route', tenantId) : []
+    // The RPC allows enabled groups but omits parent IDs; retain its selectable scope.
+    const allowedIds = new Set(data.groups.map((group) => group.id))
+    return {
+      ...data,
+      groups: groups.map((group) => ({
+        id: group.id,
+        tenantId: group.tenantId,
+        code: group.code,
+        name: group.name,
+        parentId: group.parentId,
+        disabled: !allowedIds.has(group.id)
+      }))
+    }
+  }
   return (
     data ?? {
       groups: [],

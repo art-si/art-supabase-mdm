@@ -1,0 +1,1 @@
+import{H as e,J as t,V as n,z as r}from"./_baseForOwn-CM7VRu6T.js";function i(i,a,o){if(!t(o))return!1;var s=typeof a;return(s==`number`?r(o)&&e(a,o.length):s==`string`&&a in o)?n(o[a],i):!1}export{i as t};

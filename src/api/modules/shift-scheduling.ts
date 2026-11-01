@@ -235,6 +235,9 @@ export async function saveShiftSchedule(
 export async function deleteShiftSchedule(id: string): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_shift_schedule_secure', { p_id: id }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: '排班已删除'
   })
 }

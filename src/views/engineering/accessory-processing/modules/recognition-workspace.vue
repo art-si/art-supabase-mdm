@@ -1,568 +1,618 @@
 <template>
   <ArtPermissionGuard permission="MdmAccessoryProcessing:View" resource-name="配件加工清单">
-    <div class="business-workspace-page min-w-0 space-y-4 p-4 lg:p-6">
-      <BusinessWorkspaceHeader
-        eyebrow="ACCESSORY PROCESSING"
-        title="配件加工清单"
-        description="上传图片、PDF 或 DOCX，逐件校对并确认保存，再到清单中分别生成编码、项目 BOM 和生产工单。"
-        icon="ri:shape-2-line"
-        :tags="[
-          { label: '一长度一加工件', type: 'primary' },
-          { label: '图文绑定', type: 'success' },
-          { label: '人工校对后生成', type: 'info' }
-        ]"
-      />
-
-      <ArtSectionCard
-        title="上传与识别"
-        subtitle="原件与逐件草图保存在当前租户的私有文件区。"
-        :preserve-content-structure="true"
-      >
-        <template #actions>
-          <ElButton @click="downloadFile(templateUrl, '配件加工清单模板.docx')">
-            <template #icon><ArtSvgIcon icon="ri:download-2-line" /></template>
-            下载统一模板
-          </ElButton>
-        </template>
-        <div class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
-          <div class="min-w-0 space-y-3">
-            <ArtUploadFile
-              v-model="workspace.sourceUrl"
-              title="选择加工清单"
-              :file-name="workspace.sourceName"
-              accept=".png,.jpg,.jpeg,.webp,.pdf,.docx"
-              tip="支持图片、PDF、DOCX；每次识别前 3 页，单文件不超过 20 MB。旧版 DOC 请先另存为 DOCX。"
-              :file-size="20 * 1024 * 1024"
-              :disabled="!workspace.tenantId || workspace.recognizing || workspace.saving"
-              :show-resource-picker="false"
-              :upload-request="uploadSource"
-              @resource-change="onSourceUploaded"
-            />
-          </div>
-          <div class="flex min-w-0 flex-col justify-end gap-3">
-            <ElButton
-              v-auth="'MdmAccessoryProcessing:Recognize'"
-              type="primary"
-              :disabled="!workspace.pages.length || workspace.recognizing || workspace.saving"
-              :loading="workspace.recognizing"
-              @click="recognize"
-              >识别清单内容</ElButton
-            >
-            <p class="text-xs leading-5 text-gray-500 dark:text-gray-400"
-              >识别内容仅作为草稿。生成前请逐条检查长度、数量、材质和草图。</p
-            >
-          </div>
-        </div>
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        id="accessory-recognition-result"
-        class="scroll-mt-28"
-        title="识别结果与校对"
-        :subtitle="`共 ${draft.items.length} 个独立加工件，来自 ${rowGroups.length} 个原表行；每种长度独立编码与下单。`"
-        :loading="workspace.recognizing"
-        :error="workspace.recognitionError"
-        error-title="清单识别未完成"
-        :empty="!draft.items.length && !workspace.recognitionError"
-        empty-title="尚无识别结果"
-        empty-description="上传清单并点击识别，或在下方打开识别记录、已保存草稿。"
-      >
-        <template #actions>
-          <ElTag v-if="draft.status === 'generated'" type="success">工单已生成</ElTag>
-          <ElTag v-else-if="draft.status === 'bom_ready'" type="primary">BOM 已生成</ElTag>
-          <ElTag v-else-if="draft.status === 'materials_ready'" type="primary">物料已生成</ElTag>
-          <ElTag v-else-if="draft.id" type="warning">已保存草稿</ElTag>
-        </template>
-        <template #error-action>
-          <ElButton type="primary" :disabled="!workspace.pages.length" @click="recognize"
-            >重新识别</ElButton
-          >
-        </template>
-        <div class="space-y-5 pt-4">
-          <div
-            v-if="!canSaveDraft || !['draft', 'materials_ready'].includes(draft.status)"
-            class="grid gap-4 rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 md:grid-cols-3 dark:bg-[var(--art-gray-200)]"
-          >
-            <div class="min-w-0">
-              <p class="text-xs text-gray-600 dark:text-gray-300">项目名称</p>
-              <p class="mt-1 break-words text-sm font-semibold">{{
-                draft.projectName || '待确认'
-              }}</p>
-            </div>
-            <div class="min-w-0">
-              <p class="text-xs text-gray-600 dark:text-gray-300">图纸名称</p>
-              <p class="mt-1 break-words text-sm font-semibold">{{
-                draft.drawingName || '待确认'
-              }}</p>
-            </div>
-            <div class="min-w-0">
-              <p class="text-xs text-gray-600 dark:text-gray-300">识别状态</p>
-              <p class="mt-1 text-sm font-medium">{{ draft.id ? '已保存清单' : '识别预览' }}</p>
-            </div>
-          </div>
-          <div
-            v-else
-            class="rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 dark:bg-[var(--art-gray-200)]"
-          >
-            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 class="text-sm font-semibold">{{
-                draft.status === 'materials_ready' ? '项目归属' : '清单归属'
-              }}</h3>
-              <p class="text-xs text-gray-600 dark:text-gray-300">
-                {{
-                  draft.status === 'materials_ready'
-                    ? '关联已有项目，或选择项目客户后生成项目 BOM。'
-                    : '关联已有项目，或填写名称与客户后在生成时创建项目。'
-                }}
-              </p>
-            </div>
-            <ArtForm
-              :model-value="draft"
-              :items="projectFormItems"
-              :span="8"
-              :gutter="16"
-              label-position="top"
-              :show-reset="false"
-              :show-submit="false"
-              root-class="accessory-inline-form mt-4"
-            >
-              <template #projectId>
-                <ElSelect
-                  v-model="draft.projectId"
-                  clearable
-                  filterable
-                  placeholder="留空按名称查找或创建"
-                  class="w-full"
-                  :disabled="workspace.projectsLoading"
-                  @change="onProjectSelected"
-                >
-                  <ElOption
-                    v-for="project in workspace.projects"
-                    :key="project.id"
-                    :value="project.id"
-                    :label="`${project.projectName} · ${project.projectCode}`"
-                  />
-                </ElSelect>
-              </template>
-              <template #customerId>
-                <ElSelect
-                  v-model="draft.customerId"
-                  clearable
-                  filterable
-                  :placeholder="draft.projectId ? '已有项目未关联客户' : '新建项目时必选'"
-                  class="w-full"
-                  :disabled="Boolean(draft.projectId)"
-                >
-                  <ElOption
-                    v-for="customer in workspace.customers"
-                    :key="customer.id"
-                    :value="customer.id"
-                    :label="customer.customerName"
-                  />
-                </ElSelect>
-              </template>
-              <template #categoryId>
-                <ElSelect
-                  v-model="draft.categoryId"
-                  clearable
-                  filterable
-                  placeholder="选择加工件所属分类"
-                  class="w-full"
-                  @change="onDefaultCategoryChanged"
-                >
-                  <ElOption
-                    v-for="category in workspace.categories"
-                    :key="category.id"
-                    :value="category.id"
-                    :label="category.categoryName"
-                  />
-                </ElSelect>
-              </template>
-            </ArtForm>
-            <p
-              v-if="draft.status === 'materials_ready'"
-              class="text-xs leading-5 text-gray-600 dark:text-gray-300"
-            >
-              已关联项目时自动沿用其客户；如需选择其他客户，请先清除“关联已有项目”。未关联项目时，系统会按名称查找；找不到则使用所选客户创建。保存项目归属或直接生成
-              BOM 均会保存当前选择。
+    <div ref="workspaceElement" class="accessory-recognition min-w-0">
+      <div class="accessory-recognition__summary">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="accessory-recognition__icon" aria-hidden="true">
+            <ArtSvgIcon icon="ri:scan-2-line" />
+          </span>
+          <div class="min-w-0">
+            <h3 class="break-words text-sm font-semibold">{{
+              draft.projectName || '配件清单识别'
+            }}</h3>
+            <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+              {{
+                draft.items.length
+                  ? `已载入 ${draft.items.length} 件加工件，校对后保存；每种长度独立编码。`
+                  : '上传原件 → 识别校对 → 保存清单，再生成物料、BOM 和工单。'
+              }}
             </p>
           </div>
-          <ElAlert v-if="draft.warnings.length" type="warning" :closable="false" show-icon>
-            <template #title>待核对提示 · {{ draft.warnings.length }} 项</template>
-            <ul class="mt-1 list-disc space-y-1 pl-4 text-sm">
-              <li v-for="(warning, index) in draft.warnings" :key="index">{{ warning }}</li>
-            </ul>
-          </ElAlert>
-          <div
-            v-if="canManageAccessory && draft.status !== 'generated'"
-            class="mt-5! flex flex-wrap items-center justify-between gap-4 rounded-[var(--custom-radius)] border border-gray-200 bg-[var(--art-gray-100)] p-4 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <ElTag v-if="draft.items.length && missingSketchCount" type="warning" size="small"
+            >待补草图 {{ missingSketchCount }}</ElTag
           >
-            <div class="min-w-0 flex-1 basis-64">
-              <p class="text-sm font-semibold">
-                {{
-                  draft.status === 'draft'
-                    ? missingSketchCount
-                      ? `${missingSketchCount} 件加工件待补草图`
-                      : '校对完成后保存清单'
-                    : '继续生成业务数据'
-                }}
-              </p>
-              <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
-                {{
-                  draft.status === 'draft'
-                    ? '保存后可在下方数据列表查看；生成前需为每件加工件关联独立草图。'
-                    : '保存项目归属后，请回到清单分别点击“转项目 BOM”和“转生产工单”。'
-                }}
-              </p>
+          <ElButton
+            v-if="
+              canSaveDraft &&
+              draft.items.length &&
+              ['draft', 'materials_ready'].includes(draft.status)
+            "
+            type="primary"
+            :loading="workspace.saving"
+            @click="draft.status === 'draft' ? saveDraft() : saveProjectAssignment()"
+            >{{ draft.status === 'draft' ? '确认并保存清单' : '保存项目归属' }}</ElButton
+          >
+        </div>
+      </div>
+
+      <ElTabs v-model="activeTab" class="accessory-recognition__tabs" aria-label="配件清单识别步骤">
+        <ElTabPane label="上传与识别" name="upload" :lazy="false">
+          <ArtSectionCard
+            title="上传与识别"
+            subtitle="原件与逐件草图保存在当前租户的私有文件区。"
+            :preserve-content-structure="true"
+          >
+            <div class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
+              <div class="min-w-0 space-y-3">
+                <ArtUploadFile
+                  v-model="workspace.sourceUrl"
+                  title="选择加工清单"
+                  :file-name="workspace.sourceName"
+                  accept=".png,.jpg,.jpeg,.webp,.pdf,.docx"
+                  tip="支持图片、PDF、DOCX；每次识别前 3 页，单文件不超过 20 MB。旧版 DOC 请先另存为 DOCX。"
+                  :file-size="20 * 1024 * 1024"
+                  :disabled="!workspace.tenantId || workspace.recognizing || workspace.saving"
+                  :show-resource-picker="false"
+                  :upload-request="uploadSource"
+                  @resource-change="onSourceUploaded"
+                />
+              </div>
+              <div class="flex min-w-0 flex-col justify-end gap-3">
+                <ElButton @click="downloadFile(templateUrl, '配件加工清单模板.docx')">
+                  <template #icon><ArtSvgIcon icon="ri:download-2-line" /></template>
+                  下载统一模板
+                </ElButton>
+                <ElButton
+                  v-auth="'MdmAccessoryProcessing:Recognize'"
+                  type="primary"
+                  :disabled="!workspace.pages.length || workspace.recognizing || workspace.saving"
+                  :loading="workspace.recognizing"
+                  @click="recognize"
+                  >识别清单内容</ElButton
+                >
+                <p class="text-xs leading-5 text-gray-500 dark:text-gray-400"
+                  >识别内容仅作为草稿。生成前请逐条检查长度、数量、材质和草图。</p
+                >
+              </div>
             </div>
-            <div class="flex min-w-0 flex-wrap items-center gap-2">
-              <ElButton
-                v-if="draft.status === 'draft' || draft.status === 'materials_ready'"
-                v-auth="'MdmAccessoryProcessing:SaveDraft'"
-                :disabled="workspace.saving"
-                :loading="workspace.saving"
-                @click="draft.status === 'draft' ? saveDraft() : saveProjectAssignment()"
-                >{{ draft.status === 'draft' ? '确认并保存清单' : '保存项目归属' }}</ElButton
+          </ArtSectionCard>
+        </ElTabPane>
+        <ElTabPane label="结果校对" name="result" :lazy="false">
+          <ArtSectionCard
+            id="accessory-recognition-result"
+            class="scroll-mt-28"
+            title="识别结果与校对"
+            :subtitle="`共 ${draft.items.length} 个独立加工件，来自 ${rowGroups.length} 个原表行；每种长度独立编码与下单。`"
+            :loading="workspace.recognizing"
+            :error="workspace.recognitionError"
+            error-title="清单识别未完成"
+            :empty="!draft.items.length && !workspace.recognitionError"
+            empty-title="尚无识别结果"
+            empty-description="上传清单完成识别，或从“记录与草稿”打开已有内容继续校对。"
+          >
+            <template #actions>
+              <ElTag v-if="draft.status === 'generated'" type="success">工单已生成</ElTag>
+              <ElTag v-else-if="draft.status === 'bom_ready'" type="primary">BOM 已生成</ElTag>
+              <ElTag v-else-if="draft.status === 'materials_ready'" type="primary"
+                >物料已生成</ElTag
               >
-            </div>
-          </div>
-          <div class="space-y-2">
-            <ElCollapse v-model="expandedRowKeys" class="accessory-result-collapse">
-              <ElCollapseItem v-for="group in rowGroups" :key="group.key" :name="group.key">
-                <template #title>
-                  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1">
-                    <span class="shrink-0 text-xs text-gray-600 dark:text-gray-300"
-                      >原表第 {{ group.rowNo }} 行</span
+              <ElTag v-else-if="draft.id" type="warning">已保存草稿</ElTag>
+            </template>
+            <template #error-action>
+              <ElButton type="primary" :disabled="!workspace.pages.length" @click="recognize"
+                >重新识别</ElButton
+              >
+            </template>
+            <div class="space-y-5 pt-4">
+              <div
+                v-if="!canSaveDraft || !['draft', 'materials_ready'].includes(draft.status)"
+                class="grid gap-4 rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 md:grid-cols-3 dark:bg-[var(--art-gray-200)]"
+              >
+                <div class="min-w-0">
+                  <p class="text-xs text-gray-600 dark:text-gray-300">项目名称</p>
+                  <p class="mt-1 break-words text-sm font-semibold">{{
+                    draft.projectName || '待确认'
+                  }}</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs text-gray-600 dark:text-gray-300">图纸名称</p>
+                  <p class="mt-1 break-words text-sm font-semibold">{{
+                    draft.drawingName || '待确认'
+                  }}</p>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs text-gray-600 dark:text-gray-300">识别状态</p>
+                  <p class="mt-1 text-sm font-medium">{{ draft.id ? '已保存清单' : '识别预览' }}</p>
+                </div>
+              </div>
+              <div
+                v-else
+                class="rounded-[var(--custom-radius)] bg-[var(--art-gray-100)] p-4 dark:bg-[var(--art-gray-200)]"
+              >
+                <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 class="text-sm font-semibold">{{
+                    draft.status === 'materials_ready' ? '项目归属' : '清单归属'
+                  }}</h3>
+                  <p class="text-xs text-gray-600 dark:text-gray-300">
+                    {{
+                      draft.status === 'materials_ready'
+                        ? '关联已有项目，或选择项目客户后生成项目 BOM。'
+                        : '关联已有项目，或填写名称与客户后在生成时创建项目。'
+                    }}
+                  </p>
+                </div>
+                <ArtForm
+                  ref="projectFormRef"
+                  :model-value="draft"
+                  :items="projectFormItems"
+                  :rules="projectRules"
+                  :span="8"
+                  :gutter="16"
+                  label-position="top"
+                  root-class="accessory-inline-form mt-4"
+                >
+                  <template #projectId>
+                    <ElSelect
+                      v-model="draft.projectId"
+                      clearable
+                      filterable
+                      placeholder="留空按名称查找或创建"
+                      class="w-full"
+                      :disabled="workspace.projectsLoading"
+                      @change="onProjectSelected"
                     >
-                    <strong class="min-w-0 break-words text-sm font-semibold">{{
-                      group.entries[0]?.item.name || '未命名构件'
-                    }}</strong>
-                    <span class="text-xs text-gray-600 dark:text-gray-300"
-                      >{{ group.entries.length }} 个加工件 · {{ group.lengthSummary }}</span
+                      <ElOption
+                        v-for="project in workspace.projects"
+                        :key="project.id"
+                        :value="project.id"
+                        :label="`${project.projectName} · ${project.projectCode}`"
+                      />
+                    </ElSelect>
+                  </template>
+                  <template #customerId>
+                    <ElSelect
+                      v-model="draft.customerId"
+                      clearable
+                      filterable
+                      :placeholder="draft.projectId ? '已有项目未关联客户' : '新建项目时必选'"
+                      class="w-full"
+                      :disabled="Boolean(draft.projectId)"
                     >
-                    <ElTag v-if="group.hasWarning" type="warning" size="small">需核对</ElTag>
-                  </div>
-                </template>
-                <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                  <div
-                    v-for="{ item, index } in group.entries"
-                    :key="item.id || `${item.rowNo}-${index}`"
+                      <ElOption
+                        v-for="customer in workspace.customers"
+                        :key="customer.id"
+                        :value="customer.id"
+                        :label="customer.customerName"
+                      />
+                    </ElSelect>
+                  </template>
+                  <template #categoryId>
+                    <ElTreeSelect
+                      v-model="draft.categoryId"
+                      :data="categoryTreeOptions"
+                      check-strictly
+                      clearable
+                      filterable
+                      placeholder="选择加工件所属分类"
+                      class="w-full"
+                      @change="onDefaultCategoryChanged"
+                    />
+                  </template>
+                </ArtForm>
+                <p
+                  v-if="draft.status === 'materials_ready'"
+                  class="text-xs leading-5 text-gray-600 dark:text-gray-300"
+                >
+                  已关联项目时自动沿用其客户；如需选择其他客户，请先清除“关联已有项目”。未关联项目时，系统会按名称查找；找不到则使用所选客户创建。保存项目归属或直接生成
+                  BOM 均会保存当前选择。
+                </p>
+              </div>
+              <ElAlert v-if="draft.warnings.length" type="warning" :closable="false" show-icon>
+                <template #title>待核对提示 · {{ draft.warnings.length }} 项</template>
+                <ul class="mt-1 list-disc space-y-1 pl-4 text-sm">
+                  <li v-for="(warning, index) in draft.warnings" :key="index">{{ warning }}</li>
+                </ul>
+              </ElAlert>
+              <div
+                v-if="canManageAccessory && draft.status !== 'generated'"
+                class="mt-5! flex flex-wrap items-center justify-between gap-4 rounded-[var(--custom-radius)] border border-gray-200 bg-[var(--art-gray-100)] p-4 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
+              >
+                <div class="min-w-0 flex-1 basis-64">
+                  <p class="text-sm font-semibold">
+                    {{
+                      draft.status === 'draft'
+                        ? missingSketchCount
+                          ? `${missingSketchCount} 件加工件待补草图`
+                          : '校对完成后保存清单'
+                        : '继续生成业务数据'
+                    }}
+                  </p>
+                  <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                    {{
+                      draft.status === 'draft'
+                        ? '保存后可在“记录与草稿”查看；生成前需为每件加工件关联独立草图。'
+                        : '保存项目归属后，请回到清单分别点击“转项目 BOM”和“转生产工单”。'
+                    }}
+                  </p>
+                </div>
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <ElButton v-if="draft.status === 'draft'" @click="activeTab = 'upload'"
+                    >查看原件</ElButton
                   >
-                    <div class="flex min-w-0 flex-wrap items-center gap-4 px-4 py-3">
-                      <span
-                        class="w-9 shrink-0 text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300"
-                        >#{{ String(index + 1).padStart(2, '0') }}</span
-                      >
-                      <div class="min-w-28">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">加工长度</p>
-                        <p class="mt-0.5 text-lg font-semibold tabular-nums leading-6"
-                          >{{ item.lengthM.toFixed(3) }}
-                          <span class="text-xs font-normal text-gray-600 dark:text-gray-300"
-                            >m</span
-                          ></p
+                  <ElButton v-else @click="activeTab = 'records'">查看已保存清单</ElButton>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <ElCollapse v-model="expandedRowKeys" class="accessory-result-collapse">
+                  <ElCollapseItem v-for="group in rowGroups" :key="group.key" :name="group.key">
+                    <template #title>
+                      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1">
+                        <span class="shrink-0 text-xs text-gray-600 dark:text-gray-300"
+                          >原表第 {{ group.rowNo }} 行</span
                         >
-                      </div>
-                      <div class="min-w-14">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">数量</p>
-                        <p class="mt-0.5 text-sm font-semibold tabular-nums"
-                          >{{ item.quantity }} 件</p
+                        <strong class="min-w-0 break-words text-sm font-semibold">{{
+                          group.entries[0]?.item.name || '未命名构件'
+                        }}</strong>
+                        <span class="text-xs text-gray-600 dark:text-gray-300"
+                          >{{ group.entries.length }} 个加工件 · {{ group.lengthSummary }}</span
                         >
+                        <ElTag v-if="group.hasWarning" type="warning" size="small">需核对</ElTag>
                       </div>
-                      <div class="min-w-18">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">展宽</p>
-                        <p class="mt-0.5 text-sm font-medium tabular-nums"
-                          >{{ item.widthMm ?? '—' }} mm</p
-                        >
-                      </div>
-                      <div class="min-w-36 flex-1">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">材质与颜色</p>
-                        <p class="mt-0.5 break-words text-sm font-medium">{{
-                          item.materialColor || '待确认'
-                        }}</p>
-                      </div>
-                      <div v-if="item.remark" class="min-w-36 flex-1">
-                        <p class="text-xs text-gray-600 dark:text-gray-300">备注</p>
-                        <p class="mt-0.5 break-words text-sm">{{ item.remark }}</p>
-                      </div>
-                      <div class="flex w-28 shrink-0 items-center gap-2">
-                        <ElImage
-                          v-if="workspace.sketchUrls[index]"
-                          :src="workspace.sketchUrls[index]"
-                          :preview-src-list="[workspace.sketchUrls[index]]"
-                          :preview-teleported="true"
-                          :z-index="10000"
-                          :alt="`${item.name} ${item.lengthM} 米加工草图`"
-                          fit="contain"
-                          class="h-14 w-16 rounded border border-gray-200 bg-white dark:border-gray-700"
-                        />
-                        <span v-else class="text-xs font-medium text-amber-700 dark:text-amber-400"
-                          >待补草图</span
-                        >
-                      </div>
-                      <ElButton
-                        v-if="canSaveDraft && draft.status === 'draft'"
-                        link
-                        type="primary"
-                        :aria-label="`${editingIndex === index ? '收起' : '校对'}加工件 ${index + 1}`"
-                        @click="editingIndex = editingIndex === index ? null : index"
-                        >{{ editingIndex === index ? '收起' : '校对' }}</ElButton
+                    </template>
+                    <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                      <div
+                        v-for="{ item, index } in group.entries"
+                        :key="item.id || `${item.rowNo}-${index}`"
                       >
-                      <ElButton
-                        v-if="canSaveDraft && !draft.id && draft.status === 'draft'"
-                        link
-                        type="danger"
-                        :aria-label="`从识别预览移除加工件 ${index + 1}`"
-                        @click="removePreviewItem(index)"
-                        >移除</ElButton
-                      >
-                      <ElTag v-else-if="item.materialId" type="success" size="small"
-                        >已生成物料</ElTag
-                      >
-                    </div>
-                    <div
-                      v-if="editingIndex === index && canSaveDraft && draft.status === 'draft'"
-                      class="border-t border-gray-100 bg-[var(--art-gray-100)] px-4 py-5 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
-                    >
-                      <div class="mb-4">
-                        <h4 class="text-sm font-semibold"
-                          >校对加工件 #{{ String(index + 1).padStart(2, '0') }}</h4
-                        >
-                        <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
-                          核对尺寸、数量及物料属性；每种长度对应独立加工件和草图。
-                        </p>
-                      </div>
-                      <ArtForm
-                        :model-value="item"
-                        :items="correctionFormItems"
-                        :span="8"
-                        :gutter="16"
-                        label-position="top"
-                        :show-reset="false"
-                        :show-submit="false"
-                        root-class="accessory-inline-form"
-                      >
-                        <template #specificationModel>
-                          <ElInput
-                            v-model="item.specificationModel"
-                            maxlength="120"
-                            :placeholder="defaultSpecification(item)"
-                          />
-                        </template>
-                        <template #sketchPath>
-                          <div
-                            class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--default-box-color)]"
+                        <div class="flex min-w-0 flex-wrap items-center gap-4 px-4 py-3">
+                          <span
+                            class="w-9 shrink-0 text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300"
+                            >#{{ String(index + 1).padStart(2, '0') }}</span
                           >
-                            <ArtUploadImage
-                              :model-value="workspace.sketchUrls[index] || ''"
-                              :upload-request="(file) => uploadSketch(file, index)"
-                              :show-resource-picker="false"
-                              title="上传加工草图"
-                              preview-fit="contain"
-                              :size="112"
-                              @update:model-value="(url) => onSketchModelChanged(url, index)"
-                              @resource-change="(resources) => onSketchUploaded(resources, index)"
-                            />
-                            <div class="min-w-40 flex-1">
-                              <p class="text-sm font-medium">{{
-                                item.sketchPath ? '已关联独立草图' : '请上传本件加工草图'
-                              }}</p>
-                              <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
-                                图片会单独保存，并随对应物料及生产加工单保留。点击图片可预览或删除。
-                              </p>
-                            </div>
+                          <div class="min-w-28">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">加工长度</p>
+                            <p class="mt-0.5 text-lg font-semibold tabular-nums leading-6"
+                              >{{ item.lengthM.toFixed(3) }}
+                              <span class="text-xs font-normal text-gray-600 dark:text-gray-300"
+                                >m</span
+                              ></p
+                            >
                           </div>
-                        </template>
-                      </ArtForm>
+                          <div class="min-w-14">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">数量</p>
+                            <p class="mt-0.5 text-sm font-semibold tabular-nums"
+                              >{{ item.quantity }} 件</p
+                            >
+                          </div>
+                          <div class="min-w-18">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">展宽</p>
+                            <p class="mt-0.5 text-sm font-medium tabular-nums"
+                              >{{ item.widthMm ?? '—' }} mm</p
+                            >
+                          </div>
+                          <div class="min-w-36 flex-1">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">材质与颜色</p>
+                            <p class="mt-0.5 break-words text-sm font-medium">{{
+                              item.materialColor || '待确认'
+                            }}</p>
+                          </div>
+                          <div v-if="item.remark" class="min-w-36 flex-1">
+                            <p class="text-xs text-gray-600 dark:text-gray-300">备注</p>
+                            <p class="mt-0.5 break-words text-sm">{{ item.remark }}</p>
+                          </div>
+                          <div class="flex w-28 shrink-0 items-center gap-2">
+                            <ElImage
+                              v-if="workspace.sketchUrls[index]"
+                              :src="workspace.sketchUrls[index]"
+                              :preview-src-list="[workspace.sketchUrls[index]]"
+                              :preview-teleported="true"
+                              :z-index="10000"
+                              :alt="`${item.name} ${item.lengthM} 米加工草图`"
+                              fit="contain"
+                              class="h-14 w-16 rounded border border-gray-200 bg-white dark:border-gray-700"
+                            />
+                            <span
+                              v-else
+                              class="text-xs font-medium text-amber-700 dark:text-amber-400"
+                              >待补草图</span
+                            >
+                          </div>
+                          <ElButton
+                            v-if="canSaveDraft && draft.status === 'draft'"
+                            link
+                            type="primary"
+                            :aria-label="`${editingIndex === index ? '收起' : '校对'}加工件 ${index + 1}`"
+                            @click="editingIndex = editingIndex === index ? null : index"
+                            >{{ editingIndex === index ? '收起' : '校对' }}</ElButton
+                          >
+                          <ElButton
+                            v-if="canSaveDraft && !draft.id && draft.status === 'draft'"
+                            link
+                            type="danger"
+                            :aria-label="`从识别预览移除加工件 ${index + 1}`"
+                            @click="removePreviewItem(index)"
+                            >移除</ElButton
+                          >
+                          <ElTag v-else-if="item.materialId" type="success" size="small"
+                            >已生成物料</ElTag
+                          >
+                        </div>
+                        <div
+                          v-if="editingIndex === index && canSaveDraft && draft.status === 'draft'"
+                          class="border-t border-gray-100 bg-[var(--art-gray-100)] px-4 py-5 dark:border-gray-700 dark:bg-[var(--art-gray-200)]"
+                        >
+                          <div class="mb-4">
+                            <h4 class="text-sm font-semibold"
+                              >校对加工件 #{{ String(index + 1).padStart(2, '0') }}</h4
+                            >
+                            <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                              核对尺寸、数量及物料属性；每种长度对应独立加工件和草图。
+                            </p>
+                          </div>
+                          <ArtForm
+                            :ref="(form) => setCorrectionFormRef(form, index)"
+                            :model-value="item"
+                            :items="correctionFormItems"
+                            :rules="correctionRules"
+                            :span="8"
+                            :gutter="16"
+                            label-position="top"
+                            root-class="accessory-inline-form"
+                          >
+                            <template #specificationModel>
+                              <ElInput
+                                v-model="item.specificationModel"
+                                maxlength="120"
+                                :placeholder="defaultSpecification(item)"
+                              />
+                            </template>
+                            <template #sketchPath>
+                              <div
+                                class="flex w-full flex-wrap items-center gap-4 rounded-[var(--custom-radius)] border border-dashed border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-[var(--default-box-color)]"
+                              >
+                                <ArtUploadImage
+                                  :model-value="workspace.sketchUrls[index] || ''"
+                                  :upload-request="(file) => uploadSketch(file, index)"
+                                  :show-resource-picker="false"
+                                  title="上传加工草图"
+                                  preview-fit="contain"
+                                  :size="112"
+                                  @update:model-value="(url) => onSketchModelChanged(url, index)"
+                                  @resource-change="
+                                    (resources) => onSketchUploaded(resources, index)
+                                  "
+                                />
+                                <div class="min-w-40 flex-1">
+                                  <p class="text-sm font-medium">{{
+                                    item.sketchPath ? '已关联独立草图' : '请上传本件加工草图'
+                                  }}</p>
+                                  <p
+                                    class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300"
+                                  >
+                                    图片会单独保存，并随对应物料及生产加工单保留。点击图片可预览或删除。
+                                  </p>
+                                </div>
+                              </div>
+                            </template>
+                          </ArtForm>
+                        </div>
+                      </div>
                     </div>
+                  </ElCollapseItem>
+                </ElCollapse>
+              </div>
+            </div>
+          </ArtSectionCard>
+
+          <ArtSectionCard
+            v-if="orderCards.length"
+            title="已转生产工单"
+            subtitle="这些 MES 工单由清单中的“转生产工单”操作分别创建。"
+          >
+            <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
+              <div v-for="card in orderCards" :key="card.order.id" class="art-card-xs min-w-0 p-4">
+                <div class="flex items-start justify-between gap-2">
+                  <strong class="break-all">{{ card.order.workOrderNo }}</strong>
+                  <ElTag size="small" type="info">MES 工单</ElTag>
+                </div>
+                <p class="mt-2 text-sm font-medium">{{ card.item?.name || '加工件' }}</p>
+                <p class="mt-1 break-all text-xs text-gray-500">物料 {{ card.materialCode }}</p>
+                <div class="mt-3 flex gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+                  <AccessorySketchThumbnail
+                    :path="card.item.sketchPath"
+                    :alt="`${card.item?.name || '加工件'}的加工草图`"
+                  />
+                  <div class="min-w-0 space-y-1 text-sm">
+                    <p>{{ card.item.lengthM }} m × {{ card.item.quantity }} 件</p>
+                    <p v-if="card.item?.widthMm" class="text-gray-500"
+                      >展宽 {{ card.item.widthMm }} mm</p
+                    >
+                    <p v-if="card.item?.materialColor" class="break-words text-gray-500">{{
+                      card.item.materialColor
+                    }}</p>
                   </div>
                 </div>
-              </ElCollapseItem>
-            </ElCollapse>
-          </div>
-        </div>
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        v-if="orderCards.length"
-        title="已转生产工单"
-        subtitle="这些 MES 工单由清单中的“转生产工单”操作分别创建。"
-      >
-        <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
-          <div v-for="card in orderCards" :key="card.order.id" class="art-card-xs min-w-0 p-4">
-            <div class="flex items-start justify-between gap-2">
-              <strong class="break-all">{{ card.order.workOrderNo }}</strong>
-              <ElTag size="small" type="info">MES 工单</ElTag>
-            </div>
-            <p class="mt-2 text-sm font-medium">{{ card.item?.name || '加工件' }}</p>
-            <p class="mt-1 break-all text-xs text-gray-500">物料 {{ card.materialCode }}</p>
-            <div class="mt-3 flex gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
-              <AccessorySketchThumbnail
-                :path="card.item.sketchPath"
-                :alt="`${card.item?.name || '加工件'}的加工草图`"
-              />
-              <div class="min-w-0 space-y-1 text-sm">
-                <p>{{ card.item.lengthM }} m × {{ card.item.quantity }} 件</p>
-                <p v-if="card.item?.widthMm" class="text-gray-500"
-                  >展宽 {{ card.item.widthMm }} mm</p
-                >
-                <p v-if="card.item?.materialColor" class="break-words text-gray-500">{{
-                  card.item.materialColor
+                <p v-if="card.item?.remark" class="mt-3 break-words text-xs text-gray-500">{{
+                  card.item.remark
                 }}</p>
               </div>
             </div>
-            <p v-if="card.item?.remark" class="mt-3 break-words text-xs text-gray-500">{{
-              card.item.remark
-            }}</p>
-          </div>
-        </div>
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        :title="
-          isPlatformSuper
-            ? effectiveTenantId
-              ? '当前租户识别记录'
-              : '全部租户识别记录'
-            : '我的识别记录'
-        "
-        subtitle="识别结果可继续校对；点击保存后才会成为下方业务清单。"
-        :loading="recognitionsLoading"
-        :error="recognitionsError"
-        :empty="!recognitions.length"
-        empty-title="暂无识别记录"
-        empty-description="上传清单并完成一次识别后，这里会保留预览记录。"
-        @retry="loadRecognitions"
-      >
-        <template #actions>
-          <ElButton @click="loadRecognitions">
-            <template #icon><ArtSvgIcon icon="ri:refresh-line" /></template>
-            刷新记录
-          </ElButton>
-        </template>
-        <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
-          <button
-            v-for="record in recognitions"
-            :key="record.id"
-            type="button"
-            class="art-card-xs min-w-0 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-color)]"
-            :disabled="Boolean(workspace.openingRecognitionId)"
-            @click="openRecognition(record)"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <strong class="min-w-0 break-words text-sm">{{
-                record.projectName || '未识别项目名称'
-              }}</strong>
-              <div class="flex shrink-0 flex-wrap gap-1">
-                <ElTag size="small" type="info">识别预览</ElTag>
-                <ElTag v-if="record.items.some((item) => !item.sketch)" size="small" type="warning"
-                  >需检查草图</ElTag
+          </ArtSectionCard>
+        </ElTabPane>
+        <ElTabPane label="记录与草稿" name="records" :lazy="false">
+          <div class="space-y-4">
+            <ArtSectionCard
+              :title="
+                isPlatformSuper
+                  ? effectiveTenantId
+                    ? '当前租户识别记录'
+                    : '全部租户识别记录'
+                  : '我的识别记录'
+              "
+              subtitle="识别结果可继续校对；点击保存后才会成为下方业务清单。"
+              :loading="recognitionsLoading"
+              :error="recognitionsError"
+              :empty="!recognitions.length"
+              empty-title="暂无识别记录"
+              empty-description="上传清单并完成一次识别后，这里会保留预览记录。"
+              @retry="loadRecognitions"
+            >
+              <template #actions>
+                <ArtIconButton icon="ri:refresh-line" label="刷新记录" @click="loadRecognitions" />
+              </template>
+              <div class="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-3">
+                <button
+                  v-for="record in recognitions"
+                  :key="record.id"
+                  type="button"
+                  class="art-card-xs min-w-0 p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-color)]"
+                  :disabled="Boolean(workspace.openingRecognitionId)"
+                  @click="openRecognition(record)"
                 >
+                  <div class="flex items-start justify-between gap-3">
+                    <strong class="min-w-0 break-words text-sm">{{
+                      record.projectName || '未识别项目名称'
+                    }}</strong>
+                    <div class="flex shrink-0 flex-wrap gap-1">
+                      <ElTag size="small" type="info">识别预览</ElTag>
+                      <ElTag
+                        v-if="record.items.some((item) => !item.sketch)"
+                        size="small"
+                        type="warning"
+                        >需检查草图</ElTag
+                      >
+                    </div>
+                  </div>
+                  <p class="mt-2 break-words text-sm text-gray-600 dark:text-gray-300">{{
+                    record.drawingName || '未识别图纸名称'
+                  }}</p>
+                  <p class="mt-2 text-xs text-gray-600 dark:text-gray-300"
+                    >{{ record.items.length }} 件 · {{ formatDateTime(record.createTime) }}</p
+                  >
+                  <p class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                    点击继续校对；校对保存后才会进入加工清单数据列表
+                  </p>
+                  <p v-if="workspace.openingRecognitionId === record.id" class="mt-2 text-xs"
+                    >正在打开…</p
+                  >
+                </button>
               </div>
-            </div>
-            <p class="mt-2 break-words text-sm text-gray-600 dark:text-gray-300">{{
-              record.drawingName || '未识别图纸名称'
-            }}</p>
-            <p class="mt-2 text-xs text-gray-600 dark:text-gray-300"
-              >{{ record.items.length }} 件 · {{ formatDateTime(record.createTime) }}</p
-            >
-            <p class="mt-1 text-xs text-gray-600 dark:text-gray-300">
-              点击继续校对；校对保存后才会进入加工清单数据列表
-            </p>
-            <p v-if="workspace.openingRecognitionId === record.id" class="mt-2 text-xs"
-              >正在打开…</p
-            >
-          </button>
-        </div>
-        <div v-if="recognitionTotal > recognitionPageSize" class="flex justify-center pt-4">
-          <ElPagination
-            :current-page="recognitionPage"
-            :page-size="recognitionPageSize"
-            :total="recognitionTotal"
-            :disabled="recognitionsLoading"
-            layout="prev, pager, next"
-            :pager-count="5"
-            @current-change="changeRecognitionPage"
-          />
-        </div>
-      </ArtSectionCard>
+              <div v-if="recognitionTotal > recognitionPageSize" class="flex justify-center pt-4">
+                <ElPagination
+                  :current-page="recognitionPage"
+                  :page-size="recognitionPageSize"
+                  :total="recognitionTotal"
+                  :disabled="recognitionsLoading"
+                  layout="prev, pager, next"
+                  :pager-count="5"
+                  @current-change="changeRecognitionPage"
+                />
+              </div>
+            </ArtSectionCard>
 
-      <ArtSectionCard
-        title="配件加工清单数据列表"
-        :subtitle="`逐件展示已保存的加工件，共 ${savedRows.length} 件；同名不同长度分别占一行。`"
-        :loading="listsLoading"
-        :error="listsError"
-        :empty="!savedRows.length && !listKeyword"
-        empty-title="暂无配件加工清单"
-        empty-description="完成识别校对后，点击“确认并保存清单”。"
-        @retry="loadLists"
-      >
-        <template #actions>
-          <div class="flex items-center gap-1">
-            <ElInput
-              v-model="listKeyword"
-              clearable
-              placeholder="搜索项目、图纸、物料"
-              aria-label="搜索配件加工清单"
-              class="w-52 sm:w-64"
-            />
-            <ArtIconButton
-              icon="ri:refresh-line"
-              label="刷新配件加工清单"
-              class="shrink-0"
+            <ArtSectionCard
+              title="配件加工清单数据列表"
+              :subtitle="`逐件展示已保存的加工件，共 ${savedRows.length} 件；同名不同长度分别占一行。`"
               :loading="listsLoading"
-              @click="loadLists"
-            />
-          </div>
-        </template>
-        <div class="min-w-0 pt-4">
-          <ArtTable
-            :data="visibleSavedRows"
-            :columns="savedColumns"
-            :pagination="{ current: listPage, size: listPageSize, total: filteredSavedRows.length }"
-            :loading="listsLoading"
-            empty-text="没有匹配的加工件"
-            @pagination:current-change="listPage = $event"
-            @pagination:size-change="onListPageSizeChange"
-          >
-            <template #image="{ row }">
-              <AccessorySketchThumbnail
-                :path="row.sketchPath"
-                :alt="`${row.name} ${row.lengthM} 米加工草图`"
-              />
-            </template>
-            <template #materialName="{ row }">
-              <div class="min-w-0">
-                <p class="truncate font-medium">{{ row.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{
-                  listStatusLabel(row.list.status)
-                }}</p>
+              :error="listsError"
+              :empty="!savedRows.length && !listKeyword"
+              empty-title="暂无配件加工清单"
+              empty-description="完成识别校对后，点击“确认并保存清单”。"
+              @retry="loadLists"
+            >
+              <template #actions>
+                <div class="flex items-center gap-1">
+                  <ElInput
+                    v-model="listKeyword"
+                    clearable
+                    placeholder="搜索项目、图纸、物料"
+                    aria-label="搜索配件加工清单"
+                    class="w-52 sm:w-64"
+                  />
+                  <ArtIconButton
+                    icon="ri:refresh-line"
+                    label="刷新配件加工清单"
+                    class="shrink-0"
+                    :loading="listsLoading"
+                    @click="loadLists"
+                  />
+                </div>
+              </template>
+              <div class="min-w-0 pt-4">
+                <ArtTable
+                  :data="visibleSavedRows"
+                  :columns="savedColumns"
+                  :pagination="{
+                    current: listPage,
+                    size: listPageSize,
+                    total: filteredSavedRows.length
+                  }"
+                  :loading="listsLoading"
+                  empty-text="没有匹配的加工件"
+                  @pagination:current-change="listPage = $event"
+                  @pagination:size-change="onListPageSizeChange"
+                >
+                  <template #image="{ row }">
+                    <AccessorySketchThumbnail
+                      :path="row.sketchPath"
+                      :alt="`${row.name} ${row.lengthM} 米加工草图`"
+                    />
+                  </template>
+                  <template #materialName="{ row }">
+                    <div class="min-w-0">
+                      <p class="truncate font-medium">{{ row.name }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{
+                        listStatusLabel(row.list.status)
+                      }}</p>
+                    </div>
+                  </template>
+                  <template #operation="{ row }">
+                    <ElButton
+                      v-auth="'MdmAccessoryProcessing:View'"
+                      link
+                      type="primary"
+                      :aria-label="`打开${row.name}所在清单`"
+                      @click="openList(row.list)"
+                      >打开</ElButton
+                    >
+                  </template>
+                </ArtTable>
               </div>
-            </template>
-            <template #operation="{ row }">
-              <ElButton
-                v-auth="'MdmAccessoryProcessing:View'"
-                link
-                type="primary"
-                :aria-label="`打开${row.name}所在清单`"
-                @click="openList(row.list)"
-                >打开</ElButton
-              >
-            </template>
-          </ArtTable>
-        </div>
-      </ArtSectionCard>
+            </ArtSectionCard>
+          </div>
+        </ElTabPane>
+      </ElTabs>
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { getScrollBehavior } from '@/utils/ui/scroll'
   import { downloadFile, getFileExtension } from '@/utils/file'
-  import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+  import {
+    computed,
+    nextTick,
+    onMounted,
+    onUnmounted,
+    reactive,
+    ref,
+    watch,
+    type ComponentPublicInstance
+  } from 'vue'
   import { storeToRefs } from 'pinia'
-  import { ElCollapse, ElCollapseItem, ElMessage } from 'element-plus'
+  import { until } from '@vueuse/core'
+  import {
+    ElCollapse,
+    ElCollapseItem,
+    ElMessage,
+    ElTabs,
+    ElTabPane,
+    type FormRules
+  } from 'element-plus'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
-  import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -602,6 +652,7 @@
   import { cropSketch, rasterizeProcessingList, type DocumentPage } from './document-pages'
 
   defineOptions({ name: 'MdmAccessoryRecognitionWorkspace' })
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ saved: [] }>()
   const templateUrl = new URL('../assets/accessory-processing-template.docx', import.meta.url).href
   const { hasAuth } = useAuth()
@@ -672,6 +723,74 @@
     items: []
   })
   const editingIndex = ref<number | null>(null)
+  const activeTab = ref<'upload' | 'result' | 'records'>('upload')
+  const workspaceElement = ref<HTMLElement>()
+  const projectFormRef = ref<InstanceType<typeof ArtForm>>()
+  const correctionForms = new Map<number, InstanceType<typeof ArtForm>>()
+  const projectRules: FormRules = {
+    projectName: [{ required: true, whitespace: true, message: '请输入项目名称', trigger: 'blur' }]
+  }
+  const correctionRules: FormRules = {
+    name: [{ required: true, whitespace: true, message: '请输入构件名称', trigger: 'blur' }],
+    lengthM: [
+      {
+        required: true,
+        type: 'number',
+        min: Number.MIN_VALUE,
+        message: '请输入大于 0 的加工长度',
+        trigger: 'blur'
+      }
+    ],
+    quantity: [
+      { required: true, type: 'number', min: 1, message: '加工件数量至少为 1', trigger: 'blur' }
+    ],
+    widthMm: [
+      {
+        required: true,
+        type: 'number',
+        min: Number.MIN_VALUE,
+        message: '请输入大于 0 的展宽',
+        trigger: 'blur'
+      }
+    ],
+    baseUnitId: [{ required: true, message: '请选择基本单位', trigger: 'change' }],
+    materialTypeId: [{ required: true, message: '请选择物料类型', trigger: 'change' }],
+    categoryId: [{ required: true, message: '请选择物料分类', trigger: 'change' }]
+  }
+
+  function setCorrectionFormRef(
+    form: Element | ComponentPublicInstance | null,
+    index: number
+  ): void {
+    if (form) correctionForms.set(index, form as InstanceType<typeof ArtForm>)
+    else correctionForms.delete(index)
+  }
+
+  async function showResult(): Promise<void> {
+    activeTab.value = 'result'
+    await nextTick()
+    workspaceElement.value?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
+  }
+
+  async function revealInvalidField(field: string, index?: number): Promise<void> {
+    activeTab.value = 'result'
+    if (index !== undefined) {
+      const group = rowGroups.value.find((group) =>
+        group.entries.some((entry) => entry.index === index)
+      )
+      if (group && !expandedRowKeys.value.includes(group.key)) expandedRowKeys.value.push(group.key)
+      editingIndex.value = index
+    }
+    await nextTick()
+    const form = index === undefined ? projectFormRef.value : correctionForms.get(index)
+    await until(() => form?.controlsReady === true).toBe(true, {
+      timeout: 10_000,
+      throwOnTimeout: false
+    })
+    if (!form?.controlsReady) return
+    await Promise.resolve(form.validateField(field)).catch(() => undefined)
+    await form.focusField(field)
+  }
   const expandedRowKeys = ref<string[]>([])
   const listKeyword = ref('')
   const listPage = ref(1)
@@ -680,6 +799,16 @@
   const canSaveDraft = computed(() => hasAuth('MdmAccessoryProcessing:SaveDraft'))
   const canManageAccessory = canSaveDraft
   const materialSourceOptions = computed(() => getDictMap.value.mdmMaterialSource ?? [])
+  const categoryTreeOptions = computed(() =>
+    optionTree.listToTree(
+      workspace.categories.map((category) => ({
+        label: `${category.categoryName} · ${category.categoryCode}`,
+        value: category.id,
+        parentId: category.parentId,
+        disabled: category.status !== 'enabled'
+      }))
+    )
+  )
   const allProjectFormItems: FormItem[] = [
     {
       key: 'projectName',
@@ -697,7 +826,7 @@
       props: { maxlength: 160, placeholder: '识别或手动填写图纸名称' }
     },
     { key: 'customerId', label: '项目客户', type: 'select', span: 8 },
-    { key: 'categoryId', label: '默认物料分类', type: 'select', span: 8 }
+    { key: 'categoryId', label: '默认物料分类', type: 'treeSelect', span: 8 }
   ]
   const projectFormItems = computed(() =>
     draft.status === 'materials_ready'
@@ -772,13 +901,17 @@
     {
       key: 'categoryId',
       label: '物料分类',
-      type: 'select',
+      type: 'treeSelect',
       span: 8,
-      options: workspace.categories.map((category) => ({
-        label: category.categoryName,
-        value: category.id
-      })),
-      props: { filterable: true }
+      options: optionTree.listToTree(
+        workspace.categories.map((category) => ({
+          label: `${category.categoryName} · ${category.categoryCode}`,
+          value: category.id,
+          parentId: category.parentId,
+          disabled: category.status !== 'enabled'
+        }))
+      ),
+      props: { filterable: true, checkStrictly: true }
     },
     { key: 'remark', label: '备注', type: 'input', span: 24 },
     { key: 'sketchPath', label: '独立加工草图', type: 'uploadImage', span: 24 }
@@ -945,6 +1078,7 @@
   }
 
   function resetUpload(): void {
+    activeTab.value = 'upload'
     editingIndex.value = null
     Object.assign(workspace, {
       recognitionError: '',
@@ -1071,20 +1205,14 @@
       recognitionPage.value = 1
       await loadRecognitions()
       ElMessage.success(`已识别 ${items.length} 个独立加工件，识别记录已留存`)
-      await nextTick()
-      document
-        .getElementById('accessory-recognition-result')
-        ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
+      await showResult()
     } catch (error) {
       const message = getFriendlySupabaseErrorMessage(error, '加工清单识别失败，请重试')
       if (draft.items.length) {
         ElMessage.error(message)
       } else {
         workspace.recognitionError = message
-        await nextTick()
-        document
-          .getElementById('accessory-recognition-result')
-          ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
+        await showResult()
       }
     } finally {
       workspace.recognizing = false
@@ -1144,18 +1272,38 @@
       !draft.items.length
     ) {
       ElMessage.warning('请先上传清单，填写项目名称并确认加工件')
+      if (!workspace.sourcePath || !draft.items.length) activeTab.value = 'upload'
+      else if (!draft.projectName.trim()) await revealInvalidField('projectName')
       return false
     }
-    if (draft.items.some((item) => !item.name.trim() || item.lengthM <= 0 || item.quantity < 1)) {
+    const invalidSizeIndex = draft.items.findIndex(
+      (item) => !item.name.trim() || item.lengthM <= 0 || item.quantity < 1
+    )
+    if (invalidSizeIndex >= 0) {
       ElMessage.warning('请检查每个加工件的名称、长度和数量')
+      const item = draft.items[invalidSizeIndex]!
+      await revealInvalidField(
+        !item.name.trim() ? 'name' : item.lengthM <= 0 ? 'lengthM' : 'quantity',
+        invalidSizeIndex
+      )
       return false
     }
-    if (draft.items.some((item) => !item.widthMm || item.widthMm <= 0)) {
+    const invalidWidthIndex = draft.items.findIndex((item) => !item.widthMm || item.widthMm <= 0)
+    if (invalidWidthIndex >= 0) {
       ElMessage.warning('请补齐每个加工件的展宽（mm），确认后才能生成物料编码和生产工单')
+      await revealInvalidField('widthMm', invalidWidthIndex)
       return false
     }
-    if (draft.items.some((item) => !item.baseUnitId || !item.materialTypeId || !item.categoryId)) {
+    const invalidMaterialIndex = draft.items.findIndex(
+      (item) => !item.baseUnitId || !item.materialTypeId || !item.categoryId
+    )
+    if (invalidMaterialIndex >= 0) {
       ElMessage.warning('请检查每个加工件的基本单位、物料类型和物料分类')
+      const item = draft.items[invalidMaterialIndex]!
+      await revealInvalidField(
+        !item.baseUnitId ? 'baseUnitId' : !item.materialTypeId ? 'materialTypeId' : 'categoryId',
+        invalidMaterialIndex
+      )
       return false
     }
     workspace.saving = true
@@ -1193,6 +1341,7 @@
     if (draft.status !== 'materials_ready' || !draft.id || workspace.saving) return false
     if (!draft.projectName.trim()) {
       ElMessage.warning('请填写项目名称')
+      await revealInvalidField('projectName')
       return false
     }
     workspace.saving = true
@@ -1322,10 +1471,7 @@
         )
       })
       editingIndex.value = null
-      await nextTick()
-      document
-        .getElementById('accessory-recognition-result')
-        ?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
+      await showResult()
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '识别记录打开失败，请重试'))
     } finally {
@@ -1356,7 +1502,7 @@
       ])
       if (workspace.tenantId !== tenantId) return
       workspace.customers = customers
-      workspace.categories = categories.filter((category) => category.status === 'enabled')
+      workspace.categories = categories
       workspace.types = types
       workspace.units = units
     } catch (error) {
@@ -1402,7 +1548,7 @@
       )
     }
     await loadProjects()
-    window.scrollTo({ top: 0, behavior: getScrollBehavior() })
+    await showResult()
   }
 
   watch(effectiveTenantId, (tenantId) => {
@@ -1430,6 +1576,44 @@
 </script>
 
 <style scoped lang="scss">
+  .accessory-recognition {
+    &__summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--art-space-3);
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--art-space-3) var(--art-space-4);
+      background: var(--el-color-primary-light-9);
+      border: 1px solid var(--el-color-primary-light-8);
+      border-radius: var(--custom-radius);
+    }
+
+    &__icon {
+      display: grid;
+      flex: 0 0 36px;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      color: var(--el-color-primary);
+      background: var(--default-box-color);
+      border-radius: var(--custom-radius);
+    }
+
+    &__tabs {
+      margin-top: var(--art-space-4);
+
+      :deep(.el-tabs__header) {
+        margin-bottom: var(--art-space-4);
+      }
+
+      :deep(.el-tabs__item) {
+        padding-right: var(--art-space-4);
+        padding-left: var(--art-space-4);
+      }
+    }
+  }
+
   :deep(.accessory-inline-form) {
     padding: 0;
   }

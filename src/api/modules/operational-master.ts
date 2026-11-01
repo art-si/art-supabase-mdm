@@ -224,7 +224,14 @@ export async function deleteActivityFormulaParameter(id: string) {
         .delete({ count: 'exact' })
         .eq('id', id)
         .select('id'),
-    { ...writeOptions, message: '参数已删除', errorMessage: '参数含有下级节点，无法删除' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '参数已删除',
+      errorMessage: '参数含有下级节点，无法删除'
+    }
   )
 }
 

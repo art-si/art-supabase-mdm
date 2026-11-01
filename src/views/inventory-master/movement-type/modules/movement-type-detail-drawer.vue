@@ -13,11 +13,13 @@
           </ElTag>
         </template>
       </ArtEntitySummary>
-      <ArtSectionCard title="类型定义" subtitle="移动方向、反向关系及控制标志。">
-        <ArtDescriptions :data="record" :items="definitionItems" :columns="2" :tablet-columns="2" />
-      </ArtSectionCard>
-      <ArtSectionCard title="记录信息" subtitle="备注和最近维护时间。">
-        <ArtDescriptions :data="record" :items="auditItems" :columns="2" :tablet-columns="2" />
+      <ArtSectionCard title="类型定义" subtitle="移动方向、控制标志和最近维护信息。">
+        <ArtDescriptions
+          :data="record"
+          :items="[...definitionItems, ...auditItems]"
+          :columns="2"
+          :tablet-columns="2"
+        />
       </ArtSectionCard>
     </div>
   </ArtDrawer>

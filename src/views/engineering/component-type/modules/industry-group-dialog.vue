@@ -10,21 +10,18 @@
       />
       <ArtForm
         ref="formRef"
-        :model-value="model"
-        @update:model-value="replaceReactiveModel(model, $event)"
+        v-model="model"
         :items="items"
         :rules="rules"
         :span="12"
         label-position="top"
-        :show-submit="false"
-        :show-reset="false"
       />
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
+  import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
@@ -47,6 +44,7 @@
     tenantOptions: Array<{ label: string; value: string }>
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [id: string] }>()
   const dialogRef = ref<ArtDialogExpose<IndustryGroupDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -60,37 +58,40 @@
     enabled: true,
     remark: ''
   })
-  const model = reactive(createModel())
+  const model = ref(createModel())
   const context = reactive({
     groups: [] as ComponentIndustryGroup[],
     tenantOptions: [] as IndustryGroupDialogOpenData['tenantOptions']
   })
   const items = computed<FormItem[]>(() => [
-    { key: 'level', label: '分组层级', type: 'divider', span: 24 },
     {
       key: 'tenantId',
       label: '所属租户',
       type: 'select',
       span: 24,
-      hidden: context.tenantOptions.length <= 1 && Boolean(model.tenantId),
+      hidden: context.tenantOptions.length <= 1 && Boolean(model.value.tenantId),
       options: context.tenantOptions,
-      props: { disabled: Boolean(model.id || model.parentId), filterable: true }
+      props: { disabled: Boolean(model.value.id || model.value.parentId), filterable: true }
     },
     {
       key: 'parentId',
       label: '上级分组',
       type: 'treeSelect',
       span: 24,
-      options: context.groups
-        .filter((group) => group.tenantId === model.tenantId && group.id !== model.id)
-        .map((group) => ({
-          label: `${group.name}（${group.code}）`,
-          value: group.id,
-          parentId: group.parentId
-        })),
+      options: optionTree.removeNodesByCondition(
+        optionTree.listToTree(
+          context.groups
+            .filter((group) => group.tenantId === model.value.tenantId)
+            .map((group) => ({
+              label: `${group.name}（${group.code}）`,
+              value: group.id,
+              parentId: group.parentId
+            }))
+        ),
+        (node) => node.value === model.value.id
+      ).tree,
       props: { checkStrictly: true, clearable: true, placeholder: '不选择则为顶级行业' }
     },
-    { key: 'identity', label: '分组信息', type: 'divider', span: 24 },
     {
       key: 'code',
       label: '分组编码',
@@ -135,10 +136,10 @@
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       const id = await saveComponentIndustryGroup({
-        ...model,
-        code: model.code.trim().toUpperCase(),
-        name: model.name.trim(),
-        remark: normalizeNullableText(model.remark)
+        ...model.value,
+        code: model.value.code.trim().toUpperCase(),
+        name: model.value.name.trim(),
+        remark: normalizeNullableText(model.value.remark)
       })
       emit('success', id)
       return true
@@ -149,7 +150,7 @@
   }
   const handleOpen = async (data: IndustryGroupDialogOpenData): Promise<void> => {
     Object.assign(
-      model,
+      model.value,
       createModel(),
       data.row
         ? cloneDeep(data.row)
@@ -168,13 +169,15 @@
     })
   }
   watch(
-    () => model.tenantId,
+    () => model.value.tenantId,
     (tenantId) => {
       if (
-        model.parentId &&
-        !context.groups.some((group) => group.id === model.parentId && group.tenantId === tenantId)
+        model.value.parentId &&
+        !context.groups.some(
+          (group) => group.id === model.value.parentId && group.tenantId === tenantId
+        )
       )
-        model.parentId = null
+        model.value.parentId = null
     }
   )
   defineExpose({ handleOpen })

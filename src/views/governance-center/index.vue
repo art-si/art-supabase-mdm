@@ -84,8 +84,7 @@
           <ArtTableQuery
             ref="qualityTableRef"
             focusable
-            :model-value="qualityQuery"
-            @update:model-value="replaceReactiveModel(qualityQuery, $event)"
+            v-model="qualityQuery"
             :search-items="qualitySearchItems"
             :api-fn="fetchMdmQualityIssues"
             :columns-factory="qualityColumns"
@@ -103,8 +102,7 @@
           <ArtTableQuery
             ref="changeTableRef"
             focusable
-            :model-value="changeQuery"
-            @update:model-value="replaceReactiveModel(changeQuery, $event)"
+            v-model="changeQuery"
             :search-items="changeSearchItems"
             :api-fn="fetchMdmChangeRequests"
             :columns-factory="changeColumns"
@@ -122,8 +120,7 @@
           <ArtTableQuery
             ref="matchTableRef"
             focusable
-            :model-value="matchQuery"
-            @update:model-value="replaceReactiveModel(matchQuery, $event)"
+            v-model="matchQuery"
             :search-items="matchSearchItems"
             :api-fn="fetchMdmMatchCandidates"
             :columns-factory="matchColumns"
@@ -148,8 +145,7 @@
           <ArtTableQuery
             ref="outboxTableRef"
             focusable
-            :model-value="outboxQuery"
-            @update:model-value="replaceReactiveModel(outboxQuery, $event)"
+            v-model="outboxQuery"
             :search-items="outboxSearchItems"
             :api-fn="fetchMdmOutboxDeliveries"
             :columns-factory="outboxColumns"
@@ -167,7 +163,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { ElMessage, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -320,16 +315,16 @@
     emptyDescription: '配置下游消费者后，新治理事件将创建独立投递任务。'
   }
 
-  const qualityQuery = reactive({
+  const qualityQuery = ref({
     current: 1,
     size: 20,
     keyword: '',
     state: '',
     severity: '' as const
   })
-  const changeQuery = reactive({ current: 1, size: 20, keyword: '', state: '' })
-  const matchQuery = reactive({ current: 1, size: 20, keyword: '', state: 'pending' })
-  const outboxQuery = reactive({ current: 1, size: 20, keyword: '', state: '' })
+  const changeQuery = ref({ current: 1, size: 20, keyword: '', state: '' })
+  const matchQuery = ref({ current: 1, size: 20, keyword: '', state: 'pending' })
+  const outboxQuery = ref({ current: 1, size: 20, keyword: '', state: '' })
 
   const stateSearch = (options: { label: string; value: string }[]): SearchFormItem => ({
     label: '状态',

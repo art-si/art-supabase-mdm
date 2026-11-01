@@ -16,8 +16,7 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        :model-value="search"
-        @update:model-value="replaceReactiveModel(search, $event)"
+        v-model="search"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -37,7 +36,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -69,9 +67,9 @@
   const detailDialogRef = ref<InstanceType<typeof PackageDetailDialog>>()
   const warehouses = ref<StorageWarehouse[]>([])
   const bins = ref<StorageBin[]>([])
-  const search = reactive({ warehouseId: '', keyword: '' })
+  const search = ref({ warehouseId: '', keyword: '' })
   const selectedWarehouse = computed(() =>
-    warehouses.value.find((warehouse) => warehouse.id === search.warehouseId)
+    warehouses.value.find((warehouse) => warehouse.id === search.value.warehouseId)
   )
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -192,14 +190,14 @@
     void tableRef.value?.getData()
   }
   watch(
-    () => search.warehouseId,
+    () => search.value.warehouseId,
     async (id) => {
       bins.value = id ? await fetchStorageBins(id) : []
     }
   )
   onMounted(async () => {
     warehouses.value = await fetchStorageWarehouses()
-    search.warehouseId = warehouses.value[0]?.id ?? ''
+    search.value.warehouseId = warehouses.value[0]?.id ?? ''
     refresh()
   })
 </script>

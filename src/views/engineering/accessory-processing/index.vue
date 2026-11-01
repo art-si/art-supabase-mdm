@@ -156,8 +156,6 @@
           <template #primary>
             <ArtSectionCard
               class="accessory-processing-page__card accessory-processing-page__navigator"
-              body-class="accessory-processing-page__navigator-body"
-              :show-scrollbar="false"
               title="项目名称"
               subtitle="按系统项目、图纸逐级筛选"
               :loading="loading"
@@ -175,68 +173,68 @@
                   :default-expanded="projectTree.length < 12"
                 />
               </template>
-              <ElInput
-                v-model="projectKeyword"
-                clearable
-                placeholder="搜索项目或图纸"
-                aria-label="搜索项目名称树"
-              >
-                <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-              </ElInput>
-              <button
-                type="button"
-                class="accessory-processing-page__all-projects"
-                :class="{ 'is-current': !selectedNodeId }"
-                @click="selectNode('')"
-              >
-                <span class="accessory-processing-page__all-icon" aria-hidden="true">
-                  <ArtSvgIcon icon="ri:apps-2-line" />
-                </span>
-                <span class="accessory-processing-page__all-copy">
-                  <strong>全部项目</strong>
-                  <small>{{ projectTree.length }} 个项目 · {{ allRows.length }} 件加工件</small>
-                </span>
-                <ArtSvgIcon v-if="!selectedNodeId" icon="ri:check-line" aria-hidden="true" />
-              </button>
-              <ElScrollbar class="accessory-processing-page__tree-scroll">
-                <ElTree
-                  ref="treeRef"
-                  :data="projectTree"
-                  node-key="id"
-                  :props="{ label: 'label', children: 'children' }"
-                  :current-node-key="selectedNodeId || undefined"
-                  :filter-node-method="filterProjectNode"
-                  :default-expand-all="projectTree.length < 12"
-                  :expand-on-click-node="false"
-                  highlight-current
-                  @node-click="(node: ProjectNode) => selectNode(node.id)"
-                >
-                  <template #default="{ data }">
-                    <span class="accessory-processing-page__tree-node">
-                      <span class="accessory-processing-page__tree-icon" aria-hidden="true">
-                        <ArtSvgIcon
-                          :icon="
-                            data.kind === 'project' ? 'ri:folder-3-line' : 'ri:file-list-3-line'
-                          "
-                        />
-                      </span>
-                      <span class="accessory-processing-page__tree-copy">
-                        <strong :title="data.label">{{ data.label }}</strong>
-                        <small>{{ data.kind === 'project' ? '系统项目' : '加工图纸' }}</small>
-                      </span>
-                      <span class="accessory-processing-page__tree-count">{{ data.count }}</span>
+              <template #toolbar
+                ><div class="accessory-processing-page__navigator-toolbar"
+                  ><ElInput
+                    v-model="projectKeyword"
+                    clearable
+                    placeholder="搜索项目或图纸"
+                    aria-label="搜索项目名称树"
+                  >
+                    <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+                  </ElInput>
+                  <button
+                    type="button"
+                    class="accessory-processing-page__all-projects"
+                    :class="{ 'is-current': !selectedNodeId }"
+                    @click="selectNode('')"
+                  >
+                    <span class="accessory-processing-page__all-icon" aria-hidden="true">
+                      <ArtSvgIcon icon="ri:apps-2-line" />
                     </span>
-                  </template>
-                  <template #empty>
-                    <ArtEmptyState
-                      title="未找到匹配项"
-                      description="请调整关键词或清空筛选条件。"
-                      size="compact"
-                      :visual-size="64"
-                    />
-                  </template>
-                </ElTree>
-              </ElScrollbar>
+                    <span class="accessory-processing-page__all-copy">
+                      <strong>全部项目</strong>
+                      <small>{{ projectTree.length }} 个项目 · {{ allRows.length }} 件加工件</small>
+                    </span>
+                    <ArtSvgIcon v-if="!selectedNodeId" icon="ri:check-line" aria-hidden="true" />
+                  </button> </div
+              ></template>
+              <ElTree
+                class="accessory-processing-page__project-tree"
+                ref="treeRef"
+                :data="projectTree"
+                node-key="id"
+                :props="{ label: 'label', children: 'children' }"
+                :current-node-key="selectedNodeId || undefined"
+                :filter-node-method="filterProjectNode"
+                :default-expand-all="projectTree.length < 12"
+                :expand-on-click-node="false"
+                highlight-current
+                @node-click="(node: ProjectNode) => selectNode(node.id)"
+              >
+                <template #default="{ data }">
+                  <span class="accessory-processing-page__tree-node">
+                    <span class="accessory-processing-page__tree-icon" aria-hidden="true">
+                      <ArtSvgIcon
+                        :icon="data.kind === 'project' ? 'ri:folder-3-line' : 'ri:file-list-3-line'"
+                      />
+                    </span>
+                    <span class="accessory-processing-page__tree-copy">
+                      <strong :title="data.label">{{ data.label }}</strong>
+                      <small>{{ data.kind === 'project' ? '系统项目' : '加工图纸' }}</small>
+                    </span>
+                    <span class="accessory-processing-page__tree-count">{{ data.count }}</span>
+                  </span>
+                </template>
+                <template #empty>
+                  <ArtEmptyState
+                    title="未找到匹配项"
+                    description="请调整关键词或清空筛选条件。"
+                    size="compact"
+                    :visual-size="64"
+                  />
+                </template>
+              </ElTree>
             </ArtSectionCard>
           </template>
 
@@ -369,8 +367,6 @@
             :span="12"
             :gutter="16"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           >
             <template #projectId>
               <div class="flex min-w-0 gap-2">
@@ -424,8 +420,6 @@
             :span="12"
             :gutter="16"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           >
             <template #projectId>
               <div class="flex min-w-0 gap-2">
@@ -498,8 +492,6 @@
             :span="12"
             :gutter="16"
             label-position="top"
-            :show-reset="false"
-            :show-submit="false"
           >
             <template #workOrderType
               ><ElTag type="info" effect="plain">PP40 · 配件加工</ElTag></template
@@ -562,8 +554,6 @@
           :rules="projectRules"
           :span="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
         />
       </ArtDialog>
 
@@ -627,6 +617,7 @@
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { computed, onMounted, reactive, ref, watch } from 'vue'
   import { useElementSize } from '@vueuse/core'
@@ -726,6 +717,7 @@
     imageUrls: string[]
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const { confirmAction } = useArtFeedback()
   const { focusMode } = useWorkspaceFocus()
   const { hasAuth } = useAuth()
@@ -1044,12 +1036,17 @@
     {
       key: 'categoryId',
       label: '物料分类',
-      type: 'select',
+      type: 'treeSelect',
       span: 8,
-      options: options.categories.map((category) => ({
-        label: category.categoryName,
-        value: category.id
-      }))
+      options: optionTree.listToTree(
+        options.categories.map((category) => ({
+          label: `${category.categoryName} · ${category.categoryCode}`,
+          value: category.id,
+          parentId: category.parentId,
+          disabled: category.status !== 'enabled'
+        }))
+      ),
+      props: { filterable: true, checkStrictly: true }
     },
     {
       key: 'codeRuleId',
@@ -1090,12 +1087,17 @@
     {
       key: 'categoryId',
       label: '物料分类',
-      type: 'select',
+      type: 'treeSelect',
       span: 12,
-      options: options.categories.map((category) => ({
-        label: category.categoryName,
-        value: category.id
-      }))
+      options: optionTree.listToTree(
+        options.categories.map((category) => ({
+          label: `${category.categoryName} · ${category.categoryCode}`,
+          value: category.id,
+          parentId: category.parentId,
+          disabled: category.status !== 'enabled'
+        }))
+      ),
+      props: { filterable: true, checkStrictly: true }
     },
     {
       key: 'codeRuleId',
@@ -1181,7 +1183,7 @@
       Object.assign(options, {
         projects,
         customers,
-        categories: categories.filter((item) => item.status === 'enabled'),
+        categories,
         types,
         units,
         codeRules
@@ -1473,8 +1475,12 @@
     rows: AccessoryRow[],
     mode: 'items' | 'codes'
   ): Promise<boolean> {
+    if (!deleteGuardRef.value) {
+      ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
+      return true
+    }
     return (
-      (await deleteGuardRef.value?.inspect({
+      (await deleteGuardRef.value.inspect({
         ...deleteGuardOptions(rows, mode),
         fetchDependencies: () => loadDeleteDependencies(rows, mode)
       })) ?? true
@@ -1901,7 +1907,6 @@
       overflow: hidden;
     }
 
-    :deep(.accessory-processing-page__navigator-body),
     :deep(.accessory-processing-page__detail-body) {
       display: flex;
       flex: 1;
@@ -1909,7 +1914,9 @@
       min-height: 0;
     }
 
-    :deep(.accessory-processing-page__navigator-body) {
+    &__navigator-toolbar {
+      display: flex;
+      flex-direction: column;
       gap: var(--art-space-3);
     }
 
@@ -1983,16 +1990,11 @@
       }
     }
 
-    &__tree-scroll {
-      flex: 1;
-      min-height: 0;
-    }
-
-    &__tree-scroll :deep(.el-tree) {
+    &__project-tree {
       background: transparent;
     }
 
-    &__tree-scroll :deep(.el-tree-node__content) {
+    &__project-tree :deep(.el-tree-node__content) {
       height: auto;
       min-height: 48px;
       padding-block: 5px;
@@ -2008,7 +2010,7 @@
       }
     }
 
-    &__tree-scroll :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    &__project-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
       border-color: color-mix(in srgb, var(--theme-color) 18%, transparent);
@@ -2073,6 +2075,17 @@
     .accessory-processing-page__actions {
       flex-basis: 100%;
       flex-wrap: wrap;
+    }
+  }
+
+  @media (width <= 900px) {
+    .accessory-processing-page {
+      overflow: visible;
+    }
+
+    .accessory-processing-page__workspace {
+      flex: none;
+      overflow: visible;
     }
   }
 </style>

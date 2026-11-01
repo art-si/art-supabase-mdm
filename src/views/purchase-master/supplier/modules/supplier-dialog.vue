@@ -9,14 +9,13 @@
 
       <ArtForm
         ref="formRef"
+        v-model:active-tab="activeTab"
         v-model="form.model"
         :items="form.items"
         :rules="form.rules"
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #addressPicker>
           <ArtAddressPicker
@@ -38,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -93,6 +93,7 @@
     clearValidate: () => void
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [type: 'add' | 'edit'] }>()
   const supplierCategoryOptions = useDictionaryOptions('supplierCategory')
   const supplierTypeOptions = useDictionaryOptions('supplierType')
@@ -101,6 +102,7 @@
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
   const dialogRef = ref<ArtDialogExpose<SupplierDialogOpenData>>()
   const formRef = ref<FormExpose>()
+  const activeTab = ref('identitySection')
   const groups = ref<MasterGroup[]>([])
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
 
@@ -134,7 +136,7 @@
   }>({
     model,
     items: computed(() => [
-      { label: '单位信息', key: 'identitySection', type: 'divider', span: 24 },
+      { label: '单位信息', key: 'identitySection', type: 'tab', span: 24 },
       {
         label: '所属租户',
         key: 'tenantId',
@@ -166,10 +168,17 @@
         label: '供应商分组',
         key: 'groupId',
         type: 'treeSelect',
-        options: groups.value
-          .filter((row) => row.tenantId === model.tenantId)
-          .map((row) => ({ label: row.name, value: row.id, parentId: row.parentId })),
-        props: { clearable: true, placeholder: '选择供应商分组' }
+        options: optionTree.listToTree(
+          groups.value
+            .filter((row) => row.tenantId === model.tenantId)
+            .map((row) => ({ label: row.name, value: row.id, parentId: row.parentId }))
+        ),
+        props: {
+          clearable: true,
+          filterable: true,
+          checkStrictly: true,
+          placeholder: '选择供应商分组'
+        }
       },
       {
         label: '供应商类型',
@@ -195,7 +204,7 @@
         options: industryOptions,
         props: { clearable: true, placeholder: '请选择行业' }
       },
-      { label: '联系与位置', key: 'contactSection', type: 'divider', span: 24 },
+      { label: '联系与位置', key: 'contactSection', type: 'tab', span: 24 },
       {
         label: '联系人',
         key: 'contactPerson',
@@ -209,7 +218,6 @@
         props: { maxlength: 30, clearable: true, placeholder: '请输入手机号或座机号' }
       },
       { label: '', key: 'addressPicker', type: 'input', span: 24, labelWidth: 0 },
-      { label: '补充信息', key: 'additionalSection', type: 'divider', span: 24 },
       {
         label: '备注',
         key: 'remark',
@@ -298,6 +306,7 @@
   }
 
   const handleOpen = async (data: SupplierDialogOpenData): Promise<void> => {
+    activeTab.value = 'identitySection'
     await resetForm()
     groups.value = data.groups
     tenantOptions.value = data.tenantOptions

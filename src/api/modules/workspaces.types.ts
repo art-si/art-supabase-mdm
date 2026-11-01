@@ -324,7 +324,7 @@ export interface ProcessRouteReference {
 }
 
 export interface ProcessRouteReferences {
-  groups: ProcessRouteReference[]
+  groups: Array<ProcessRouteReference & { parentId: string | null; disabled: boolean }>
   operations: ProcessRouteReference[]
   controlCodes: ProcessRouteReference[]
   units: ProcessRouteReference[]

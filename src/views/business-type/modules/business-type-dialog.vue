@@ -28,8 +28,6 @@
         :gutter="20"
         label-position="top"
         label-width="auto"
-        :show-reset="false"
-        :show-submit="false"
         :validate-on-rule-change="false"
         scroll-to-error
       >
@@ -170,7 +168,7 @@
 
       return [
         ...tenantItems,
-        { label: '归属与类型标识', key: 'identitySection', type: 'divider', span: 24 },
+        { label: '归属与类型标识', key: 'identitySection', type: 'tab', span: 24 },
         {
           label: '所属菜单功能',
           key: 'menuIds',
@@ -248,7 +246,7 @@
           span: 12,
           props: { maxlength: 100, clearable: true, placeholder: '请输入业务可识别的类型名称' }
         },
-        { label: '业务规则', key: 'ruleSection', type: 'divider', span: 24 },
+        { label: '业务规则', key: 'ruleSection', type: 'tab', span: 24 },
         {
           label: '默认业务类型',
           key: 'isDefault',
@@ -316,7 +314,7 @@
           options: booleanOptions,
           description: '默认为否，启用后纳入存货核算。'
         },
-        { label: '显示、排序与状态', key: 'presentationSection', type: 'divider', span: 24 },
+        { label: '显示、排序与状态', key: 'presentationSection', type: 'tab', span: 24 },
         {
           label: '排序',
           key: 'sortOrder',
@@ -352,7 +350,6 @@
           props: { clearable: true, placeholder: '请选择标签样式' }
         },
         { label: '文字颜色', key: 'textColor', type: 'input', span: 12 },
-        { label: '补充说明', key: 'remarkSection', type: 'divider', span: 24 },
         {
           label: '备注',
           key: 'remark',

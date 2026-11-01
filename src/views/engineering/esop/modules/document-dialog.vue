@@ -53,15 +53,12 @@
         <ArtForm
           v-show="activeTab === 'document'"
           ref="formRef"
-          :model-value="form"
-          @update:model-value="replaceReactiveModel(form, $event)"
+          v-model="form"
           :items="documentItems"
           :rules="rules"
           :span="12"
           :gutter="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
         >
           <template #categoryId>
             <div class="esop-document-dialog__category-field">
@@ -102,13 +99,10 @@
 
         <ArtForm
           v-show="activeTab === 'scope'"
-          :model-value="form"
-          @update:model-value="replaceReactiveModel(form, $event)"
+          v-model="form"
           :items="scopeItems"
           :span="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
         >
           <template #materialIds>
             <ElSelect
@@ -159,7 +153,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { getAttachmentNameFromUrl } from '@/utils/file/attachment'
@@ -230,22 +223,22 @@
     materialIds: [],
     routeIds: []
   })
-  const form = reactive<EsopDocumentInput>(initial())
+  const form = ref<EsopDocumentInput>(initial())
   const scopedCategories = computed(() =>
     categoryTreeUtils.mapTree(
       categoryTreeUtils.listToTree(
         categoryTreeUtils
           .treeToList(categories.value)
-          .filter((node) => node.tenantId === form.tenantId)
+          .filter((node) => node.tenantId === form.value.tenantId)
       ),
       (node) => ({ ...node, disabled: node.status !== 'enabled' })
     )
   )
   const scopedReferences = computed<EsopReferenceOptions>(() => ({
-    materials: references.value.materials.filter((item) => item.tenantId === form.tenantId),
-    routes: references.value.routes.filter((item) => item.tenantId === form.tenantId)
+    materials: references.value.materials.filter((item) => item.tenantId === form.value.tenantId),
+    routes: references.value.routes.filter((item) => item.tenantId === form.value.tenantId)
   }))
-  const scopeCount = computed(() => form.materialIds.length + form.routeIds.length)
+  const scopeCount = computed(() => form.value.materialIds.length + form.value.routeIds.length)
   const documentItems = computed<FormItem[]>(() => [
     {
       label: '目标租户',
@@ -254,7 +247,7 @@
       span: 24,
       options: tenantOptions.value,
       props: {
-        disabled: Boolean(form.id),
+        disabled: Boolean(form.value.id),
         filterable: true,
         placeholder: '请选择本次维护的数据归属租户'
       }
@@ -327,20 +320,21 @@
   const handleAttachmentChange = (resources: Api.DataCenter.Resources.ResourceListItem[]): void => {
     const resource = resources[0]
     if (!resource) return
-    if (resource.tenantId !== form.tenantId) {
-      form.attachmentUrl = ''
-      form.attachmentName = ''
-      form.attachmentType = ''
-      form.attachmentSize = undefined
+    if (resource.tenantId !== form.value.tenantId) {
+      form.value.attachmentUrl = ''
+      form.value.attachmentName = ''
+      form.value.attachmentType = ''
+      form.value.attachmentSize = undefined
       ElMessage.warning('附件不属于当前目标租户，请重新选择')
       return
     }
-    form.attachmentUrl = resource.url ?? ''
-    form.attachmentName =
+    form.value.attachmentUrl = resource.url ?? ''
+    form.value.attachmentName =
       resource.originName || getAttachmentNameFromUrl(resource.url ?? '', 'ESOP附件')
-    form.attachmentType = resource.suffix || resource.mimeType || ''
-    form.attachmentSize = resource.sizeByte
-    if (!form.documentName) form.documentName = form.attachmentName.replace(/\.[^.]+$/, '')
+    form.value.attachmentType = resource.suffix || resource.mimeType || ''
+    form.value.attachmentSize = resource.sizeByte
+    if (!form.value.documentName)
+      form.value.documentName = form.value.attachmentName.replace(/\.[^.]+$/, '')
   }
   const submit = async (): Promise<boolean> => {
     try {
@@ -348,11 +342,12 @@
       await nextTick()
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       await saveEsopDocument({
-        ...form,
-        documentCode: form.documentCode.trim().toUpperCase(),
-        documentName: form.documentName.trim(),
+        ...form.value,
+        documentCode: form.value.documentCode.trim().toUpperCase(),
+        documentName: form.value.documentName.trim(),
         attachmentName:
-          form.attachmentName || getAttachmentNameFromUrl(form.attachmentUrl, 'ESOP附件')
+          form.value.attachmentName ||
+          getAttachmentNameFromUrl(form.value.attachmentUrl, 'ESOP附件')
       })
       emit('success')
       return true
@@ -362,15 +357,15 @@
     }
   }
   const handleOpen = async (data: EsopDocumentDialogOpenData): Promise<void> => {
-    Object.assign(form, initial())
+    Object.assign(form.value, initial())
     activeTab.value = 'document'
     categories.value = data.categories
     references.value = data.references
     tenantOptions.value = data.tenantOptions
-    form.tenantId = data.row?.tenantId || data.tenantId
-    form.categoryId = data.categoryId || ''
+    form.value.tenantId = data.row?.tenantId || data.tenantId
+    form.value.categoryId = data.categoryId || ''
     if (data.row) {
-      Object.assign(form, {
+      Object.assign(form.value, {
         id: data.mode === 'edit' ? data.row.id : undefined,
         tenantId: data.row.tenantId,
         categoryId: data.row.categoryId,
@@ -404,16 +399,16 @@
     })
   }
   watch(
-    () => form.tenantId,
+    () => form.value.tenantId,
     (value, previous) => {
       if (value === previous || !previous) return
-      form.categoryId = ''
-      form.materialIds = []
-      form.routeIds = []
-      form.attachmentUrl = ''
-      form.attachmentName = ''
-      form.attachmentType = ''
-      form.attachmentSize = undefined
+      form.value.categoryId = ''
+      form.value.materialIds = []
+      form.value.routeIds = []
+      form.value.attachmentUrl = ''
+      form.value.attachmentName = ''
+      form.value.attachmentType = ''
+      form.value.attachmentSize = undefined
     }
   )
   defineExpose({ handleOpen })

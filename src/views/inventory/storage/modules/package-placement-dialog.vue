@@ -18,8 +18,6 @@
         :rules="rules"
         :span="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       />
     </div>
   </ArtDialog>

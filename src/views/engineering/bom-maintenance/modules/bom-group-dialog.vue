@@ -25,14 +25,13 @@
         :span="12"
         :gutter="20"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       />
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { cloneDeep } from 'lodash-es'
@@ -55,6 +54,7 @@
     parent?: BomGroup
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [id: string, mode: 'add' | 'edit'] }>()
   const dialogRef = ref<ArtDialogExpose<BomGroupDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -86,7 +86,6 @@
     (value) => value === 'true' || value === '1'
   )
   const formItems = computed<FormItem[]>(() => [
-    { key: 'hierarchy', label: '分组层级', type: 'divider', span: 24 },
     {
       key: 'tenantId',
       label: '所属租户',
@@ -105,16 +104,20 @@
       label: '上级分组',
       type: 'treeSelect',
       span: 24,
-      options: form.groups
-        .filter((group) => group.id !== form.model.id && group.tenantId === form.model.tenantId)
-        .map((group) => ({
-          label: `${group.name}（${group.code}）`,
-          value: group.id,
-          parentId: group.parentId
-        })),
+      options: optionTree.removeNodesByCondition(
+        optionTree.listToTree(
+          form.groups
+            .filter((group) => group.tenantId === form.model.tenantId)
+            .map((group) => ({
+              label: `${group.name}（${group.code}）`,
+              value: group.id,
+              parentId: group.parentId
+            }))
+        ),
+        (node) => node.value === form.model.id
+      ).tree,
       props: { clearable: true, checkStrictly: true, placeholder: '不选择则为顶级分组' }
     },
-    { key: 'identity', label: '分组信息', type: 'divider', span: 24 },
     {
       key: 'code',
       label: '分组编码',

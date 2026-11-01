@@ -20,66 +20,74 @@
         <ArtDictDisplay dict-code="mdmBomStatus" :value="record.status" display="tag" />
       </section>
 
-      <ArtSectionCard
-        title="BOM 身份"
-        subtitle="父项物料、版本用途与当前生命周期。"
-        preserve-content-structure
-      >
-        <ArtDescriptions
-          :data="record"
-          :items="identityItems"
-          :columns="3"
-          :tablet-columns="2"
-          empty-text="—"
-        />
-      </ArtSectionCard>
+      <ElTabs v-model="activeTab">
+        <ElTabPane name="identity" label="BOM 身份">
+          <ArtSectionCard
+            title="BOM 身份"
+            subtitle="父项物料、版本用途与当前生命周期。"
+            preserve-content-structure
+          >
+            <ArtDescriptions
+              :data="record"
+              :items="identityItems"
+              :columns="3"
+              :tablet-columns="2"
+              empty-text="—"
+            />
+          </ArtSectionCard>
+        </ElTabPane>
+        <ElTabPane name="validity" label="数量与版本">
+          <div class="space-y-4">
+            <ArtSectionCard
+              title="数量与有效期"
+              subtitle="基准计量口径及版本生效范围。"
+              preserve-content-structure
+            >
+              <ArtDescriptions
+                :data="record"
+                :items="validityItems"
+                :columns="3"
+                :tablet-columns="2"
+                empty-text="—"
+              />
+            </ArtSectionCard>
 
-      <ArtSectionCard
-        title="数量与有效期"
-        subtitle="基准计量口径及版本生效范围。"
-        preserve-content-structure
-      >
-        <ArtDescriptions
-          :data="record"
-          :items="validityItems"
-          :columns="3"
-          :tablet-columns="2"
-          empty-text="—"
-        />
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        title="组件明细"
-        :subtitle="`共 ${record.items.length} 项组件；用量按当前 BOM 基准口径展示。`"
-        preserve-content-structure
-      >
-        <ArtTable
-          class="bom-detail-dialog__component-table"
-          :data="record.items"
-          :columns="componentColumns"
-          row-key="id"
-          :pagination="false"
-          table-layout="fixed"
-          :scrollbar-always-on="false"
-          :max-height="360"
-          empty-text="暂无 BOM 组件"
-          empty-description="当前 BOM 尚未维护组件明细。"
-        />
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        title="审计信息"
-        subtitle="记录该版本的创建与最近维护信息。"
-        preserve-content-structure
-      >
-        <ArtDescriptions
-          :data="record"
-          :items="auditItems"
-          :columns="2"
-          :tablet-columns="2"
-          empty-text="—"
-        />
-      </ArtSectionCard>
+            <ArtSectionCard
+              title="审计信息"
+              subtitle="记录该版本的创建与最近维护信息。"
+              preserve-content-structure
+            >
+              <ArtDescriptions
+                :data="record"
+                :items="auditItems"
+                :columns="2"
+                :tablet-columns="2"
+                empty-text="—"
+              />
+            </ArtSectionCard>
+          </div>
+        </ElTabPane>
+        <ElTabPane name="components" label="组件明细">
+          <ArtSectionCard
+            title="组件明细"
+            :subtitle="`共 ${record.items.length} 项组件；用量按当前 BOM 基准口径展示。`"
+            preserve-content-structure
+          >
+            <ArtTable
+              class="bom-detail-dialog__component-table"
+              :data="record.items"
+              :columns="componentColumns"
+              row-key="id"
+              :pagination="false"
+              table-layout="fixed"
+              :scrollbar-always-on="false"
+              :max-height="360"
+              empty-text="暂无 BOM 组件"
+              empty-description="当前 BOM 尚未维护组件明细。"
+            />
+          </ArtSectionCard>
+        </ElTabPane>
+      </ElTabs>
     </div>
   </ArtDialog>
 </template>
@@ -103,6 +111,7 @@
 
   const dialogRef = ref<ArtDialogExpose<BomRecord>>()
   const record = shallowRef<BomRecord>()
+  const activeTab = ref('identity')
 
   const formatDateTime = createDateTimeFormatter({
     format: 'YYYY-MM-DD HH:mm',
@@ -395,6 +404,7 @@
   ]
 
   const handleOpen = async (row: BomRecord): Promise<void> => {
+    activeTab.value = 'identity'
     record.value = row
     await dialogRef.value?.handleOpen(row, {
       title: 'BOM 结构详情',

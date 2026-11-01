@@ -187,7 +187,14 @@ export async function deleteMaterialReferences(kind: MaterialReferenceKind, ids:
   await responseHandle(
     () =>
       supabase.from(referenceTables[kind]).delete({ count: 'exact' }).in('id', ids).select('id'),
-    { ...writeOptions, message: '删除成功', errorMessage: '删除失败，请先解除关联数据' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '删除成功',
+      errorMessage: '删除失败，请先解除关联数据'
+    }
   )
 }
 
@@ -254,6 +261,9 @@ export async function deleteMaterialCategories(ids: string[]) {
       supabase.from('mdm_material_category').delete({ count: 'exact' }).in('id', ids).select('id'),
     {
       ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
       message: '物料分类已删除',
       errorMessage: '删除失败，请先移除下级分类或关联物料'
     }
@@ -337,6 +347,9 @@ export async function deleteMaterialArchives(ids: string[]) {
     () => supabase.from('mdm_material').delete({ count: 'exact' }).in('id', ids).select('id'),
     {
       ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
       message: '物料档案已删除',
       errorMessage: '删除失败，物料可能已被业务单据引用'
     }

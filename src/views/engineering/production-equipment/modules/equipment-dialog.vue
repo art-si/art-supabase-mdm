@@ -13,38 +13,16 @@
         </div>
       </div>
 
-      <ElTabs v-model="activeTab" class="equipment-dialog__tabs">
-        <ElTabPane v-for="tab in tabs" :key="tab.name" :name="tab.name">
-          <template #label>
-            <span class="equipment-dialog__tab-label">
-              <ArtSvgIcon :icon="tab.icon" />{{ tab.label }}
-            </span>
-          </template>
-        </ElTabPane>
-      </ElTabs>
-
-      <section class="equipment-dialog__panel" :aria-labelledby="`equipment-tab-${activeTab}`">
-        <header>
-          <div>
-            <span><ArtSvgIcon :icon="activeTabMeta.icon" /></span>
-            <div>
-              <strong :id="`equipment-tab-${activeTab}`">{{ activeTabMeta.title }}</strong>
-              <small>{{ activeTabMeta.description }}</small>
-            </div>
-          </div>
-          <span>{{ activeTabMeta.hint }}</span>
-        </header>
+      <section class="equipment-dialog__panel">
         <ArtForm
           ref="formRef"
-          :model-value="form"
-          @update:model-value="replaceReactiveModel(form, $event)"
+          v-model:active-tab="activeTab"
+          v-model="form"
           :items="formItems"
           :rules="rules"
           :span="12"
           :gutter="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
           root-class="equipment-dialog__form"
         >
           <template #photoUrl>
@@ -74,8 +52,6 @@
 
 <script setup lang="ts">
   import { toNameCodeOption } from '@/utils/form/option'
-
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -124,7 +100,7 @@
   const operationStatusOptions = useDictionaryOptions('mdmEquipmentOperationStatus')
   const dialogRef = ref<ArtDialogExpose<EquipmentDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const activeTab = ref<EquipmentTab>('identity')
+  const activeTab = ref('identity')
   const references = ref<ProductionEquipmentReferences>({
     categories: [],
     departments: [],
@@ -178,7 +154,6 @@
       icon: 'ri:shield-check-line'
     }
   }
-  const activeTabMeta = computed(() => tabMeta[activeTab.value])
 
   const initialForm = (): EquipmentForm => ({
     id: undefined,
@@ -211,10 +186,10 @@
     remark: '',
     sort: 10
   })
-  const form = reactive<EquipmentForm>(initialForm())
+  const form = ref<EquipmentForm>(initialForm())
 
   const inTenant = (items: EquipmentReference[]): EquipmentReference[] =>
-    form.tenantId ? items.filter((item) => item.tenantId === form.tenantId) : []
+    form.value.tenantId ? items.filter((item) => item.tenantId === form.value.tenantId) : []
   const options = (items: EquipmentReference[]) => inTenant(items).map(toNameCodeOption)
   const treeOptions = (items: EquipmentReference[]): EquipmentTreeOption[] =>
     referenceTree.listToTree(
@@ -230,7 +205,7 @@
   const locationOptions = computed(() => treeOptions(references.value.locations))
   const workCenterOptions = computed(() =>
     inTenant(references.value.workCenters)
-      .filter((item) => item.departmentId === form.productionDepartmentId)
+      .filter((item) => item.departmentId === form.value.productionDepartmentId)
       .map(toNameCodeOption)
   )
   const selectedEmployee = computed<EmployeeIntegrationItem[]>(() => {
@@ -246,8 +221,8 @@
     ]
   })
 
-  const formItems = computed<FormItem[]>(() => {
-    if (activeTab.value === 'identity')
+  const itemsForTab = (tab: EquipmentTab): FormItem[] => {
+    if (tab === 'identity')
       return [
         ...(tenantOptions.value.length > 1
           ? [
@@ -256,7 +231,7 @@
                 key: 'tenantId',
                 type: 'select',
                 options: tenantOptions.value,
-                props: { disabled: Boolean(form.id), filterable: true }
+                props: { disabled: Boolean(form.value.id), filterable: true }
               } as FormItem
             ]
           : []),
@@ -265,7 +240,7 @@
           key: 'equipmentCode',
           type: 'input',
           help: '可留空，由企业编码规则自动生成。',
-          props: { maxlength: 60, placeholder: '留空自动生成', disabled: Boolean(form.id) }
+          props: { maxlength: 60, placeholder: '留空自动生成', disabled: Boolean(form.value.id) }
         },
         { label: '设备名称', key: 'equipmentName', type: 'input', props: { maxlength: 120 } },
         {
@@ -289,7 +264,7 @@
           options: statusOptions
         }
       ]
-    if (activeTab.value === 'assignment')
+    if (tab === 'assignment')
       return [
         {
           label: '部门 / 产线',
@@ -306,10 +281,10 @@
           props: {
             clearable: true,
             filterable: true,
-            disabled: form.syncWorkCenter,
-            placeholder: form.syncWorkCenter ? '保存后自动回填设备编号' : '选择已有工作中心'
+            disabled: form.value.syncWorkCenter,
+            placeholder: form.value.syncWorkCenter ? '保存后自动回填设备编号' : '选择已有工作中心'
           },
-          help: form.syncWorkCenter
+          help: form.value.syncWorkCenter
             ? '新建设备保存后，将自动回填同编码工作中心。'
             : '仅显示所选部门 / 产线下的工作中心。'
         },
@@ -338,16 +313,16 @@
           key: 'syncWorkCenter',
           type: 'switch',
           props: {
-            disabled: Boolean(form.id),
+            disabled: Boolean(form.value.id),
             activeText: '自动生成',
             inactiveText: '手动选择'
           },
-          help: form.id
+          help: form.value.id
             ? '同步生成策略仅在新建设备时设置，已有设备保留当前工作中心关系。'
             : '开启后保存设备时同步创建同编号、同名称、同所属产线的工作中心。'
         }
       ]
-    if (activeTab.value === 'technical')
+    if (tab === 'technical')
       return [
         { label: '设备品牌', key: 'equipmentBrand', type: 'input', props: { maxlength: 100 } },
         { label: '设备型号', key: 'model', type: 'input', props: { maxlength: 120 } },
@@ -374,7 +349,7 @@
         },
         { label: '启用日期', key: 'enableDate', type: 'date', props: { valueFormat: 'YYYY-MM-DD' } }
       ]
-    if (activeTab.value === 'connection')
+    if (tab === 'connection')
       return [
         {
           label: '智能三色灯卡号',
@@ -417,8 +392,18 @@
         props: { type: 'textarea', rows: 4, maxlength: 1000, showWordLimit: true, resize: 'none' }
       }
     ]
-  })
-
+  }
+  const formItems = computed<FormItem[]>(() =>
+    tabs.flatMap((tab) => [
+      {
+        key: tab.name,
+        label: tab.label,
+        type: 'tab',
+        description: tabMeta[tab.name].description
+      } as FormItem,
+      ...itemsForTab(tab.name)
+    ])
+  )
   const rules: FormRules<Record<string, unknown>> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
     equipmentName: [{ required: true, message: '请输入设备名称', trigger: 'blur' }],
@@ -457,25 +442,18 @@
     'sort'
   ] as const satisfies readonly (keyof ProductionEquipmentInput)[]
 
-  const buildWriteInput = (): ProductionEquipmentInput => cloneDeep(pick(form, equipmentInputKeys))
+  const buildWriteInput = (): ProductionEquipmentInput =>
+    cloneDeep(pick(form.value, equipmentInputKeys))
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      activeTab.value = 'identity'
-      await nextTick()
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      if (!form.productionDepartmentId) {
-        activeTab.value = 'assignment'
-        await nextTick()
-        await validateArtFormForSubmit(formRef.value)
-        return false
-      }
     } catch (error) {
       notifyFriendlyError(error, '生产设备校验未完成，请稍后重试', 'warning')
       return false
     }
     try {
-      await saveProductionEquipment(buildWriteInput(), form.id)
+      await saveProductionEquipment(buildWriteInput(), form.value.id)
       emit('success')
       return true
     } catch (error) {
@@ -485,19 +463,19 @@
   }
 
   const handleOpen = async (data: EquipmentDialogOpenData): Promise<void> => {
-    Object.assign(form, initialForm())
+    Object.assign(form.value, initialForm())
     references.value = data.references
     tenantOptions.value = data.tenantOptions
     editingRow.value = data.row
     activeTab.value = 'identity'
-    if (data.row) Object.assign(form, cloneDeep(data.row))
+    if (data.row) Object.assign(form.value, cloneDeep(data.row))
     else
-      form.tenantId =
+      form.value.tenantId =
         data.targetTenantId || (data.tenantOptions.length === 1 ? data.tenantOptions[0].value : '')
     if (data.copy) {
-      form.id = undefined
-      form.equipmentCode = ''
-      form.equipmentName = `${form.equipmentName}（副本）`
+      form.value.id = undefined
+      form.value.equipmentCode = ''
+      form.value.equipmentName = `${form.value.equipmentName}（副本）`
     }
     await dialogRef.value?.handleOpen(data, {
       title: `${data.copy ? '复制' : data.row ? '编辑' : '新增'}生产设备`,
@@ -510,16 +488,16 @@
   }
 
   watch(
-    () => form.productionDepartmentId,
+    () => form.value.productionDepartmentId,
     () => {
-      if (!workCenterOptions.value.some((item) => item.value === form.workCenterId))
-        form.workCenterId = null
+      if (!workCenterOptions.value.some((item) => item.value === form.value.workCenterId))
+        form.value.workCenterId = null
     }
   )
   watch(
-    () => form.syncWorkCenter,
+    () => form.value.syncWorkCenter,
     (enabled) => {
-      if (enabled && !form.id) form.workCenterId = null
+      if (enabled && !form.value.id) form.value.workCenterId = null
     }
   )
   defineExpose({ handleOpen })

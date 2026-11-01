@@ -10,13 +10,10 @@
       </div>
       <ArtForm
         ref="formRef"
-        :model-value="form"
-        @update:model-value="replaceReactiveModel(form, $event)"
+        v-model="form"
         :items="formItems"
         :rules="formRules"
         :span="12"
-        :show-reset="false"
-        :show-submit="false"
         label-position="top"
         scroll-to-error
       />
@@ -25,7 +22,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -77,7 +73,7 @@
   const kind = ref<ConfigKind>('steward')
   const dialogActive = ref(false)
   const contextVersion = ref(0)
-  const form = reactive<ConfigForm>({
+  const form = ref<ConfigForm>({
     domainKey: 'organization',
     sourceType: '',
     stewardUserId: '',
@@ -133,7 +129,7 @@
     material: ['material']
   }
   const sourceOptions = computed(() =>
-    scopeByDomain[form.domainKey]
+    scopeByDomain[form.value.domainKey]
       .flatMap((scope) => mdmCatalogSourceDefinitions[scope])
       .filter((source) => source.kind === 'master')
       .map((source) => ({ label: source.label, value: source.type }))
@@ -298,22 +294,22 @@
     try {
       if (kind.value === 'steward') {
         await saveMdmDataSteward({
-          domainKey: form.domainKey,
-          sourceType: form.sourceType || null,
-          stewardUserId: form.stewardUserId,
-          escalationUserId: form.escalationUserId || null,
-          slaHours: form.slaHours,
-          enabled: form.enabled
+          domainKey: form.value.domainKey,
+          sourceType: form.value.sourceType || null,
+          stewardUserId: form.value.stewardUserId,
+          escalationUserId: form.value.escalationUserId || null,
+          slaHours: form.value.slaHours,
+          enabled: form.value.enabled
         })
       } else if (kind.value === 'rule') {
         await createMdmQualityRuleVersion({
-          ruleCode: form.ruleCode.trim(),
-          ruleName: form.ruleName.trim(),
-          domainKey: form.domainKey,
-          sourceType: form.sourceType,
-          severity: form.severity,
-          threshold: form.threshold,
-          slaHours: form.slaHours,
+          ruleCode: form.value.ruleCode.trim(),
+          ruleName: form.value.ruleName.trim(),
+          domainKey: form.value.domainKey,
+          sourceType: form.value.sourceType,
+          severity: form.value.severity,
+          threshold: form.value.threshold,
+          slaHours: form.value.slaHours,
           definition: {
             evaluator: 'app_private.mdm_catalog_projection',
             evaluatorVersion: 1,
@@ -321,18 +317,18 @@
             operator: 'greater_than_or_equal',
             issueField: 'quality_issues'
           },
-          effectiveFrom: form.effectiveFrom
+          effectiveFrom: form.value.effectiveFrom
         })
       } else {
         await saveMdmOutboxConsumer({
-          consumerKey: form.consumerKey.trim(),
-          consumerName: form.consumerName.trim(),
-          eventTypes: form.eventTypes.map((value) => value.trim()).filter(Boolean),
-          contractVersion: form.contractVersion,
-          visibilityTimeoutSeconds: form.visibilityTimeoutSeconds,
-          maxAttempts: form.maxAttempts,
-          enabled: form.enabled,
-          replaySince: form.replaySince || null
+          consumerKey: form.value.consumerKey.trim(),
+          consumerName: form.value.consumerName.trim(),
+          eventTypes: form.value.eventTypes.map((value) => value.trim()).filter(Boolean),
+          contractVersion: form.value.contractVersion,
+          visibilityTimeoutSeconds: form.value.visibilityTimeoutSeconds,
+          maxAttempts: form.value.maxAttempts,
+          enabled: form.value.enabled,
+          replaySince: form.value.replaySince || null
         })
       }
       emit('success', kind.value)

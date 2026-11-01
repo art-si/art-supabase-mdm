@@ -194,7 +194,13 @@ export async function saveStorageZone(
 export async function deleteStorageZone(id: string): Promise<void> {
   await responseHandle(
     () => supabase.from('mdm_warehouse_zone').delete().eq('id', id).select('id'),
-    { ...writeOptions, message: '库区已删除' }
+    {
+      ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '库区已删除'
+    }
   )
 }
 

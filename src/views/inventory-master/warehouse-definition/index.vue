@@ -40,8 +40,7 @@
           <div class="warehouse-page__table-pane">
             <ArtTableQuery
               ref="tableRef"
-              :model-value="search"
-              @update:model-value="replaceReactiveModel(search, $event)"
+              v-model="search"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -66,17 +65,19 @@
       <WarehouseGroupDialog ref="groupDialogRef" @success="refresh" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
+  <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
@@ -126,7 +127,14 @@
   }
   type TableParams = WarehouseQuery & Pick<Api.Common.PaginationParams, 'current' | 'size'>
 
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_warehouse',
+    '仓库'
+  )
+  const { deleteGuardRef: groupDeleteGuardRef, deleteRecords: deleteGroups } = useRecordDeleteGuard(
+    'mdm_warehouse_group',
+    '仓库分组'
+  )
   const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const warehouseDialogRef = ref<WarehouseDialogExpose>()
@@ -134,7 +142,7 @@
   const groups = ref<WarehouseGroup[]>([])
   const selectedGroupId = ref('')
   const groupState = reactive({ loading: true, error: '' })
-  const search = reactive({
+  const search = ref({
     keyword: '',
     status: undefined as 'enabled' | 'disabled' | undefined
   })
@@ -180,10 +188,16 @@
     await tableRef.value?.getData()
   }
   const removeGroup = async (row: WarehouseGroup): Promise<void> => {
-    await confirmDelete(`确定删除仓库分组“${row.name}”吗？存在下级分组或仓库时无法删除。`)
-    await deleteWarehouseGroup(row.id)
-    if (selectedGroupId.value === row.id) selectedGroupId.value = ''
-    await refresh()
+    await deleteGroups({
+      resources: [{ id: row.id, label: `${row.name} · ${row.code}` }],
+      permission: 'MdmWarehouseDefinition:ManageGroup',
+      remove: () => deleteWarehouseGroup(row.id),
+      successMessage: '仓库分组已删除',
+      onDeleted: async () => {
+        if (selectedGroupId.value === row.id) selectedGroupId.value = ''
+        await refresh()
+      }
+    })
   }
   const headerActions: ArtTableQueryHeaderAction[] = [
     {
@@ -208,9 +222,10 @@
       label: '启用',
       icon: 'ri:checkbox-circle-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setWarehousesEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((row) => String(row.id)),
           true
         )
         await api.refreshUpdate()
@@ -221,9 +236,10 @@
       label: '禁用',
       icon: 'ri:forbid-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setWarehousesEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((row) => String(row.id)),
           false
         )
         await api.refreshUpdate()
@@ -232,14 +248,26 @@
     {
       permission: 'MdmWarehouseDefinition:Delete',
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 个仓库吗？被库存业务引用的仓库无法删除。`,
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteWarehouses(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
+        await removeRows(selectedRows as WarehouseRecord[], () => api.refreshRemove())
       }
     }
   ]
+  async function removeRows(rows: WarehouseRecord[], refresh: () => unknown): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.warehouseName })),
+      permission: 'MdmWarehouseDefinition:Delete',
+      remove: () => deleteWarehouses(rows.map((row) => row.id)),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
+  }
   const identity = (row: WarehouseRecord) => (
     <BusinessTableIdentityCell
       primary={row.warehouseName}
@@ -372,11 +400,8 @@
           <ArtButtonTable
             permission="MdmWarehouseDefinition:Delete"
             type="delete"
-            onClick={async () => {
-              await confirmDelete(`确定删除仓库“${row.warehouseName}”吗？`)
-              await deleteWarehouses([row.id])
-              await refresh()
-            }}
+            disabled={deleteBusy.value}
+            onClick={() => removeRows([row], () => tableRef.value?.getData())}
           />
         </BusinessTableRowActions>
       )

@@ -34,8 +34,6 @@
         :span="8"
         :gutter="18"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
         root-class="bom-dialog__form"
       >
         <template #materialId>
@@ -51,112 +49,116 @@
             @change="handleParentChange"
           />
         </template>
-      </ArtForm>
+        <template #bomComponents>
+          <ArtAsyncState
+            v-if="processLoadError"
+            :error="processLoadError"
+            error-title="工艺数据加载失败"
+            size="compact"
+            retryable
+            @retry="retryProcessData"
+          />
+          <ElAlert
+            v-if="form.materialId && !routeLoading && !processLoadError && !processRoutes.length"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="该父项物料尚未维护可用工艺路线"
+            description="可以继续维护 BOM；建立工艺路线后再次编辑，未分配组件会自动归入第一道工序。"
+          />
 
-      <ArtAsyncState
-        v-if="processLoadError"
-        :error="processLoadError"
-        error-title="工艺数据加载失败"
-        size="compact"
-        retryable
-        @retry="retryProcessData"
-      />
-      <ElAlert
-        v-if="form.materialId && !routeLoading && !processLoadError && !processRoutes.length"
-        type="warning"
-        :closable="false"
-        show-icon
-        title="该父项物料尚未维护可用工艺路线"
-        description="可以继续维护 BOM；建立工艺路线后再次编辑，未分配组件会自动归入第一道工序。"
-      />
-
-      <section class="bom-dialog__components">
-        <header>
-          <div>
-            <strong>组件明细</strong
-            ><small>按装配顺序维护；新增或未分配组件默认归入第一道工序</small>
-          </div>
-          <div class="bom-dialog__component-actions">
-            <ElButton
-              v-if="canMaintainBom"
-              :disabled="!firstProcessStep || !form.items.length"
-              @click="assignAllComponentsToFirstStep"
-            >
-              <ArtSvgIcon icon="ri:route-line" />全部归首工序
-            </ElButton>
-            <ArtTableSingleSelect
-              v-model="batchSelectedStepId"
-              :selected-data="batchSelectedSteps"
-              :data="processSteps"
-              :columns="batchStepColumns"
-              :label-key="batchStepLabel"
-              :description-key="batchStepDescription"
-              title="批量分配组件工序"
-              :subtitle="`将所选工序分配给已勾选的 ${selectedComponentRows.length} 项 BOM 组件`"
-              placeholder="选择目标工序"
-              search-placeholder="搜索工序号、工序名称或工作中心"
-              empty-text="暂无可分配工序"
-              empty-description="请先为父项物料选择一条包含工序的工艺路线。"
-              dialog-width="xl"
-              @confirm="handleBatchStepConfirm"
-            >
-              <template #trigger="{ open }">
+          <section class="bom-dialog__components">
+            <header>
+              <div>
+                <strong>组件明细</strong
+                ><small>按装配顺序维护；新增或未分配组件默认归入第一道工序</small>
+              </div>
+              <div class="bom-dialog__component-actions">
                 <ElButton
                   v-if="canMaintainBom"
-                  :disabled="!selectedComponentRows.length || !processSteps.length"
-                  @click="open"
+                  :disabled="!firstProcessStep || !form.items.length"
+                  @click="assignAllComponentsToFirstStep"
                 >
-                  <ArtSvgIcon icon="ri:git-merge-line" />
-                  批量分配工序<span v-if="selectedComponentRows.length"
-                    >（{{ selectedComponentRows.length }}）</span
-                  >
+                  <ArtSvgIcon icon="ri:route-line" />全部归首工序
                 </ElButton>
-              </template>
-            </ArtTableSingleSelect>
-            <ArtMaterialSelect
-              v-model:model-values="selectedComponentIds"
-              multiple
-              v-model:selected-data="pickerSelectedComponents"
-              :api-fn="fetchMaterials"
-              :categories="materialCategories"
-              title="批量添加组件物料"
-              subtitle="父项物料不可作为自身组件；已存在组件不会重复加入"
-              dialog-width="1600px"
-              :disabled-key="isComponentMaterialDisabled"
-              @confirm="handleComponentsConfirm"
-            >
-              <template #trigger="{ open }">
-                <ElButton v-if="canMaintainBom" type="primary" plain @click="open"
-                  ><ArtSvgIcon icon="ri:add-line" />参选物料</ElButton
+                <ArtTableSingleSelect
+                  v-model="batchSelectedStepId"
+                  :selected-data="batchSelectedSteps"
+                  :data="processSteps"
+                  :columns="batchStepColumns"
+                  :label-key="batchStepLabel"
+                  :description-key="batchStepDescription"
+                  title="批量分配组件工序"
+                  :subtitle="`将所选工序分配给已勾选的 ${selectedComponentRows.length} 项 BOM 组件`"
+                  placeholder="选择目标工序"
+                  search-placeholder="搜索工序号、工序名称或工作中心"
+                  empty-text="暂无可分配工序"
+                  empty-description="请先为父项物料选择一条包含工序的工艺路线。"
+                  dialog-width="xl"
+                  @confirm="handleBatchStepConfirm"
                 >
-              </template>
-            </ArtMaterialSelect>
-          </div>
-        </header>
-        <ArtTable
-          ref="componentTableRef"
-          class="bom-dialog__component-table"
-          :data="form.items"
-          :columns="componentColumns"
-          row-key="componentMaterialId"
-          :pagination="false"
-          table-layout="fixed"
-          :scrollbar-always-on="false"
-          :max-height="360"
-          empty-text="暂无 BOM 组件"
-          empty-description="组件为选填，可直接保存；后续可通过“参选物料”补充装配关系。"
-          @selection-change="handleComponentSelectionChange"
-        />
-        <footer
-          ><span>共 {{ form.items.length }} 项组件</span
-          ><span>已分配 {{ assignedComponentCount }} 项 · 有效用量已包含损耗率口径</span></footer
-        >
-      </section>
+                  <template #trigger="{ open }">
+                    <ElButton
+                      v-if="canMaintainBom"
+                      :disabled="!selectedComponentRows.length || !processSteps.length"
+                      @click="open"
+                    >
+                      <ArtSvgIcon icon="ri:git-merge-line" />
+                      批量分配工序<span v-if="selectedComponentRows.length"
+                        >（{{ selectedComponentRows.length }}）</span
+                      >
+                    </ElButton>
+                  </template>
+                </ArtTableSingleSelect>
+                <ArtMaterialSelect
+                  v-model:model-values="selectedComponentIds"
+                  multiple
+                  v-model:selected-data="pickerSelectedComponents"
+                  :api-fn="fetchMaterials"
+                  :categories="materialCategories"
+                  title="批量添加组件物料"
+                  subtitle="父项物料不可作为自身组件；已存在组件不会重复加入"
+                  dialog-width="1600px"
+                  :disabled-key="isComponentMaterialDisabled"
+                  @confirm="handleComponentsConfirm"
+                >
+                  <template #trigger="{ open }">
+                    <ElButton v-if="canMaintainBom" type="primary" plain @click="open"
+                      ><ArtSvgIcon icon="ri:add-line" />参选物料</ElButton
+                    >
+                  </template>
+                </ArtMaterialSelect>
+              </div>
+            </header>
+            <ArtTable
+              ref="componentTableRef"
+              class="bom-dialog__component-table"
+              :data="form.items"
+              :columns="componentColumns"
+              row-key="componentMaterialId"
+              :pagination="false"
+              table-layout="fixed"
+              :scrollbar-always-on="false"
+              :max-height="360"
+              empty-text="暂无 BOM 组件"
+              empty-description="组件为选填，可直接保存；后续可通过“参选物料”补充装配关系。"
+              @selection-change="handleComponentSelectionChange"
+            />
+            <footer
+              ><span>共 {{ form.items.length }} 项组件</span
+              ><span
+                >已分配 {{ assignedComponentCount }} 项 · 有效用量已包含损耗率口径</span
+              ></footer
+            >
+          </section>
+        </template>
+      </ArtForm>
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="tsx">
+  import TreeUtils from '@/utils/tree'
   import { getProcessRouteSequenceLabel } from '@mdm/domain/process-route-display'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -228,12 +230,9 @@
     loadUnits?: () => Promise<UnitOfMeasure[]>
     groups: BomGroup[]
   }
-  interface FormExpose {
-    validate: () => Promise<boolean>
-    clearValidate: () => void
-  }
   type BomComponentInput = BomInput['items'][number]
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [] }>()
   const { hasAnyAuth } = useAuth()
   const userStore = useUserStore()
@@ -242,7 +241,7 @@
   const backflushMethodOptions = useDictionaryOptions('mdmMaterialBackflushMethod')
   const overIssueControlOptions = useDictionaryOptions('mdmMaterialOverIssueControl')
   const dialogRef = ref<ArtDialogExpose<BomDialogOpenData>>()
-  const formRef = ref<FormExpose>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
   const componentTableRef = ref<ArtTableExpose>()
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
   const units = ref<UnitOfMeasure[]>([])
@@ -332,7 +331,7 @@
         placeholder: '请选择本次维护的数据归属租户'
       }
     },
-    { key: 'identity', label: 'BOM 身份', type: 'divider', span: 24 },
+    { key: 'identity', label: 'BOM 身份', type: 'tab', span: 24 },
     { key: 'materialId', label: '父项物料', type: 'slot', span: 16 },
     {
       key: 'processRouteId',
@@ -367,9 +366,20 @@
     {
       key: 'groupId',
       label: 'BOM 分组',
-      type: 'select',
-      options: groups.value.map((group) => ({ label: group.name, value: group.id })),
-      props: { clearable: true, placeholder: '请选择 BOM 分组' }
+      type: 'treeSelect',
+      options: optionTree.listToTree(
+        groups.value.map((group) => ({
+          label: group.name,
+          value: group.id,
+          parentId: group.parentId
+        }))
+      ),
+      props: {
+        clearable: true,
+        filterable: true,
+        checkStrictly: true,
+        placeholder: '请选择 BOM 分组'
+      }
     },
     {
       key: 'purpose',
@@ -383,7 +393,7 @@
       type: 'number',
       props: { min: 0, max: 999999, precision: 0, class: '!w-full' }
     },
-    { key: 'validity', label: '数量与有效期', type: 'divider', span: 24 },
+    { key: 'validity', label: '数量与有效期', type: 'tab', span: 24 },
     {
       key: 'baseQuantity',
       label: '基准数量',
@@ -426,7 +436,9 @@
       type: 'input',
       span: 16,
       props: { type: 'textarea', rows: 2, maxlength: 500, showWordLimit: true, resize: 'none' }
-    }
+    },
+    { key: 'componentsSection', label: '组件明细', type: 'tab' },
+    { key: 'bomComponents', label: '', type: 'slot', span: 24, labelWidth: 0 }
   ])
   const rules: FormRules<Record<string, unknown>> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
@@ -769,6 +781,7 @@
     {
       prop: 'quantity',
       label: '用量',
+      headerTooltip: '每个组件的用量必须大于 0，基准数量与损耗率共同决定实际需求量。',
       required: true,
       requiredMessage: ({ row, rowIndex }) => `${componentRowLabel(row, rowIndex)}的用量不能为空`,
       rules: {
@@ -791,6 +804,7 @@
     {
       prop: 'unitId',
       label: '计量单位',
+      headerTooltip: '请选择组件的业务单位；切换单位时按已维护的换算关系调整用量。',
       required: true,
       requiredMessage: ({ row, rowIndex }) => `${componentRowLabel(row, rowIndex)}未选择单位`,
       width: 160,
@@ -1061,17 +1075,16 @@
       if (!isCurrent()) return false
       if (!valid) {
         ElMessage.warning('请先完善 BOM 基本信息中的必填项')
-        dialogRef.value?.scrollTo({ top: 0 })
         return false
       }
     } catch (error) {
       if (!isCurrent()) return false
       notifyFriendlyError(error, 'BOM 基本信息校验未完成，请稍后重试', 'warning')
-      dialogRef.value?.scrollTo({ top: 0 })
       return false
     }
 
     try {
+      if (form.value.items.length) await formRef.value?.scrollToField('bomComponents')
       const result = await componentTableRef.value?.validate()
       if (!isCurrent()) return false
       if (result?.valid === false) {

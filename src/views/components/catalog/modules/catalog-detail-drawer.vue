@@ -25,36 +25,50 @@
         </div>
       </section>
 
+      <ElTabs v-if="visibleAttributes.length > 4" v-model="activeTab">
+        <ElTabPane name="identity" label="身份与来源">
+          <ArtSectionCard
+            title="身份与来源"
+            subtitle="业务资料由来源系统维护，本页供查询与核对。"
+            preserve-content-structure
+          >
+            <ArtDescriptions
+              :data="record"
+              :items="[...identityItems, ...governanceItems]"
+              :columns="2"
+              :tablet-columns="2"
+            />
+          </ArtSectionCard>
+        </ElTabPane>
+        <ElTabPane name="attributes" label="业务属性">
+          <ArtSectionCard
+            title="业务属性"
+            subtitle="与当前主档相关的业务信息。"
+            preserve-content-structure
+          >
+            <ArtDescriptions
+              class="mdm-catalog-detail__attributes"
+              :label-width="96"
+              :data="record"
+              :items="attributeItems"
+              :columns="2"
+              :tablet-columns="2"
+              empty-text="—"
+            />
+          </ArtSectionCard>
+        </ElTabPane>
+      </ElTabs>
       <ArtSectionCard
-        title="主档身份"
-        subtitle="用于跨业务系统识别与核对的稳定信息。"
-        preserve-content-structure
-      >
-        <ArtDescriptions :data="record" :items="identityItems" :columns="2" :tablet-columns="2" />
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        title="治理与来源"
-        subtitle="业务资料由来源系统维护，本页供查询与核对。"
-        preserve-content-structure
-      >
-        <ArtDescriptions :data="record" :items="governanceItems" :columns="2" :tablet-columns="2" />
-      </ArtSectionCard>
-
-      <ArtSectionCard
-        v-if="visibleAttributes.length"
-        title="业务属性"
-        subtitle="与当前主档相关的业务信息。"
+        v-else
+        title="主档信息"
+        subtitle="核对主档身份、权威来源与业务属性。"
         preserve-content-structure
       >
         <ArtDescriptions
-          class="mdm-catalog-detail__attributes"
-          :label-width="96"
           :data="record"
-          :items="attributeItems"
+          :items="[...identityItems, ...governanceItems, ...attributeItems]"
           :columns="2"
           :tablet-columns="2"
-          empty-text="—"
         />
       </ArtSectionCard>
 
@@ -94,6 +108,7 @@
 
   const drawerRef = ref<ArtDrawerExpose<MdmCatalogRecord>>()
   const record = ref<MdmCatalogRecord | null>(null)
+  const activeTab = ref('identity')
 
   const formatDateTime = createDateTimeFormatter({ emptyText: '—', invalidText: '—' })
 
@@ -154,6 +169,7 @@
   )
 
   const handleOpen = async (row: MdmCatalogRecord): Promise<void> => {
+    activeTab.value = 'identity'
     record.value = row
     await drawerRef.value?.handleOpen(row, {
       title: '主数据详情',

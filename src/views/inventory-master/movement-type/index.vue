@@ -20,8 +20,7 @@
       </ElAlert>
       <ArtTableQuery
         ref="tableRef"
-        :model-value="search"
-        @update:model-value="replaceReactiveModel(search, $event)"
+        v-model="search"
         :api-fn="fetchRows"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -44,7 +43,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import dayjs from 'dayjs'
   import { ElButton, ElTag } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -110,7 +108,7 @@
   const dialogRef = ref<InstanceType<typeof MovementTypeDialog>>()
   const detailRef = ref<InstanceType<typeof MovementTypeDetailDrawer>>()
   const optionError = ref(false)
-  const search = reactive<SearchModel>({ keyword: referencedRecordNo.value, direction: undefined })
+  const search = ref<SearchModel>({ keyword: referencedRecordNo.value, direction: undefined })
   const directionOptions = useDictionaryOptions('mdmStockMovementDirection')
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -388,8 +386,8 @@
   }
   onMounted(() => void loadOptions())
   watch(referencedRecordNo, (recordNo) => {
-    search.keyword = recordNo
-    search.direction = undefined
+    search.value.keyword = recordNo
+    search.value.direction = undefined
     void tableRef.value?.getData()
   })
 </script>

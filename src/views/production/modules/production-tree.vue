@@ -1,6 +1,5 @@
 <template>
   <ArtSectionCard
-    :show-scrollbar="false"
     class="production-tree"
     title="部门 / 产线"
     subtitle="按组织范围查看生产配置"
@@ -11,76 +10,77 @@
     empty-description="新增部门或产线后，可在这里按组织范围定位业务数据。"
     retryable
     @retry="$emit('refresh')"
-    body-class="production-tree__body"
   >
     <template #actions>
       <ArtTreeExpandToggle :tree="treeRef" :data="nodes" label="组织树" />
       <ArtIconButton label="刷新部门树" icon="ri:refresh-line" @click="$emit('refresh')" />
     </template>
-    <ElInput
-      v-model="keyword"
-      placeholder="搜索组织名称或编码"
-      aria-label="搜索部门名称或编码"
-      clearable
+    <template #toolbar
+      ><div class="production-tree__toolbar"
+        ><ElInput
+          v-model="keyword"
+          placeholder="搜索组织名称或编码"
+          aria-label="搜索部门名称或编码"
+          clearable
+        >
+          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+        </ElInput>
+        <button
+          v-if="showAll"
+          type="button"
+          class="production-tree__all"
+          :class="{ 'is-current': !selected }"
+          @click="emit('select', '')"
+        >
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:organization-chart" /></span>
+          <span
+            ><strong>全部生产组织</strong><small>{{ allDescription }}</small></span
+          >
+          <ArtSvgIcon v-if="!selected" icon="ri:check-line" aria-hidden="true" />
+        </button>
+        <div class="production-tree__section-label">
+          <span>组织结构</span>
+          <small>{{ activeCount }} 个可用节点</small>
+        </div>
+      </div></template
     >
-      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-    </ElInput>
-    <button
-      v-if="showAll"
-      type="button"
-      class="production-tree__all"
-      :class="{ 'is-current': !selected }"
-      @click="emit('select', '')"
+    <ElTree
+      ref="treeRef"
+      :data="nodes"
+      node-key="id"
+      :props="{ label: 'name' }"
+      :current-node-key="selected"
+      :filter-node-method="filterNode"
+      :default-expanded-keys="defaultExpandedKeys"
+      highlight-current
+      :expand-on-click-node="false"
+      @node-click="selectNode"
     >
-      <span aria-hidden="true"><ArtSvgIcon icon="ri:organization-chart" /></span>
-      <span
-        ><strong>全部生产组织</strong><small>{{ allDescription }}</small></span
-      >
-      <ArtSvgIcon v-if="!selected" icon="ri:check-line" aria-hidden="true" />
-    </button>
-    <div class="production-tree__section-label">
-      <span>组织结构</span>
-      <small>{{ activeCount }} 个可用节点</small>
-    </div>
-    <ElScrollbar class="production-tree__scroll">
-      <ElTree
-        ref="treeRef"
-        :data="nodes"
-        node-key="id"
-        :props="{ label: 'name' }"
-        :current-node-key="selected"
-        :filter-node-method="filterNode"
-        :default-expanded-keys="defaultExpandedKeys"
-        highlight-current
-        :expand-on-click-node="false"
-        @node-click="selectNode"
-      >
-        <template #default="{ data }">
-          <div class="production-tree__node">
-            <span aria-hidden="true"><ArtSvgIcon :icon="organizationIcon(data)" /></span>
-            <span>
-              <strong :title="data.name">{{ data.name }}</strong>
-              <small :title="departmentSubtitle(data)">{{ departmentSubtitle(data) }}</small>
-            </span>
-            <ElTag v-if="!data.enabled" type="info" size="small">停用</ElTag>
-            <ArtSvgIcon
-              v-else-if="selected === data.id"
-              class="production-tree__check"
-              icon="ri:check-line"
-              aria-hidden="true"
-            />
-          </div>
-        </template>
-        <template #empty>
-          <ArtEmptyState
-            title="未找到匹配项"
-            description="请调整关键词或清空筛选条件。"
-            size="compact"
-            :visual-size="64"
+      <template #default="{ data }">
+        <div class="production-tree__node">
+          <span aria-hidden="true"><ArtSvgIcon :icon="organizationIcon(data)" /></span>
+          <span>
+            <strong :title="data.name">{{ data.name }}</strong>
+            <small :title="departmentSubtitle(data)">{{ departmentSubtitle(data) }}</small>
+          </span>
+          <ElTag v-if="!data.enabled" type="info" size="small">停用</ElTag>
+          <ArtSvgIcon
+            v-else-if="selected === data.id"
+            class="production-tree__check"
+            icon="ri:check-line"
+            aria-hidden="true"
           />
-        </template>
-      </ElTree>
-    </ElScrollbar>
+        </div>
+      </template>
+      <template #empty>
+        <ArtEmptyState
+          title="未找到匹配项"
+          description="请调整关键词或清空筛选条件。"
+          size="compact"
+          :visual-size="64"
+        />
+      </template>
+    </ElTree>
   </ArtSectionCard>
 </template>
 <script setup lang="ts">
@@ -148,12 +148,10 @@
     height: 100%;
     min-height: 0;
 
-    :deep(.production-tree__body) {
+    &__toolbar {
       display: flex;
-      flex: 1;
       flex-direction: column;
       gap: 12px;
-      min-height: 0;
     }
 
     &__all {
@@ -238,11 +236,6 @@
         font-weight: 600;
         color: var(--el-text-color-primary);
       }
-    }
-
-    &__scroll {
-      flex: 1;
-      min-height: 0;
     }
 
     &__node {

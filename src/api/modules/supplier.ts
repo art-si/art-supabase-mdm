@@ -163,9 +163,10 @@ export async function deleteSupplierBank(id: string) {
     () => supabase.from('mdm_supplier_bank').delete().eq('id', id).select('id'),
     {
       breakReturn: true,
-      showErrorMessage: true,
+      showErrorMessage: false,
       requireAffected: true,
-      showMessage: true,
+      showMessage: false,
+      showReferenceFeedback: false,
       message: '银行信息已删除',
       errorMessage: '银行信息删除失败，请重试'
     }
@@ -208,9 +209,10 @@ export async function deleteSupplierContact(id: string) {
     () => supabase.from('mdm_supplier_contact').delete().eq('id', id).select('id'),
     {
       breakReturn: true,
-      showErrorMessage: true,
+      showErrorMessage: false,
       requireAffected: true,
-      showMessage: true,
+      showMessage: false,
+      showReferenceFeedback: false,
       message: '联系人已删除',
       errorMessage: '联系人删除失败，请重试'
     }

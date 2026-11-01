@@ -1,1 +1,0 @@
-import{r as e}from"./sys-pdypqb_r.js";function t(t,n=`—`){return e().getDictDisplayLabelByValue(`mdmProcessRouteSequenceType`,t,t===`main`?`标准序列`:t||n)}export{t};

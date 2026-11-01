@@ -1,14 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
-    <ArtForm
-      ref="formRef"
-      v-model="form.model"
-      :items="items"
-      :rules="rules"
-      :span="12"
-      :show-reset="false"
-      :show-submit="false"
-    >
+    <ArtForm ref="formRef" v-model="form.model" :items="items" :rules="rules" :span="12">
       <template #color><ElColorPicker v-model="form.model.color" :predefine="colors" /></template>
       <template #shifts>
         <div class="pattern-dialog__shifts">
@@ -31,13 +23,7 @@
                 :disabled="form.model.shifts.length === 1"
                 @click="form.model.shifts.splice(index, 1)"
             /></template>
-            <ArtForm
-              v-model="form.model.shifts[index]"
-              :items="shiftItems"
-              :span="8"
-              :show-submit="false"
-              :show-reset="false"
-            >
+            <ArtForm v-model="form.model.shifts[index]" :items="shiftItems" :span="8">
               <template #breaks>
                 <ElButton @click="openBreaks(index)"
                   >休息 {{ computedShift(index)?.restMinutes ?? 0 }} 分钟</ElButton

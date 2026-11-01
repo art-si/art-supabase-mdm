@@ -8,8 +8,6 @@
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     />
     <div class="mt-3 space-y-1 text-xs text-[var(--el-text-color-secondary)]">
       <p

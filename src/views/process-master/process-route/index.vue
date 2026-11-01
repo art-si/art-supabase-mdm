@@ -35,8 +35,7 @@
         <div class="process-route-page__main">
           <ArtTableQuery
             ref="tableRef"
-            :model-value="search"
-            @update:model-value="replaceReactiveModel(search, $event)"
+            v-model="search"
             :api-fn="fetchRows"
             :columns-factory="columns"
             :header-actions="actions"
@@ -82,7 +81,6 @@
 </template>
 <script setup lang="tsx">
   import { toTenantSelectOptions } from '@/utils/tenant-display'
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { computed, ref, reactive } from 'vue'
   import dayjs from 'dayjs'
@@ -200,7 +198,7 @@
   const routeDialog = ref<RouteDialogExpose>()
   const stepsDialog = ref<StepsDialogExpose>()
   const groupDialog = ref<{ handleOpen: (data: GroupDialogOpenData) => Promise<void> }>()
-  const search = reactive({ keyword: '', enabled: undefined as boolean | undefined })
+  const search = ref({ keyword: '', enabled: undefined as boolean | undefined })
   const overview = reactive({ total: 0, rows: [] as ProcessRoute[] })
   const groupState = reactive({
     rows: [] as MasterGroup[],
@@ -479,7 +477,7 @@
           return response
         },
         {
-          ...search,
+          ...search.value,
           tenantId: effectiveTenantId.value || '',
           groupId: groupState.selectedId || undefined,
           groupIds: selectedGroupIds.value,
@@ -628,7 +626,7 @@
         return
       }
       groupState.selectedId = ''
-      Object.assign(search, { keyword: row.code, enabled: undefined })
+      Object.assign(search.value, { keyword: row.code, enabled: undefined })
       await refresh()
     } catch (error) {
       notifyFriendlyError(error, '所属路线定位失败，请重试')
@@ -664,7 +662,7 @@
         typeof query.recordNo === 'string'
       ) {
         groupState.selectedId = ''
-        Object.assign(search, { keyword: query.recordNo, enabled: undefined })
+        Object.assign(search.value, { keyword: query.recordNo, enabled: undefined })
         void refresh()
       }
     },
@@ -675,7 +673,7 @@
     await refresh()
   }
   async function loadContext() {
-    Object.assign(search, { keyword: '', enabled: undefined })
+    Object.assign(search.value, { keyword: '', enabled: undefined })
     groupState.selectedId = ''
     await tenantScopeStore.loadTenantOptions()
     await Promise.all(

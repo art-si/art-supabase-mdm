@@ -28,12 +28,9 @@
 
       <ArtForm
         custom-layout
-        :show-reset="false"
-        :show-submit="false"
         v-else
         ref="formRef"
-        :model-value="model"
-        @update:model-value="replaceReactiveModel(model, $event)"
+        v-model="model"
         :rules="rules"
         label-position="top"
       >
@@ -389,8 +386,6 @@
   <ArtDialog ref="parameterDialogRef" size="sm">
     <ArtForm
       custom-layout
-      :show-reset="false"
-      :show-submit="false"
       ref="parameterFormRef"
       label-position="top"
       v-model="parameterEditor.model"
@@ -475,11 +470,15 @@
       </div>
     </ArtForm>
   </ArtDialog>
+  <MasterDataDeleteGuard ref="parameterDeleteGuardRef" />
 </template>
 
 <script setup lang="ts">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
-  import { replaceReactiveModel } from '@/utils/form/model'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
@@ -493,7 +492,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
@@ -530,7 +529,8 @@
   const formulaPurposeOptions = useDictionaryOptions('mdmFormulaPurpose')
   const activityTypeOptions = useDictionaryOptions('mdmActivityType')
   const unitOptions = useDictionaryOptions('mdmActivityUnit')
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef: parameterDeleteGuardRef, deleteRecords: deleteParameters } =
+    useRecordDeleteGuard('mdm_activity_formula_parameter', '公式参数')
   const dialogRef = ref<ArtDialogExpose<MasterDialogOpenData>>()
   const parameterDialogRef = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -544,7 +544,7 @@
   const parameters = ref<ActivityFormulaParameter[]>([])
   const parameterKeyword = ref('')
   const constantValue = ref('')
-  const model = reactive<OperationalMasterRecord>(createEmptyModel(''))
+  const model = ref<OperationalMasterRecord>(createEmptyModel(''))
 
   const parameterEditor = reactive({
     id: '',
@@ -556,7 +556,7 @@
       ...item,
       label: activityFormulaPurposeLabel(item.value, item.label)
     }))
-    const currentPurpose = String(model.purpose || '')
+    const currentPurpose = String(model.value.purpose || '')
     if (currentPurpose && !options.some((item) => item.value === currentPurpose)) {
       options.unshift({
         label: activityFormulaPurposeLabel(currentPurpose),
@@ -565,8 +565,8 @@
     }
     return options
   })
-  const formulaExpression = computed(() => expressionOf(model.formulaTokens ?? []))
-  const formulaTranslation = computed(() => translationOf(model.formulaTokens ?? []))
+  const formulaExpression = computed(() => expressionOf(model.value.formulaTokens ?? []))
+  const formulaTranslation = computed(() => translationOf(model.value.formulaTokens ?? []))
   const parameterTree = computed(() => buildActivityFormulaParameterTree(parameters.value))
   const excludedParentIds = computed(() => {
     const ids = new Set<string>()
@@ -665,8 +665,8 @@
     parentId: string | null = null
   ): ActivityFormulaParameterFormModel {
     return {
-      tenantId: model.tenantId,
-      purpose: isActivityFormulaPurpose(model.purpose) ? model.purpose : null,
+      tenantId: model.value.tenantId,
+      purpose: isActivityFormulaPurpose(model.value.purpose) ? model.value.purpose : null,
       parentId,
       nodeType,
       code: '',
@@ -690,7 +690,7 @@
   }
 
   async function loadParameters(): Promise<void> {
-    if (!model.tenantId || !model.purpose) {
+    if (!model.value.tenantId || !model.value.purpose) {
       parameters.value = []
       return
     }
@@ -698,8 +698,8 @@
     parameterError.value = ''
     try {
       parameters.value = await fetchActivityFormulaParameters(
-        model.tenantId,
-        model.purpose as ActivityFormulaPurpose
+        model.value.tenantId,
+        model.value.purpose as ActivityFormulaPurpose
       )
     } catch (error) {
       parameterError.value = getFriendlySupabaseErrorMessage(error, '公式参数加载失败，请重试')
@@ -715,7 +715,7 @@
   function insertParameter(data: ActivityFormulaParameterTreeNode): void {
     if (readonly.value || data.nodeType !== 'parameter' || !data.enabled || !data.relatedField)
       return
-    model.formulaTokens?.push({
+    model.value.formulaTokens?.push({
       type: 'parameter',
       value: data.relatedField,
       label: data.name,
@@ -723,10 +723,10 @@
     })
   }
   function addOperator(item: (typeof operatorOptions)[number]): void {
-    model.formulaTokens?.push({ type: 'operator', value: item.value, label: item.label })
+    model.value.formulaTokens?.push({ type: 'operator', value: item.value, label: item.label })
   }
   function addFunction(item: (typeof functionOptions)[number]): void {
-    model.formulaTokens?.push({ type: 'function', value: item.value, label: item.label })
+    model.value.formulaTokens?.push({ type: 'function', value: item.value, label: item.label })
   }
   function addConstant(): void {
     const value = constantValue.value.trim()
@@ -734,17 +734,17 @@
       ElMessage.warning('请输入有效数字')
       return
     }
-    model.formulaTokens?.push({ type: 'number', value, label: value })
+    model.value.formulaTokens?.push({ type: 'number', value, label: value })
     constantValue.value = ''
   }
   function removeToken(index: number): void {
-    if (!readonly.value) model.formulaTokens?.splice(index, 1)
+    if (!readonly.value) model.value.formulaTokens?.splice(index, 1)
   }
   function undoToken(): void {
-    model.formulaTokens?.pop()
+    model.value.formulaTokens?.pop()
   }
   function clearFormula(): void {
-    model.formulaTokens = []
+    model.value.formulaTokens = []
   }
 
   function openParameterEditor(
@@ -752,7 +752,7 @@
     row?: ActivityFormulaParameter,
     parent?: ActivityFormulaParameter
   ): void {
-    if (!isActivityFormulaPurpose(model.purpose)) {
+    if (!isActivityFormulaPurpose(model.value.purpose)) {
       ElMessage.warning('请先选择公式用途，再维护参数层级')
       return
     }
@@ -811,9 +811,13 @@
     return true
   }
   async function removeParameter(row: ActivityFormulaParameter): Promise<void> {
-    await confirmDelete(`确定删除参数节点“${row.name}”吗？`)
-    await deleteActivityFormulaParameter(row.id)
-    await loadParameters()
+    await deleteParameters({
+      resources: [{ id: row.id, label: `${row.name} · ${row.code}` }],
+      permission: 'MdmActivityFormula:ManageParameter',
+      remove: () => deleteActivityFormulaParameter(row.id),
+      successMessage: '公式参数已删除',
+      onDeleted: loadParameters
+    })
   }
 
   const handleOpen = async (data: MasterDialogOpenData): Promise<void> => {
@@ -842,7 +846,7 @@
       next.id = ''
       next.code = `${next.code || ''}_COPY`
     }
-    Object.assign(model, next)
+    Object.assign(model.value, next)
     await dialogRef.value?.handleOpen(data, {
       title: readonly.value
         ? '活动公式详情'
@@ -881,7 +885,7 @@
           const translation = formulaTranslation.value
           await saveOperationalMaster(
             'activity-formula',
-            buildActivityFormulaWriteInput(model, expression, translation),
+            buildActivityFormulaWriteInput(model.value, expression, translation),
             data.row && !data.copy ? data.row.id : undefined
           )
           emit('success', data.row && !data.copy ? 'edit' : 'add')

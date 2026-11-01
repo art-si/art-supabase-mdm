@@ -1,16 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
     <div class="material-archive-dialog">
-      <ElTabs v-model="activeTab" class="material-archive-dialog__tabs">
-        <ElTabPane v-for="tab in tabs" :key="tab.name" :name="tab.name">
-          <template #label
-            ><span class="material-archive-dialog__tab-label"
-              ><ArtSvgIcon :icon="tab.icon" />{{ tab.label
-              }}<i v-if="isTabConfigured(tab.name)" aria-label="已配置"></i></span
-          ></template>
-        </ElTabPane>
-      </ElTabs>
-
       <section class="material-archive-dialog__panel">
         <header class="material-archive-dialog__section-heading">
           <div>
@@ -28,15 +18,13 @@
 
         <ArtForm
           ref="formRef"
-          :model-value="formModel"
-          @update:model-value="replaceReactiveModel(formModel, $event)"
+          v-model:active-tab="activeTab"
+          v-model="formModel"
           :items="formItems"
           :rules="formRules"
           :span="12"
           :gutter="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
           root-class="material-archive-dialog__form"
         >
           <template #materialCode>
@@ -217,8 +205,6 @@
 
 <script setup lang="ts">
   import { toNameCodeOption } from '@/utils/form/option'
-
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import dayjs from 'dayjs'
@@ -501,37 +487,37 @@
     status: 'enabled',
     sort: 10
   })
-  const formModel = reactive<ArchiveFormModel>(initialForm())
+  const formModel = ref<ArchiveFormModel>(initialForm())
   let initializingForm = false
-  const tenantId = computed(() => formModel.tenantId)
+  const tenantId = computed(() => formModel.value.tenantId)
   const scopedCategories = computed(() =>
-    categories.value.filter((item) => item.tenantId === formModel.tenantId)
+    categories.value.filter((item) => item.tenantId === formModel.value.tenantId)
   )
   const scopedMaterialTypes = computed(() =>
-    materialTypes.value.filter((item) => item.tenantId === formModel.tenantId)
+    materialTypes.value.filter((item) => item.tenantId === formModel.value.tenantId)
   )
   const scopedUnits = computed(() =>
-    units.value.filter((item) => item.tenantId === formModel.tenantId)
+    units.value.filter((item) => item.tenantId === formModel.value.tenantId)
   )
   const scopedAttributeGroups = computed(() =>
-    attributeGroups.value.filter((item) => item.tenantId === formModel.tenantId)
+    attributeGroups.value.filter((item) => item.tenantId === formModel.value.tenantId)
   )
   const scopedCodeRules = computed(() =>
-    codeRules.value.filter((item) => item.tenantId === formModel.tenantId)
+    codeRules.value.filter((item) => item.tenantId === formModel.value.tenantId)
   )
   const scopedContextOptions = (items: MaterialContextOption[]) =>
-    items.filter((item) => item.tenantId === formModel.tenantId)
+    items.filter((item) => item.tenantId === formModel.value.tenantId)
   const resetEmployeeSelections = (): void => {
     Object.assign(employeeSelections, initialEmployeeSelections())
   }
   const selectedEmployeeIds = (): string[] =>
     [
-      formModel.purchaserId,
-      formModel.plannerId,
-      formModel.salespersonId,
-      formModel.custodianId,
-      formModel.dispatcherId,
-      formModel.productionPlannerId
+      formModel.value.purchaserId,
+      formModel.value.plannerId,
+      formModel.value.salespersonId,
+      formModel.value.custodianId,
+      formModel.value.dispatcherId,
+      formModel.value.productionPlannerId
     ].filter((id): id is string => Boolean(id))
   const loadEmployeeSelections = async (): Promise<void> => {
     const selectedIds = selectedEmployeeIds()
@@ -545,7 +531,7 @@
     let from = 0
     while (missingIds.size) {
       const result = await fetchEmployeeSelectorList({
-        tenantId: formModel.tenantId,
+        tenantId: formModel.value.tenantId,
         from,
         to: from + pageSize - 1
       })
@@ -563,12 +549,12 @@
       return employee ? [employee] : []
     }
     Object.assign(employeeSelections, {
-      purchaserId: getSelection(formModel.purchaserId),
-      plannerId: getSelection(formModel.plannerId),
-      salespersonId: getSelection(formModel.salespersonId),
-      custodianId: getSelection(formModel.custodianId),
-      dispatcherId: getSelection(formModel.dispatcherId),
-      productionPlannerId: getSelection(formModel.productionPlannerId)
+      purchaserId: getSelection(formModel.value.purchaserId),
+      plannerId: getSelection(formModel.value.plannerId),
+      salespersonId: getSelection(formModel.value.salespersonId),
+      custodianId: getSelection(formModel.value.custodianId),
+      dispatcherId: getSelection(formModel.value.dispatcherId),
+      productionPlannerId: getSelection(formModel.value.productionPlannerId)
     })
   }
   function option<T extends { id: string }>(items: T[], label: (item: T) => string) {
@@ -606,8 +592,8 @@
   const warehouseSelectOptions = computed(() => namedOptions(warehouseOptions.value))
   const isFinishedMaterial = computed(
     () =>
-      scopedMaterialTypes.value.find((item) => item.id === formModel.materialTypeId)?.typeCode ===
-      'FERT'
+      scopedMaterialTypes.value.find((item) => item.id === formModel.value.materialTypeId)
+        ?.typeCode === 'FERT'
   )
   const finishedReceiptWarehouses = computed(() =>
     scopedContextOptions(warehouseOptions.value).filter(
@@ -617,8 +603,8 @@
   const inboundWarehouseSelectOptions = computed(() => {
     if (!isFinishedMaterial.value) return warehouseSelectOptions.value
     const options = namedOptions(finishedReceiptWarehouses.value)
-    const configured = formModel.inboundWarehouseId
-      ? warehouseOptions.value.find((item) => item.id === formModel.inboundWarehouseId)
+    const configured = formModel.value.inboundWarehouseId
+      ? warehouseOptions.value.find((item) => item.id === formModel.value.inboundWarehouseId)
       : undefined
     if (configured && !finishedReceiptWarehouses.value.some((item) => item.id === configured.id)) {
       options.push({ label: `${configured.name} · 原配置不可用于成品入库`, value: configured.id })
@@ -633,50 +619,40 @@
     namedOptions(supplyRuleOptions.value.filter((item) => item.applySerial))
   )
   const selectedBaseUnit = computed(() =>
-    scopedUnits.value.find((item) => item.id === formModel.baseUnitId)
+    scopedUnits.value.find((item) => item.id === formModel.value.baseUnitId)
   )
   const activeTabMeta = computed(() => tabMeta[activeTab.value])
   const completion = computed(() => {
     const values = [
-      formModel.materialCode,
-      formModel.materialName,
-      formModel.categoryId,
-      formModel.materialTypeId,
-      formModel.baseUnitId,
-      formModel.specificationModel,
-      formModel.attributeGroupId,
-      formModel.description,
-      formModel.purchaseUnitId,
-      formModel.inventoryUnitId,
-      formModel.productionUnitId,
-      formModel.costUnitId
+      formModel.value.materialCode,
+      formModel.value.materialName,
+      formModel.value.categoryId,
+      formModel.value.materialTypeId,
+      formModel.value.baseUnitId,
+      formModel.value.specificationModel,
+      formModel.value.attributeGroupId,
+      formModel.value.description,
+      formModel.value.purchaseUnitId,
+      formModel.value.inventoryUnitId,
+      formModel.value.productionUnitId,
+      formModel.value.costUnitId
     ]
     return Math.round((values.filter(Boolean).length / values.length) * 100)
   })
   const selectedAttributeGroup = computed(() =>
-    scopedAttributeGroups.value.find((item) => item.id === formModel.attributeGroupId)
+    scopedAttributeGroups.value.find((item) => item.id === formModel.value.attributeGroupId)
   )
   const selectedCategory = computed(() =>
-    scopedCategories.value.find((item) => item.id === formModel.categoryId)
+    scopedCategories.value.find((item) => item.id === formModel.value.categoryId)
   )
   const materialDescription = computed(() =>
-    buildMaterialDescription(selectedCategory.value, formModel, selectedAttributeGroup.value)
+    buildMaterialDescription(selectedCategory.value, formModel.value, selectedAttributeGroup.value)
   )
   const descriptionRuleLabels = computed(() => {
     return (selectedCategory.value?.compositionColumns ?? []).map(
       (column) => userStore.getDictItemByValue('mdmMaterialCoreAttribute', column)?.label ?? column
     )
   })
-  const isTabConfigured = (tab: ArchiveTab): boolean => {
-    if (tab === 'base') return Boolean(formModel.materialName && formModel.baseUnitId)
-    if (tab === 'purchase') return Boolean(formModel.purchaseUnitId || formModel.purchaserId)
-    if (tab === 'sales') return Boolean(formModel.salesUnitId || formModel.salespersonId)
-    if (tab === 'inventory')
-      return Boolean(formModel.inventoryUnitId || formModel.storageLocationId)
-    if (tab === 'production') return Boolean(formModel.productionUnitId || formModel.mrpType)
-    if (tab === 'finance') return Boolean(formModel.costUnitId || formModel.valuationMethod)
-    return formModel.unitConversions.length > 0
-  }
   const commonUnitItem = (label: string, key: keyof ArchiveFormModel): FormItem => ({
     label,
     key: String(key),
@@ -698,8 +674,8 @@
           }
         : item
     )
-  const rawFormItems = computed<FormItem[]>(() => {
-    if (activeTab.value === 'base')
+  const itemsForTab = (tab: ArchiveTab): FormItem[] => {
+    if (tab === 'base')
       return [
         {
           label: '目标租户',
@@ -707,7 +683,7 @@
           type: 'select',
           options: tenantOptions.value,
           props: {
-            disabled: Boolean(formModel.id),
+            disabled: Boolean(formModel.value.id),
             filterable: true,
             placeholder: '请选择本次维护的数据归属租户'
           }
@@ -868,7 +844,7 @@
           help: '根据物料分类中的“描述组成字段 + 描述连接符”实时生成并保存。'
         }
       ]
-    if (activeTab.value === 'purchase')
+    if (tab === 'purchase')
       return [
         { key: 'purchaseView', label: '采购执行口径', type: 'divider', span: 24 },
         commonUnitItem('采购单位', 'purchaseUnitId'),
@@ -932,7 +908,7 @@
           props: { min: 0, precision: 0, class: '!w-full' }
         }
       ]
-    if (activeTab.value === 'sales')
+    if (tab === 'sales')
       return [
         { key: 'salesView', label: '销售执行口径', type: 'divider', span: 24 },
         commonUnitItem('销售单位', 'salesUnitId'),
@@ -970,7 +946,7 @@
           props: { min: 0, precision: 4, class: '!w-full' }
         }
       ]
-    if (activeTab.value === 'inventory')
+    if (tab === 'inventory')
       return [
         { key: 'inventoryView', label: '库存执行口径', type: 'divider', span: 24 },
         commonUnitItem('库存单位', 'inventoryUnitId'),
@@ -1013,7 +989,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.minStockAlertEnabled
+            disabled: !formModel.value.minStockAlertEnabled
           }
         },
         { label: '启用安全库存预警', key: 'safetyStockAlertEnabled', type: 'switch' },
@@ -1025,7 +1001,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.safetyStockAlertEnabled
+            disabled: !formModel.value.safetyStockAlertEnabled
           }
         },
         { label: '启用再订货点预警', key: 'reorderPointAlertEnabled', type: 'switch' },
@@ -1037,7 +1013,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.reorderPointAlertEnabled
+            disabled: !formModel.value.reorderPointAlertEnabled
           }
         },
         {
@@ -1048,7 +1024,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.reorderPointAlertEnabled
+            disabled: !formModel.value.reorderPointAlertEnabled
           }
         },
         {
@@ -1059,7 +1035,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.reorderPointAlertEnabled
+            disabled: !formModel.value.reorderPointAlertEnabled
           }
         },
         { label: '启用最大库存预警', key: 'maxStockAlertEnabled', type: 'switch' },
@@ -1071,7 +1047,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.maxStockAlertEnabled
+            disabled: !formModel.value.maxStockAlertEnabled
           }
         },
         {
@@ -1088,7 +1064,11 @@
           key: 'batchRuleId',
           type: 'select',
           options: batchRuleSelectOptions.value,
-          props: { clearable: true, filterable: true, disabled: !formModel.batchManagementEnabled }
+          props: {
+            clearable: true,
+            filterable: true,
+            disabled: !formModel.value.batchManagementEnabled
+          }
         },
         { key: 'serial', label: '序列号', type: 'divider', span: 24 },
         { label: '启用序列号管理', key: 'serialManagementEnabled', type: 'switch' },
@@ -1097,14 +1077,18 @@
           key: 'serialRuleId',
           type: 'select',
           options: serialRuleSelectOptions.value,
-          props: { clearable: true, filterable: true, disabled: !formModel.serialManagementEnabled }
+          props: {
+            clearable: true,
+            filterable: true,
+            disabled: !formModel.value.serialManagementEnabled
+          }
         },
         {
           label: '序列号生成时点',
           key: 'serialGenerationTiming',
           type: 'select',
           options: getDictMap.value.mdmMaterialSerialGenerationTiming ?? [],
-          props: { clearable: true, disabled: !formModel.serialManagementEnabled }
+          props: { clearable: true, disabled: !formModel.value.serialManagementEnabled }
         },
         { key: 'shelfLife', label: '保质期', type: 'divider', span: 24 },
         { label: '保质期管理', key: 'shelfLifeManagementEnabled', type: 'switch' },
@@ -1117,7 +1101,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.shelfLifeManagementEnabled
+            disabled: !formModel.value.shelfLifeManagementEnabled
           }
         },
         {
@@ -1125,14 +1109,14 @@
           key: 'shelfLifeCalculationDirection',
           type: 'select',
           options: getDictMap.value.mdmMaterialShelfCalculationDirection ?? [],
-          props: { clearable: true, disabled: !formModel.shelfLifeManagementEnabled }
+          props: { clearable: true, disabled: !formModel.value.shelfLifeManagementEnabled }
         },
         {
           label: '到期日计算方式',
           key: 'expiryCalculationMethod',
           type: 'select',
           options: getDictMap.value.mdmMaterialExpiryCalculationMethod ?? [],
-          props: { clearable: true, disabled: !formModel.shelfLifeManagementEnabled }
+          props: { clearable: true, disabled: !formModel.value.shelfLifeManagementEnabled }
         },
         commonUnitItem('提前期单位', 'advancePeriodUnitId'),
         {
@@ -1143,7 +1127,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.shelfLifeManagementEnabled
+            disabled: !formModel.value.shelfLifeManagementEnabled
           }
         },
         {
@@ -1154,7 +1138,7 @@
             min: 0,
             precision: 4,
             class: '!w-full',
-            disabled: !formModel.shelfLifeManagementEnabled
+            disabled: !formModel.value.shelfLifeManagementEnabled
           }
         },
         { label: '启用预警', key: 'expiryAlertEnabled', type: 'switch' },
@@ -1162,7 +1146,12 @@
           label: '预警提前期(天)',
           key: 'expiryAlertDays',
           type: 'number',
-          props: { min: 0, precision: 0, class: '!w-full', disabled: !formModel.expiryAlertEnabled }
+          props: {
+            min: 0,
+            precision: 0,
+            class: '!w-full',
+            disabled: !formModel.value.expiryAlertEnabled
+          }
         },
         { key: 'barcode', label: '条码 / 二维码', type: 'divider', span: 24 },
         { label: '启用条码管理', key: 'barcodeManagementEnabled', type: 'switch' },
@@ -1170,10 +1159,10 @@
           label: '条码',
           key: 'barcode',
           type: 'input',
-          props: { maxlength: 160, disabled: !formModel.barcodeManagementEnabled }
+          props: { maxlength: 160, disabled: !formModel.value.barcodeManagementEnabled }
         }
       ]
-    if (activeTab.value === 'production')
+    if (tab === 'production')
       return [
         { key: 'productionView', label: '生产计划口径', type: 'divider', span: 24 },
         commonUnitItem('生产单位', 'productionUnitId'),
@@ -1314,7 +1303,7 @@
           props: { min: 0, precision: 4, class: '!w-full' }
         }
       ]
-    if (activeTab.value === 'finance')
+    if (tab === 'finance')
       return [
         { key: 'financeView', label: '存货核算口径', type: 'divider', span: 24 },
         commonUnitItem('成本单位', 'costUnitId'),
@@ -1335,8 +1324,13 @@
       { key: 'conversionView', label: '单位换算关系', type: 'divider', span: 24 },
       { label: '换算关系', key: 'unitConversions', type: 'slot', span: 24 }
     ]
-  })
-  const formItems = computed<FormItem[]>(() => enhanceFormItems(rawFormItems.value))
+  }
+  const formItems = computed<FormItem[]>(() =>
+    tabs.flatMap((tab) => [
+      { key: tab.name, label: tab.label, type: 'tab', description: tabMeta[tab.name].description },
+      ...enhanceFormItems(itemsForTab(tab.name))
+    ])
+  )
   void Promise.all(
     [
       'mdmMaterialSource',
@@ -1367,12 +1361,17 @@
     baseUnitId: [{ required: true, message: '请选择基本单位', trigger: 'change' }]
   }
   const addConversion = (): void => {
-    formModel.unitConversions.push({ sourceUnitId: '', sourceFactor: 1, baseFactor: 1, remark: '' })
+    formModel.value.unitConversions.push({
+      sourceUnitId: '',
+      sourceFactor: 1,
+      baseFactor: 1,
+      remark: ''
+    })
   }
   const recalculateArea = (): void => {
-    formModel.area =
-      formModel.length != null && formModel.width != null
-        ? Number((formModel.length * formModel.width).toFixed(4))
+    formModel.value.area =
+      formModel.value.length != null && formModel.value.width != null
+        ? Number((formModel.value.length * formModel.value.width).toFixed(4))
         : null
   }
   const handleSubmit = async (): Promise<boolean> => {
@@ -1380,51 +1379,53 @@
       activeTab.value = 'base'
       await nextTick()
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      if (!formModel.codeRuleId && !formModel.materialCode.trim()) {
+      if (!formModel.value.codeRuleId && !formModel.value.materialCode.trim()) {
         activeTab.value = 'base'
         ElMessage.warning('请选择编码策略，或手工输入物料编码')
         return false
       }
-      if (formModel.batchManagementEnabled && !formModel.batchRuleId) {
+      if (formModel.value.batchManagementEnabled && !formModel.value.batchRuleId) {
         activeTab.value = 'inventory'
         ElMessage.warning('启用批号管理后，请选择批号规则')
         return false
       }
       if (
-        formModel.serialManagementEnabled &&
-        (!formModel.serialRuleId || !formModel.serialGenerationTiming)
+        formModel.value.serialManagementEnabled &&
+        (!formModel.value.serialRuleId || !formModel.value.serialGenerationTiming)
       ) {
         activeTab.value = 'inventory'
         ElMessage.warning('启用序列号管理后，请选择序列号规则和生成时点')
         return false
       }
       if (
-        formModel.shelfLifeManagementEnabled &&
-        (!formModel.shelfLifeUnitId ||
-          formModel.shelfLife == null ||
-          !formModel.shelfLifeCalculationDirection ||
-          !formModel.expiryCalculationMethod)
+        formModel.value.shelfLifeManagementEnabled &&
+        (!formModel.value.shelfLifeUnitId ||
+          formModel.value.shelfLife == null ||
+          !formModel.value.shelfLifeCalculationDirection ||
+          !formModel.value.expiryCalculationMethod)
       ) {
         activeTab.value = 'inventory'
         ElMessage.warning('启用保质期管理后，请完整填写保质期单位、保质期和计算规则')
         return false
       }
-      const type = materialTypes.value.find((item) => item.id === formModel.materialTypeId)
-      const baseUnit = units.value.find((item) => item.id === formModel.baseUnitId)
+      const type = materialTypes.value.find((item) => item.id === formModel.value.materialTypeId)
+      const baseUnit = units.value.find((item) => item.id === formModel.value.baseUnitId)
       if (!type || !baseUnit) return false
       if (
         type.typeCode === 'FERT' &&
-        formModel.inboundWarehouseId &&
-        !finishedReceiptWarehouses.value.some((item) => item.id === formModel.inboundWarehouseId)
+        formModel.value.inboundWarehouseId &&
+        !finishedReceiptWarehouses.value.some(
+          (item) => item.id === formModel.value.inboundWarehouseId
+        )
       ) {
         activeTab.value = 'production'
         ElMessage.warning('成品入库仓库必须选择已启用且有业务应用范围的成品仓')
         return false
       }
-      formModel.materialType = type.typeCode
-      formModel.basicUnit = baseUnit.unitCode
-      const payload = buildMaterialArchiveWriteInput(formModel)
-      await saveMaterialArchive(payload, formModel.id)
+      formModel.value.materialType = type.typeCode
+      formModel.value.basicUnit = baseUnit.unitCode
+      const payload = buildMaterialArchiveWriteInput(formModel.value)
+      await saveMaterialArchive(payload, formModel.value.id)
       emit('success')
       return true
     } catch (error) {
@@ -1435,7 +1436,7 @@
   const handleOpen = async (data: ArchiveDialogOpenData): Promise<void> => {
     initializingForm = true
     try {
-      Object.assign(formModel, initialForm())
+      Object.assign(formModel.value, initialForm())
       resetEmployeeSelections()
       activeTab.value = 'base'
       tenantOptions.value = data.tenantOptions
@@ -1450,18 +1451,18 @@
       warehouseOptions.value = data.warehouseOptions
       outboundRuleOptions.value = data.outboundRuleOptions
       supplyRuleOptions.value = data.supplyRuleOptions
-      if (data.row) Object.assign(formModel, cloneDeep(data.row))
-      formModel.tenantId = data.row?.tenantId || data.tenantId
+      if (data.row) Object.assign(formModel.value, cloneDeep(data.row))
+      formModel.value.tenantId = data.row?.tenantId || data.tenantId
       if (!data.row && data.presetCategoryId)
-        formModel.categoryId =
+        formModel.value.categoryId =
           scopedCategories.value.find((category) => category.id === data.presetCategoryId)?.id ?? ''
       if (data.copy) {
-        formModel.id = undefined
-        formModel.materialCode = ''
-        formModel.materialName = `${formModel.materialName}（副本）`
+        formModel.value.id = undefined
+        formModel.value.materialCode = ''
+        formModel.value.materialName = `${formModel.value.materialName}（副本）`
       }
-      if (!formModel.id && !formModel.codeRuleId)
-        formModel.codeRuleId = scopedCodeRules.value[0]?.id ?? null
+      if (!formModel.value.id && !formModel.value.codeRuleId)
+        formModel.value.codeRuleId = scopedCodeRules.value[0]?.id ?? null
     } finally {
       await nextTick()
       initializingForm = false
@@ -1486,53 +1487,53 @@
   watch(
     materialDescription,
     (value) => {
-      formModel.description = value
+      formModel.value.description = value
     },
     { immediate: true }
   )
   watch(
-    () => formModel.tenantId,
+    () => formModel.value.tenantId,
     (value, previous) => {
       if (initializingForm || value === previous || !previous) return
-      formModel.categoryId = ''
-      formModel.materialTypeId = null
-      formModel.baseUnitId = null
-      formModel.auxiliaryUnitId = null
-      formModel.auxiliaryUnit2Id = null
-      formModel.attributeGroupId = null
-      formModel.codeRuleId = null
-      formModel.storageLocationId = null
-      formModel.unitConversions = []
-      formModel.purchaserId = null
-      formModel.plannerId = null
-      formModel.salespersonId = null
-      formModel.custodianId = null
-      formModel.dispatcherId = null
-      formModel.productionPlannerId = null
+      formModel.value.categoryId = ''
+      formModel.value.materialTypeId = null
+      formModel.value.baseUnitId = null
+      formModel.value.auxiliaryUnitId = null
+      formModel.value.auxiliaryUnit2Id = null
+      formModel.value.attributeGroupId = null
+      formModel.value.codeRuleId = null
+      formModel.value.storageLocationId = null
+      formModel.value.unitConversions = []
+      formModel.value.purchaserId = null
+      formModel.value.plannerId = null
+      formModel.value.salespersonId = null
+      formModel.value.custodianId = null
+      formModel.value.dispatcherId = null
+      formModel.value.productionPlannerId = null
       resetEmployeeSelections()
-      formModel.materialGroupId = null
-      formModel.defaultSupplierId = null
-      formModel.defaultWarehouseId = null
-      formModel.inboundWarehouseId = null
-      formModel.issuingWarehouseId = null
-      formModel.outboundRuleId = null
-      formModel.batchRuleId = null
-      formModel.serialRuleId = null
+      formModel.value.materialGroupId = null
+      formModel.value.defaultSupplierId = null
+      formModel.value.defaultWarehouseId = null
+      formModel.value.inboundWarehouseId = null
+      formModel.value.issuingWarehouseId = null
+      formModel.value.outboundRuleId = null
+      formModel.value.batchRuleId = null
+      formModel.value.serialRuleId = null
     }
   )
   watch(
-    () => formModel.baseUnitId,
+    () => formModel.value.baseUnitId,
     (unitId) => {
       if (!unitId) return
-      formModel.purchaseUnitId ||= unitId
-      formModel.salesUnitId ||= unitId
-      formModel.inventoryUnitId ||= unitId
-      formModel.productionUnitId ||= unitId
-      formModel.costUnitId ||= unitId
+      formModel.value.purchaseUnitId ||= unitId
+      formModel.value.salesUnitId ||= unitId
+      formModel.value.inventoryUnitId ||= unitId
+      formModel.value.productionUnitId ||= unitId
+      formModel.value.costUnitId ||= unitId
     }
   )
   watch(
-    () => [formModel.length, formModel.width] as const,
+    () => [formModel.value.length, formModel.value.width] as const,
     () => recalculateArea()
   )
   defineExpose({ handleOpen })

@@ -17,7 +17,6 @@
         class="grid min-h-0 gap-4 lg:flex-1 lg:grid-cols-[260px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]"
       >
         <ArtSectionCard
-          :show-scrollbar="false"
           title="仓库"
           subtitle="选择已启用库区的仓库"
           root-class="flex min-h-0 flex-col"
@@ -29,47 +28,40 @@
           empty-description="请先在仓库定义中维护仓库。"
           @retry="loadWarehouses"
         >
-          <ElScrollbar height="100%">
-            <div class="space-y-2 pr-1">
-              <button
-                v-for="warehouse in warehouses"
-                :key="warehouse.id"
-                type="button"
-                class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
-                :class="
-                  selectedWarehouseId === warehouse.id
-                    ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
-                    : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
-                "
-                :aria-pressed="selectedWarehouseId === warehouse.id"
-                @click="selectWarehouse(warehouse.id)"
+          <div class="space-y-2">
+            <button
+              v-for="warehouse in warehouses"
+              :key="warehouse.id"
+              type="button"
+              class="flex w-full items-center gap-2.5 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--el-color-primary)]"
+              :class="
+                selectedWarehouseId === warehouse.id
+                  ? 'border-[var(--el-color-primary)] bg-[var(--el-color-primary-light-9)]'
+                  : 'border-[var(--el-border-color)] hover:bg-[var(--el-fill-color-light)]'
+              "
+              :aria-pressed="selectedWarehouseId === warehouse.id"
+              @click="selectWarehouse(warehouse.id)"
+            >
+              <span
+                class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
+                aria-hidden="true"
               >
-                <span
-                  class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--el-color-primary-light-9)] text-[var(--el-color-primary)]"
-                  aria-hidden="true"
-                >
-                  <ArtSvgIcon icon="ri:store-2-line" />
-                </span>
-                <span class="min-w-0 flex-1" :title="warehouse.warehouseName">
-                  <strong class="block truncate text-sm">{{ warehouse.warehouseName }}</strong>
-                  <small class="block truncate text-[var(--el-text-color-secondary)]">{{
-                    warehouse.warehouseCode
-                  }}</small>
-                </span>
-                <ElTag
-                  size="small"
-                  :type="warehouse.enableZones ? 'success' : 'info'"
-                  effect="plain"
-                >
-                  {{ warehouse.enableZones ? '已启用' : '未启用' }}
-                </ElTag>
-              </button>
-            </div>
-          </ElScrollbar>
+                <ArtSvgIcon icon="ri:store-2-line" />
+              </span>
+              <span class="min-w-0 flex-1" :title="warehouse.warehouseName">
+                <strong class="block truncate text-sm">{{ warehouse.warehouseName }}</strong>
+                <small class="block truncate text-[var(--el-text-color-secondary)]">{{
+                  warehouse.warehouseCode
+                }}</small>
+              </span>
+              <ElTag size="small" :type="warehouse.enableZones ? 'success' : 'info'" effect="plain">
+                {{ warehouse.enableZones ? '已启用' : '未启用' }}
+              </ElTag>
+            </button>
+          </div>
         </ArtSectionCard>
 
         <ArtSectionCard
-          :show-scrollbar="false"
           title="库区"
           :subtitle="
             selectedWarehouse?.enableZones
@@ -99,28 +91,30 @@
             </div>
           </template>
 
-          <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
-            <ElCheckboxGroup v-model="selectedTones" size="small">
-              <ElCheckbox
-                v-for="option in toneOptions"
-                :key="option.value"
-                :value="option.value"
-                :style="{
-                  '--el-checkbox-checked-bg-color': option.color,
-                  '--el-checkbox-checked-input-border-color': option.color,
-                  '--el-checkbox-checked-text-color': option.color,
-                  '--el-checkbox-input-border-color-hover': option.color
-                }"
-              >
-                {{ option.label }}
-              </ElCheckbox>
-            </ElCheckboxGroup>
-            <ElCheckbox v-model="fixedOnly" size="small">仅看定容</ElCheckbox>
-            <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
-              重置筛选
-            </ElButton>
-          </div>
+          <template #toolbar>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span class="text-xs text-[var(--el-text-color-secondary)]">状态筛选</span>
+              <ElCheckboxGroup v-model="selectedTones" size="small">
+                <ElCheckbox
+                  v-for="option in toneOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  :style="{
+                    '--el-checkbox-checked-bg-color': option.color,
+                    '--el-checkbox-checked-input-border-color': option.color,
+                    '--el-checkbox-checked-text-color': option.color,
+                    '--el-checkbox-input-border-color-hover': option.color
+                  }"
+                >
+                  {{ option.label }}
+                </ElCheckbox>
+              </ElCheckboxGroup>
+              <ElCheckbox v-model="fixedOnly" size="small">仅看定容</ElCheckbox>
+              <ElButton v-if="hasActiveFilters" link type="primary" @click="resetFilters">
+                重置筛选
+              </ElButton>
+            </div>
+          </template>
 
           <ArtEmptyState
             v-if="!visibleZones.length"
@@ -140,41 +134,40 @@
               重置筛选
             </ElButton>
           </ArtEmptyState>
-          <ElScrollbar v-else class="min-h-0 flex-1">
+          <div
+            v-else
+            class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),240px))] gap-4"
+          >
             <div
-              class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),240px))] gap-4 pr-2 pb-2"
+              v-for="zone in visibleZones"
+              :key="zone.id"
+              class="zone-tile min-w-0"
+              :draggable="canSortZones"
+              @dragstart="startZoneDrag(zone.id)"
+              @dragover="allowZoneDrop"
+              @drop.prevent="dropZone(zone.id)"
             >
-              <div
-                v-for="zone in visibleZones"
-                :key="zone.id"
-                class="zone-tile min-w-0"
-                :draggable="canSortZones"
-                @dragstart="startZoneDrag(zone.id)"
-                @dragover="allowZoneDrop"
-                @drop.prevent="dropZone(zone.id)"
-              >
-                <StorageTile
-                  :code="zone.zoneCode"
-                  :name="zone.zoneName"
-                  :detail="zone.category?.categoryName || '不限物料分类'"
-                  :tone="zoneTone(zone)"
-                  :stock="zoneStat(zone.id)"
-                  :stale-days="overview.staleDays"
-                  :fixed="zoneFixed(zone.id)"
-                  :selected="selectedZoneId === zone.id"
-                  with-actions
-                  @select="selectZone(zone)"
-                  @detail="openDetail(zone)"
-                />
-                <StorageCardActions
-                  :name="zone.zoneName"
-                  :actions="zoneActions"
-                  overlay
-                  @click="handleZoneAction($event, zone)"
-                />
-              </div>
+              <StorageTile
+                :code="zone.zoneCode"
+                :name="zone.zoneName"
+                :detail="zone.category?.categoryName || '不限物料分类'"
+                :tone="zoneTone(zone)"
+                :stock="zoneStat(zone.id)"
+                :stale-days="overview.staleDays"
+                :fixed="zoneFixed(zone.id)"
+                :selected="selectedZoneId === zone.id"
+                with-actions
+                @select="selectZone(zone)"
+                @detail="openDetail(zone)"
+              />
+              <StorageCardActions
+                :name="zone.zoneName"
+                :actions="zoneActions"
+                overlay
+                @click="handleZoneAction($event, zone)"
+              />
             </div>
-          </ElScrollbar>
+          </div>
         </ArtSectionCard>
       </div>
 
@@ -184,10 +177,12 @@
       <InventoryDetailDialog ref="detailDialogRef" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="ts">
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import type { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -219,7 +214,10 @@
   import InventoryDetailDialog from '../../inventory/storage/modules/inventory-detail-dialog.vue'
 
   defineOptions({ name: 'MdmWarehouseZone' })
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_warehouse_zone',
+    '库区'
+  )
   const { hasAuth } = useAuth()
   const router = useRouter()
   const canSortZones = computed(() => hasAuth('MdmWarehouseZone:Sort'))
@@ -232,15 +230,16 @@
   const selectedTones = ref<string[]>(['available', 'occupied', 'abnormal', 'disabled'])
   const fixedOnly = ref(false)
   const toneOptions = storageToneOptions
-  const zoneActions: ButtonMoreItem[] = [
+  const zoneActions = computed<ButtonMoreItem[]>(() => [
     { key: 'edit', label: '编辑库区', auth: 'MdmWarehouseZone:Edit' },
     {
       key: 'remove',
       label: '删除库区',
       auth: 'MdmWarehouseZone:Delete',
+      disabled: deleteBusy.value,
       color: 'var(--el-color-danger)'
     }
-  ]
+  ])
   const hasActiveFilters = computed(() => selectedTones.value.length !== 4 || fixedOnly.value)
   function resetFilters(): void {
     selectedTones.value = storageToneOptions.map((option) => option.value)
@@ -355,9 +354,13 @@
     if (item.key === 'remove') void removeZone(zone)
   }
   async function removeZone(zone: StorageZone): Promise<void> {
-    await confirmDelete(`确定删除库区“${zone.zoneName}”吗？已有库位或库存时无法删除。`)
-    await deleteStorageZone(zone.id)
-    await loadZones()
+    await deleteRecords({
+      resources: [{ id: zone.id, label: zone.zoneName }],
+      permission: 'MdmWarehouseZone:Delete',
+      remove: () => deleteStorageZone(zone.id),
+      successMessage: '库区已删除',
+      onDeleted: loadZones
+    })
   }
   async function dropZone(targetId: string): Promise<void> {
     if (!canSortZones.value) return

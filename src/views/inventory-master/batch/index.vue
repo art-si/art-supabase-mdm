@@ -16,8 +16,7 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        :model-value="search"
-        @update:model-value="replaceReactiveModel(search, $event)"
+        v-model="search"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -39,7 +38,6 @@
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
@@ -74,13 +72,13 @@
   const movementDialogRef = ref<InstanceType<typeof InventoryMovementDialog>>()
   const policyDialogRef = ref<InstanceType<typeof InventoryPolicyDialog>>()
   const warehouses = ref<StorageWarehouse[]>([])
-  const search = reactive({
+  const search = ref({
     warehouseId: '',
     keyword: '',
     positiveOnly: true
   })
   const selectedWarehouse = computed(() =>
-    warehouses.value.find((warehouse) => warehouse.id === search.warehouseId)
+    warehouses.value.find((warehouse) => warehouse.id === search.value.warehouseId)
   )
   const searchItems = computed<SearchFormItem[]>(() => [
     {

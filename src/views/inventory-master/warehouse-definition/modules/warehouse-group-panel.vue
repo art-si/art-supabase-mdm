@@ -1,6 +1,5 @@
 <template>
   <ArtSectionCard
-    :show-scrollbar="false"
     class="warehouse-group-panel"
     title="仓库分组"
     subtitle="选择分组后查看本级及下级仓库"
@@ -10,7 +9,6 @@
     empty-title="尚未建立仓库分组"
     empty-description="先建立顶级分组，再按区域或用途逐层组织仓库。"
     retryable
-    body-class="warehouse-group-panel__body"
     @retry="$emit('refresh')"
   >
     <template #actions>
@@ -31,77 +29,83 @@
       </div>
     </template>
 
-    <ElInput v-model="keyword" clearable placeholder="搜索分组名称或编码" aria-label="搜索仓库分组">
-      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-    </ElInput>
+    <template #toolbar>
+      <div class="warehouse-group-panel__toolbar">
+        <ElInput
+          v-model="keyword"
+          clearable
+          placeholder="搜索分组名称或编码"
+          aria-label="搜索仓库分组"
+        >
+          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+        </ElInput>
 
-    <button
-      type="button"
-      class="warehouse-group-panel__all art-master-group-all-button"
-      :class="{ 'is-current': !selectedId }"
-      :aria-pressed="!selectedId"
-      @click="$emit('select', '')"
+        <button
+          type="button"
+          class="warehouse-group-panel__all art-master-group-all-button"
+          :class="{ 'is-current': !selectedId }"
+          :aria-pressed="!selectedId"
+          @click="$emit('select', '')"
+        >
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:store-2-line" /></span>
+          <span>
+            <strong>全部仓库</strong>
+            <small>{{ groups.length }} 个分组节点</small>
+          </span>
+          <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
+        </button>
+      </div>
+    </template>
+    <ElTree
+      ref="treeRef"
+      :data="treeData"
+      node-key="id"
+      :props="{ label: 'name', children: 'children' }"
+      :current-node-key="selectedId || undefined"
+      :filter-node-method="filterNode"
+      :default-expand-all="groups.length < 18"
+      highlight-current
+      :expand-on-click-node="false"
+      @node-click="$emit('select', $event.id)"
     >
-      <span aria-hidden="true"><ArtSvgIcon icon="ri:store-2-line" /></span>
-      <span>
-        <strong>全部仓库</strong>
-        <small>{{ groups.length }} 个分组节点</small>
-      </span>
-      <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
-    </button>
-
-    <ElScrollbar class="warehouse-group-panel__scroll">
-      <ElTree
-        ref="treeRef"
-        :data="treeData"
-        node-key="id"
-        :props="{ label: 'name', children: 'children' }"
-        :current-node-key="selectedId || undefined"
-        :filter-node-method="filterNode"
-        :default-expand-all="groups.length < 18"
-        highlight-current
-        :expand-on-click-node="false"
-        @node-click="$emit('select', $event.id)"
-      >
-        <template #default="{ data }">
-          <div class="warehouse-group-panel__node">
-            <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
-            <span>
-              <strong :title="data.name">{{ data.name }}</strong>
-              <small>{{ data.code }}</small>
-            </span>
-            <span class="warehouse-group-panel__node-actions">
-              <ArtIconButton
-                v-auth="'MdmWarehouseDefinition:ManageGroup'"
-                icon="ri:add-line"
-                label="新增下级分组"
-                @click.stop="$emit('add', data)"
-              />
-              <ArtIconButton
-                v-auth="'MdmWarehouseDefinition:ManageGroup'"
-                icon="ri:edit-line"
-                label="编辑分组"
-                @click.stop="$emit('edit', data)"
-              />
-              <ArtIconButton
-                v-auth="'MdmWarehouseDefinition:ManageGroup'"
-                icon="ri:delete-bin-6-line"
-                label="删除分组"
-                @click.stop="$emit('remove', data)"
-              />
-            </span>
-          </div>
-        </template>
-        <template #empty>
-          <ArtEmptyState
-            title="未找到匹配项"
-            description="请调整关键词或清空筛选条件。"
-            size="compact"
-            :visual-size="64"
-          />
-        </template>
-      </ElTree>
-    </ElScrollbar>
+      <template #default="{ data }">
+        <div class="warehouse-group-panel__node">
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
+          <span>
+            <strong :title="data.name">{{ data.name }}</strong>
+            <small>{{ data.code }}</small>
+          </span>
+          <span class="warehouse-group-panel__node-actions">
+            <ArtIconButton
+              v-auth="'MdmWarehouseDefinition:ManageGroup'"
+              icon="ri:add-line"
+              label="新增下级分组"
+              @click.stop="$emit('add', data)"
+            />
+            <ArtIconButton
+              v-auth="'MdmWarehouseDefinition:ManageGroup'"
+              icon="ri:edit-line"
+              label="编辑分组"
+              @click.stop="$emit('edit', data)"
+            />
+            <ArtIconButton
+              v-auth="'MdmWarehouseDefinition:ManageGroup'"
+              icon="ri:delete-bin-6-line"
+              label="删除分组"
+              @click.stop="$emit('remove', data)"
+            />
+          </span>
+        </div>
+      </template>
+      <template #empty>
+        <ArtEmptyState
+          title="未找到匹配项"
+          description="请调整关键词或清空筛选条件。"
+          size="compact"
+          :visual-size="64"
+        />
+      </template>
+    </ElTree>
   </ArtSectionCard>
 </template>
 
@@ -157,12 +161,9 @@
     height: 100%;
     min-height: 0;
 
-    :deep(.warehouse-group-panel__body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
+    &__toolbar {
+      display: grid;
       gap: 12px;
-      min-height: 0;
     }
 
     &__actions,
@@ -182,11 +183,6 @@
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
-    }
-
-    &__scroll {
-      flex: 1;
-      min-height: 0;
     }
 
     &__node {

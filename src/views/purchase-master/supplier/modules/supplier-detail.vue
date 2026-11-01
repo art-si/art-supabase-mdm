@@ -116,10 +116,14 @@
     <SupplierBankDialog ref="bankDialogRef" @success="handleRelatedSaved" />
     <SupplierContactDialog ref="contactDialogRef" @success="handleRelatedSaved" />
   </ArtDrawer>
+  <MasterDataDeleteGuard ref="bankDeleteGuardRef" />
+  <MasterDataDeleteGuard ref="contactDeleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -142,9 +146,14 @@
   import SupplierBankDialog from './supplier-bank-dialog.vue'
   import SupplierContactDialog from './supplier-contact-dialog.vue'
 
+  const { deleteGuardRef: contactDeleteGuardRef, deleteRecords: deleteContacts } =
+    useRecordDeleteGuard('mdm_supplier_contact', '供应商联系人')
   const props = defineProps<{ groups: MasterGroup[] }>()
   const emit = defineEmits<{ changed: [] }>()
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef: bankDeleteGuardRef, deleteRecords: deleteBanks } = useRecordDeleteGuard(
+    'mdm_supplier_bank',
+    '供应商账户'
+  )
   const drawerRef = ref<ArtDrawerExpose<PurchaseSupplier>>()
   const bankDialogRef = ref<{
     handleOpen: (data: { supplierId: string; row?: SupplierBank }) => Promise<void>
@@ -307,16 +316,28 @@
     void contactDialogRef.value?.handleOpen({ supplierId: record.value.id, row })
   }
   async function removeBank(row: SupplierBank): Promise<void> {
-    await confirmDelete(`确定删除账户“${row.accountName}”吗？`)
-    await deleteSupplierBank(row.id)
-    await loadRelated()
-    emit('changed')
+    await deleteBanks({
+      resources: [{ id: row.id, label: row.accountName }],
+      permission: 'MdmPurchaseSupplier:ManageBank',
+      remove: () => deleteSupplierBank(row.id),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await loadRelated()
+        emit('changed')
+      }
+    })
   }
   async function removeContact(row: SupplierContact): Promise<void> {
-    await confirmDelete(`确定删除联系人“${row.name}”吗？`)
-    await deleteSupplierContact(row.id)
-    await loadRelated()
-    emit('changed')
+    await deleteContacts({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmPurchaseSupplier:ManageContact',
+      remove: () => deleteSupplierContact(row.id),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await loadRelated()
+        emit('changed')
+      }
+    })
   }
   function handleRelatedSaved(): void {
     void loadRelated()

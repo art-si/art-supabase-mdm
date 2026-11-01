@@ -154,8 +154,7 @@
             </div>
             <ArtTableQuery
               ref="tableRef"
-              :model-value="search"
-              @update:model-value="replaceReactiveModel(search, $event)"
+              v-model="search"
               :api-fn="fetchData"
               :search-items="searchItems"
               :columns-factory="columnsFactory"
@@ -296,17 +295,19 @@
       </ArtDrawer>
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
+  <MasterDataDeleteGuard ref="categoryDeleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
   import { Search } from '@element-plus/icons-vue'
   import { ElMessage, ElTag, type TreeNodeData } from 'element-plus'
   import type { ColumnOption } from '@/types'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { exportExcel, getFileExtension, viewAttachment } from '@/utils/file'
@@ -377,7 +378,12 @@
     handleOpen: (data: EsopDocumentDialogOpenData) => Promise<void>
   }
 
-  const { confirmAction } = useArtFeedback()
+  const { deleteGuardRef: categoryDeleteGuardRef, deleteRecords: deleteCategories } =
+    useRecordDeleteGuard('mdm_esop_category', '文档分类')
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_esop_document',
+    'ESOP'
+  )
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
@@ -395,7 +401,7 @@
   const optionsError = ref<Error | null>(null)
   const optionsLoaded = ref(false)
   const overview = reactive({ total: 0, rows: [] as EsopDocument[] })
-  const search = reactive<SearchModel>({
+  const search = ref<SearchModel>({
     keyword: '',
     status: undefined,
     uploadDateRange: undefined
@@ -555,14 +561,17 @@
   }
   const removeCategory = async (): Promise<void> => {
     if (!selectedCategory.value) return
-    await confirmAction(
-      `确定删除分类“${selectedCategory.value.categoryName}”吗？仅空分类可以删除。`,
-      '删除文档分类',
-      { type: 'warning' }
-    )
-    await deleteEsopCategory(selectedCategory.value.id)
-    selectedCategoryId.value = undefined
-    await handleCategorySaved()
+    const category = selectedCategory.value
+    await deleteCategories({
+      resources: [{ id: category.id, label: category.categoryName }],
+      permission: 'MdmEsop:Delete',
+      remove: () => deleteEsopCategory(category.id),
+      successMessage: '文档分类已删除',
+      onDeleted: async () => {
+        selectedCategoryId.value = undefined
+        await handleCategorySaved()
+      }
+    })
   }
   const openDocumentDialog = (mode: EsopDocumentDialogMode, row?: EsopDocument): void => {
     if (mode === 'add' && !categories.value.length) {
@@ -637,18 +646,27 @@
       label: '删除',
       icon: 'ri:delete-bin-6-line',
       color: 'var(--el-color-danger)',
-      auth: 'MdmEsop:Delete'
+      auth: 'MdmEsop:Delete',
+      disabled: deleteBusy.value
     }
   ]
+  async function removeRows(
+    rows: EsopDocument[],
+    onDeleted: () => Promise<unknown> = async () => {
+      await tableRef.value?.refreshData()
+    }
+  ): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.documentName })),
+      permission: 'MdmEsop:Delete',
+      remove: () => deleteEsopDocuments(rows.map((row) => row.id)),
+      successMessage: 'ESOP已删除',
+      onDeleted
+    })
+  }
   const handleMore = async (item: ButtonMoreItem, row: EsopDocument): Promise<void> => {
     if (item.key === 'copy') return openDocumentDialog('copy', row)
-    if (item.key === 'delete') {
-      await confirmAction(`确定删除 ESOP“${row.documentName}”吗？`, '删除 ESOP', {
-        type: 'warning'
-      })
-      await deleteEsopDocuments([row.id])
-      return void tableRef.value?.refreshData()
-    }
+    if (item.key === 'delete') return removeRows([row])
     const enabled = item.key === 'enable'
     await setEsopDocumentsEnabled([row.id], enabled)
     await tableRef.value?.refreshData()
@@ -749,7 +767,7 @@
   ]
   const exportRows = async (): Promise<void> => {
     const rows = await loadAllLinePages(fetchEsopDocuments, {
-      ...search,
+      ...search.value,
       tenantId: tenantId.value,
       categoryIds: selectedCategoryIds.value.length ? selectedCategoryIds.value : undefined,
       current: 1,
@@ -838,9 +856,10 @@
       label: '启用',
       icon: 'ri:checkbox-circle-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setEsopDocumentsEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((row) => String(row.id)),
           true
         )
         await api.refreshUpdate()
@@ -851,9 +870,10 @@
       label: '停用',
       icon: 'ri:forbid-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setEsopDocumentsEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((row) => String(row.id)),
           false
         )
         await api.refreshUpdate()
@@ -861,12 +881,13 @@
     },
     {
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       permission: 'MdmEsop:Delete',
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 份 ESOP 文档吗？`,
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteEsopDocuments(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
+        await removeRows(selectedRows as EsopDocument[], () => api.refreshRemove())
       }
     }
   ]

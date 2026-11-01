@@ -58,6 +58,7 @@
       <ConfigurationDialog ref="configurationDialog" @success="refresh" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
@@ -80,10 +81,12 @@
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { exportExcel } from '@/utils/file'
   import {
     deletePersonnelCommonWorkCenters,
+    fetchPersonnelWorkCenterDeleteResources,
     fetchPersonnelWorkCenterConfigs,
     fetchProductionDepartments,
     savePersonnelCommonWorkCenters,
@@ -105,7 +108,10 @@
     Object.fromEntries(tenantOptions.value.map((tenant) => [tenant.id, tenant.tenantName]))
   )
   const { hasAuth } = useAuth()
-  const { confirmAction } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard(
+    'mdm_personnel_common_work_center',
+    '常用工作中心配置'
+  )
   const tableRef = ref<ArtTableQueryExpose>()
   const configurationDialog = ref<InstanceType<typeof ConfigurationDialog>>()
   const inlineSavingId = ref('')
@@ -229,33 +235,58 @@
       ElMessage.info('该员工尚未配置常用工作中心')
       return
     }
-    try {
-      await confirmAction(
-        `确认清空“${row.name}”的 ${row.commonWorkCenters.length} 个常用工作中心？`,
-        '删除常用配置',
-        { type: 'warning' }
-      )
-      await deletePersonnelCommonWorkCenters([row.id])
-      await refresh()
-    } catch {
-      /* API owns failure feedback. */
-    }
+    await removeConfigurations([row])
   }
-
+  async function resolveConfigurationResources(
+    rows: PersonnelWorkCenterConfig[],
+    workCenterId?: string
+  ) {
+    const links = await fetchPersonnelWorkCenterDeleteResources(
+      rows.map((row) => row.id),
+      workCenterId
+    )
+    return links.map((link) => {
+      const person = rows.find((row) => row.id === link.personnelId)
+      const center = person?.commonWorkCenters.find((row) => row.id === link.workCenterId)
+      return { id: link.id, label: `${person?.name || '人员'} · ${center?.name || '工作中心'}` }
+    })
+  }
+  async function removeConfigurations(rows: PersonnelWorkCenterConfig[]): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.name })),
+      resolveResources: () => resolveConfigurationResources(rows),
+      permission: 'MdmPersonnelWorkCenter:Delete',
+      remove: () => deletePersonnelCommonWorkCenters(rows.map((row) => row.id)),
+      confirmMessage: `确认清空 ${rows.length} 名员工的常用工作中心配置？人员档案不会被删除。`,
+      successMessage: '常用工作中心配置已删除',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
+  }
   async function removeCenter(row: PersonnelWorkCenterConfig, center: CommonWorkCenter) {
     if (inlineSavingId.value) return
     inlineSavingId.value = row.id
     try {
-      await savePersonnelCommonWorkCenters({
-        personnelId: row.id,
-        departmentId: row.departmentId,
-        workCenterIds: row.commonWorkCenters
-          .filter((item) => item.id !== center.id)
-          .map((item) => item.id)
+      await deleteRecords({
+        resources: [{ id: row.id, label: `${row.name} · ${center.name}` }],
+        resolveResources: () => resolveConfigurationResources([row], center.id),
+        permission: 'MdmPersonnelWorkCenter:Edit',
+        remove: () =>
+          savePersonnelCommonWorkCenters(
+            {
+              personnelId: row.id,
+              departmentId: row.departmentId,
+              workCenterIds: row.commonWorkCenters
+                .filter((item) => item.id !== center.id)
+                .map((item) => item.id)
+            },
+            { showMessage: false, showErrorMessage: false, showReferenceFeedback: false }
+          ),
+        onDeleted: async () => {
+          await refresh()
+        }
       })
-      await refresh()
-    } catch {
-      /* API owns failure feedback. */
     } finally {
       inlineSavingId.value = ''
     }
@@ -443,13 +474,13 @@
   const selectionActions: ArtTableQueryHeaderAction[] = [
     {
       type: 'delete',
+      confirm: false,
       label: '批量删除配置',
       permission: 'MdmPersonnelWorkCenter:Delete',
       content: (context: ArtTableQueryHeaderActionContext) =>
         `确认清空已选 ${context.selectedCount} 名员工的常用工作中心配置？人员档案不会被删除。`,
       onClick: async (context) => {
-        await deletePersonnelCommonWorkCenters(context.selectedRows.map((row) => String(row.id)))
-        await refresh()
+        await removeConfigurations(context.selectedRows as PersonnelWorkCenterConfig[])
       }
     }
   ]

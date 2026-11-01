@@ -33,14 +33,13 @@
 
       <ArtForm
         ref="formRef"
+        v-model:active-tab="activeTab"
         v-model="form.model"
         :items="form.items"
         :rules="form.rules"
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #attributes>
           <div class="material-reference-dialog__attribute-detail">
@@ -59,12 +58,12 @@
               </ElButton>
             </div>
             <ArtTable
+              ref="attributeTableRef"
               class="material-reference-dialog__attribute-table"
               :data="formModel.attributes"
               :columns="attributeColumns"
               row-key="key"
               :pagination="false"
-              :show-table-header="false"
               table-layout="fixed"
               height="auto"
               :scrollbar-always-on="false"
@@ -173,6 +172,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types/component'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { normalizeNullableText } from '@/utils/form/normalize'
@@ -227,14 +227,11 @@
     tenantId: string
     tenantOptions: Array<{ label: string; value: string }>
   }
-  interface FormExpose {
-    validate: () => Promise<boolean>
-    clearValidate: () => void
-  }
-
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
   const dialogRef = ref<ArtDialogExpose<ReferenceDialogOpenData>>()
-  const formRef = ref<FormExpose>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
+  const activeTab = ref('')
+  const attributeTableRef = ref<ArtTableExpose<MaterialAttributeDefinition>>()
   const currentKind = ref<MaterialReferenceKind>('unit-of-measure')
   const tenantOptions = ref<Array<{ label: string; value: string }>>([])
   const unitOptions = ref<UnitOfMeasure[]>([])
@@ -351,6 +348,7 @@
       if (currentKind.value === 'unit-of-measure')
         return [
           ...tenantItems(),
+          { key: 'unitIdentity', label: '单位标识', type: 'tab' },
           {
             label: '单位编码',
             key: 'unitCode',
@@ -380,6 +378,11 @@
             key: 'decimalPlaces',
             type: 'number',
             props: { min: 0, max: 8, precision: 0, class: '!w-full' }
+          },
+          {
+            key: 'unitConversion',
+            label: '精度与换算',
+            type: 'tab'
           },
           {
             label: '维度基准单位',
@@ -443,6 +446,7 @@
       if (currentKind.value === 'attribute-group')
         return [
           ...tenantItems(),
+          { key: 'attributeIdentity', label: '属性组信息', type: 'tab' },
           {
             label: '属性组编码',
             key: 'groupCode',
@@ -455,11 +459,13 @@
             type: 'input',
             props: { maxlength: 80, placeholder: '如 外观属性' }
           },
-          { label: '属性明细', key: 'attributes', type: 'slot', span: 24 },
-          ...baseItems()
+          ...baseItems(),
+          { key: 'attributeDetails', label: '属性明细', type: 'tab' },
+          { label: '', key: 'attributes', type: 'slot', span: 24, labelWidth: 0 }
         ]
       return [
         ...tenantItems(),
+        { key: 'ruleIdentity', label: '规则信息', type: 'tab' },
         {
           label: '规则编码',
           key: 'ruleCode',
@@ -498,8 +504,9 @@
           type: 'number',
           props: { min: 4, max: 60, precision: 0, class: '!w-full' }
         },
-        { label: '号段配置', key: 'segments', type: 'slot', span: 24 },
-        ...baseItems()
+        ...baseItems(),
+        { key: 'ruleSegments', label: '号段配置', type: 'tab' },
+        { label: '', key: 'segments', type: 'slot', span: 24, labelWidth: 0 }
       ]
     }),
     rules: {
@@ -576,6 +583,9 @@
     {
       prop: 'name',
       label: '属性名',
+      required: true,
+      requiredMessage: '请填写属性名',
+      headerTooltip: '每一项属性都需要名称，候选值与启用设置会随属性一起保存。',
       minWidth: 205,
       showOverflowTooltip: false,
       formatter: (row) => (
@@ -753,6 +763,14 @@
   const handleSubmit = async (): Promise<boolean> => {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (currentKind.value === 'attribute-group' && formModel.attributes.length) {
+        await formRef.value?.scrollToField('attributes')
+        const result = await attributeTableRef.value?.validate()
+        if (result?.valid === false) {
+          ElMessage.warning(result.firstError?.message || '请完善属性明细中的红色标记项')
+          return false
+        }
+      }
       if (currentKind.value === 'code-rule' && rulePreview.value.overflow) {
         ElMessage.warning(`编码预览超出总长度 ${rulePreview.value.overflow} 位，请调整号段或总长度`)
         return false
@@ -766,6 +784,7 @@
     }
   }
   const handleOpen = async (data: ReferenceDialogOpenData): Promise<void> => {
+    activeTab.value = ''
     Object.assign(form.model, initialForm())
     currentKind.value = data.kind
     tenantOptions.value = data.tenantOptions

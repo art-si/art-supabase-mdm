@@ -68,6 +68,9 @@ export async function saveWarehouse(payload: WarehouseInput, id?: string): Promi
 export async function deleteWarehouses(ids: string[]): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_warehouses_secure', { p_ids: ids }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: '仓库已删除'
   })
 }
@@ -93,6 +96,9 @@ export async function saveWarehouseGroup(payload: WarehouseGroupInput, id?: stri
 export async function deleteWarehouseGroup(id: string): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_warehouse_group_secure', { p_id: id }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: '仓库分组已删除'
   })
 }
@@ -175,7 +181,13 @@ export async function saveSupplyChainCodeRule(
 export async function deleteSupplyChainCodeRules(ids: string[]): Promise<void> {
   await responseHandle(
     () => supabase.rpc('mdm_delete_supply_chain_code_rules_secure', { p_ids: ids }),
-    { ...ruleWriteOptions, message: '供应链编码规则已删除' }
+    {
+      ...ruleWriteOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '供应链编码规则已删除'
+    }
   )
 }
 
@@ -251,6 +263,9 @@ export async function saveOutboundRule(
 export async function deleteOutboundRules(ids: string[]): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_outbound_rules_secure', { p_ids: ids }), {
     ...ruleWriteOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: '出库规则已删除'
   })
 }

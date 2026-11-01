@@ -8,7 +8,10 @@
       @retry="load"
       ><template #actions
         ><ElButton v-auth="'MdmWorkCenter:Devices'" type="primary" @click="openDevice()"
-          ><template #icon><ArtSvgIcon icon="ri:add-line" /></template>添加设备</ElButton
+          ><template #icon
+            ><ArtSvgIcon icon="ri:add-line" />
+            <MasterDataDeleteGuard ref="deleteGuardRef" /> </template
+          >添加设备</ElButton
         ></template
       ><ArtTable
         :data="state.rows"
@@ -27,14 +30,7 @@
           <small>{{ editingRow.equipment?.equipmentCode || '无设备编号' }}</small>
         </div>
       </div>
-      <ArtForm
-        ref="formRef"
-        v-model="form"
-        :items="items"
-        :rules="rules"
-        :span="24"
-        :show-reset="false"
-        :show-submit="false"
+      <ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"
         ><template #equipmentIds
           ><ArtTableMultipleSelect
             :model-value="form.equipmentIds"
@@ -61,13 +57,15 @@
   </ArtDialog>
 </template>
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { ElMessage } from 'element-plus'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
-  const { confirmAction } = useArtFeedback()
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, ref, reactive, shallowRef } from 'vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -88,6 +86,10 @@
     type WorkCenter,
     type CenterDevice
   } from '@mdm/api'
+  const { deleteGuardRef: deleteGuardRef, deleteRecords: deleteRecords } = useRecordDeleteGuard(
+    'mdm_work_center_device',
+    '工作中心设备'
+  )
   const dialogRef = ref<ArtDialogExpose>()
   const editDialog = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -189,13 +191,13 @@
     }
   }
   async function remove(row: CenterDevice) {
-    try {
-      await confirmAction('确认从工作中心移除该设备？', '移除设备', { type: 'warning' })
-      await deleteCenterDevice(row.id)
-      await load()
-    } catch {
-      /* API owns feedback. */
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: row.equipment?.equipmentName || '工作中心设备' }],
+      permission: 'MdmWorkCenter:Devices',
+      remove: () => deleteCenterDevice(row.id),
+      successMessage: '工作中心设备已删除',
+      onDeleted: load
+    })
   }
   async function openDevice(row?: CenterDevice) {
     editingRow.value = row

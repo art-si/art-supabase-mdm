@@ -1,0 +1,1 @@
+import{Ar as e,Rr as t,ri as n}from"./supabase-CdJ7aEwC.js";import{t as r}from"./catalog-DZesJoXv.js";var i=t({name:`MdmBusinessPartnerDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

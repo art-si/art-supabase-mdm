@@ -18,8 +18,7 @@
 
       <ArtTableQuery
         ref="tableRef"
-        :model-value="search"
-        @update:model-value="replaceReactiveModel(search, $event)"
+        v-model="search"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -38,12 +37,12 @@
       <SupplyChainCodeRuleDialog ref="dialogRef" @success="refresh" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { cloneDeep } from 'lodash-es'
   import { ElTag } from 'element-plus'
@@ -67,7 +66,8 @@
     type InventoryRuleQuery,
     type SupplyChainCodeRule
   } from '@mdm/api'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import SupplyChainCodeRuleDialog, {
     type SupplyChainCodeRuleDialogOpenData
@@ -90,9 +90,12 @@
 
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_supply_chain_code_rule',
+    '供应链编码规则'
+  )
   const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
-  const search = reactive({
+  const search = ref({
     keyword: '',
     status: undefined as 'enabled' | 'disabled' | undefined
   })
@@ -139,9 +142,10 @@
       label: '启用',
       icon: 'ri:checkbox-circle-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setSupplyChainCodeRulesEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((row) => String(row.id)),
           true
         )
         await api.refreshUpdate()
@@ -152,9 +156,10 @@
       label: '停用',
       icon: 'ri:forbid-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setSupplyChainCodeRulesEnabled(
-          selectedRows.map((row) => String(row.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((row) => String(row.id)),
           false
         )
         await api.refreshUpdate()
@@ -163,14 +168,26 @@
     {
       permission: 'MdmSupplyChainCodeRule:Delete',
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 个供应链编码规则吗？`,
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteSupplyChainCodeRules(selectedRows.map((row) => String(row.id)))
-        await api.refreshRemove()
+        await removeRows(selectedRows as SupplyChainCodeRule[], () => api.refreshRemove())
       }
     }
   ]
+  async function removeRows(rows: SupplyChainCodeRule[], refresh: () => unknown): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.ruleName })),
+      permission: 'MdmSupplyChainCodeRule:Delete',
+      remove: () => deleteSupplyChainCodeRules(rows.map((row) => row.id)),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
+  }
   const identity = (row: SupplyChainCodeRule) => (
     <BusinessTableIdentityCell
       primary={row.ruleName}
@@ -260,11 +277,8 @@
           <ArtButtonTable
             permission="MdmSupplyChainCodeRule:Delete"
             type="delete"
-            onClick={async () => {
-              await confirmDelete(`确定删除供应链编码规则“${row.ruleName}”吗？`)
-              await deleteSupplyChainCodeRules([row.id])
-              await refresh()
-            }}
+            disabled={deleteBusy.value}
+            onClick={() => removeRows([row], () => tableRef.value?.getData())}
           />
         </BusinessTableRowActions>
       )

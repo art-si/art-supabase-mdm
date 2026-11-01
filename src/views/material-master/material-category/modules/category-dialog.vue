@@ -10,15 +10,12 @@
       </div>
       <ArtForm
         ref="formRef"
-        :model-value="formModel"
-        @update:model-value="replaceReactiveModel(formModel, $event)"
+        v-model="formModel"
         :items="formItems"
         :rules="formRules"
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #purchaser>
           <ArtEmployeeSelect
@@ -34,7 +31,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -118,15 +114,19 @@
     status: 'enabled',
     sort: 10
   })
-  const formModel = reactive<MaterialCategory>(initialForm())
+  const formModel = ref<MaterialCategory>(initialForm())
   let initializingForm = false
-  const tenantId = computed(() => formModel.tenantId)
+  const tenantId = computed(() => formModel.value.tenantId)
   const categoryOptions = computed<CategoryTreeOption[]>(() => {
-    const scoped = sourceCategories.value.filter((item) => item.tenantId === formModel.tenantId)
+    const scoped = sourceCategories.value.filter(
+      (item) => item.tenantId === formModel.value.tenantId
+    )
     const sourceTree = categoryTreeUtils.listToTree(scoped)
     const blockedIds = new Set(
-      formModel.id
-        ? categoryTreeUtils.getDescendants(sourceTree, formModel.id, true).map((item) => item.id)
+      formModel.value.id
+        ? categoryTreeUtils
+            .getDescendants(sourceTree, formModel.value.id, true)
+            .map((item) => item.id)
         : []
     )
     return categoryTreeUtils.listToTree<CategoryTreeOption>(
@@ -149,12 +149,12 @@
       type: 'select',
       options: tenantOptions.value,
       props: {
-        disabled: Boolean(formModel.id),
+        disabled: Boolean(formModel.value.id),
         filterable: true,
         placeholder: '请选择本次维护的数据归属租户'
       }
     },
-    { label: '分类身份', key: 'identity', type: 'divider', span: 24 },
+    { label: '分类身份', key: 'identity', type: 'tab', span: 24 },
     {
       label: '上级分类',
       key: 'parentId',
@@ -196,7 +196,6 @@
       props: { maxlength: 100, placeholder: '如 金属原材料' }
     },
     { label: '打印名称', key: 'printName', type: 'input', props: { maxlength: 100 } },
-    { label: '描述规则', key: 'descriptionRule', type: 'divider', span: 24 },
     {
       label: '描述连接符',
       key: 'compositionSeparator',
@@ -212,7 +211,26 @@
       help: '物料档案将按所选字段顺序与连接符实时生成“物料描述”。',
       props: { multiple: true, clearable: true, filterable: true }
     },
-    { label: '采购与收货策略', key: 'purchasePolicy', type: 'divider', span: 24 },
+    {
+      label: '状态',
+      key: 'status',
+      type: 'select',
+      options: statusOptions
+    },
+    {
+      label: '显示顺序',
+      key: 'sort',
+      type: 'number',
+      props: { min: 0, max: 999999, precision: 0, class: '!w-full' }
+    },
+    {
+      label: '分类说明',
+      key: 'description',
+      type: 'input',
+      span: 24,
+      props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true, resize: 'none' }
+    },
+    { label: '采购与收货策略', key: 'purchasePolicy', type: 'tab', span: 24 },
     {
       label: '超采购比例（%）',
       key: 'overPurchasePercent',
@@ -261,27 +279,7 @@
     { label: '自动收货', key: 'autoReceive', type: 'switch' },
     { label: '需要检验', key: 'requiresInspection', type: 'switch' },
     { label: '生成送货通知', key: 'createDeliveryNotice', type: 'switch' },
-    { label: '批次管理', key: 'batchManaged', type: 'switch' },
-    { label: '治理信息', key: 'governance', type: 'divider', span: 24 },
-    {
-      label: '状态',
-      key: 'status',
-      type: 'select',
-      options: statusOptions
-    },
-    {
-      label: '显示顺序',
-      key: 'sort',
-      type: 'number',
-      props: { min: 0, max: 999999, precision: 0, class: '!w-full' }
-    },
-    {
-      label: '分类说明',
-      key: 'description',
-      type: 'input',
-      span: 24,
-      props: { type: 'textarea', rows: 3, maxlength: 500, showWordLimit: true, resize: 'none' }
-    }
+    { label: '批次管理', key: 'batchManaged', type: 'switch' }
   ])
   const formRules: FormRules<Record<string, unknown>> = {
     tenantId: [{ required: true, message: '请选择目标租户', trigger: 'change' }],
@@ -290,18 +288,18 @@
   }
   const syncTenantOptions = (): void => {
     typeOptions.value = sourceMaterialTypes.value
-      .filter((item) => item.tenantId === formModel.tenantId)
+      .filter((item) => item.tenantId === formModel.value.tenantId)
       .map((item) => ({ label: `${item.typeName} · ${item.typeCode}`, value: item.id }))
     siteOptions.value = sourceSites.value
-      .filter((item) => item.tenantId === formModel.tenantId)
+      .filter((item) => item.tenantId === formModel.value.tenantId)
       .map((item) => ({ label: item.name, value: item.id }))
   }
   const handleSubmit = async (): Promise<boolean> => {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       await saveMaterialCategory(
-        buildMaterialCategoryWriteInput(formModel),
-        formModel.id || undefined
+        buildMaterialCategoryWriteInput(formModel.value),
+        formModel.value.id || undefined
       )
       emit('success')
       return true
@@ -313,24 +311,26 @@
   const handleOpen = async (data: CategoryDialogOpenData): Promise<void> => {
     initializingForm = true
     try {
-      Object.assign(formModel, initialForm())
+      Object.assign(formModel.value, initialForm())
       tenantOptions.value = data.tenantOptions
       sourceCategories.value = data.categories
       sourceMaterialTypes.value = data.materialTypes
       sourceSites.value = data.sites
-      if (data.row) Object.assign(formModel, cloneDeep(data.row))
-      formModel.tenantId = data.row?.tenantId || data.tenantId
+      if (data.row) Object.assign(formModel.value, cloneDeep(data.row))
+      formModel.value.tenantId = data.row?.tenantId || data.tenantId
       if (!data.row && data.parentId)
-        formModel.parentId =
+        formModel.value.parentId =
           sourceCategories.value.find(
-            (category) => category.id === data.parentId && category.tenantId === formModel.tenantId
+            (category) =>
+              category.id === data.parentId && category.tenantId === formModel.value.tenantId
           )?.id ?? null
       if (data.copy) {
-        const originalCode = formModel.categoryCode
-        formModel.id = ''
-        formModel.categoryCode = `${formModel.categoryCode}-COPY`
-        if (formModel.codePrefix === originalCode) formModel.codePrefix = formModel.categoryCode
-        formModel.categoryName = `${formModel.categoryName}（副本）`
+        const originalCode = formModel.value.categoryCode
+        formModel.value.id = ''
+        formModel.value.categoryCode = `${formModel.value.categoryCode}-COPY`
+        if (formModel.value.codePrefix === originalCode)
+          formModel.value.codePrefix = formModel.value.categoryCode
+        formModel.value.categoryName = `${formModel.value.categoryName}（副本）`
       }
       syncTenantOptions()
     } finally {
@@ -347,33 +347,33 @@
     })
   }
   watch(
-    () => formModel.categoryCode,
+    () => formModel.value.categoryCode,
     (value, previous) => {
-      if (!formModel.codePrefix || formModel.codePrefix === previous) {
-        formModel.codePrefix = value
+      if (!formModel.value.codePrefix || formModel.value.codePrefix === previous) {
+        formModel.value.codePrefix = value
       }
     }
   )
   watch(
-    () => formModel.tenantId,
+    () => formModel.value.tenantId,
     (value, previous) => {
       if (initializingForm || value === previous) return
       syncTenantOptions()
       if (!previous) return
       if (
         !sourceCategories.value.some(
-          (item) => item.tenantId === value && item.id === formModel.parentId
+          (item) => item.tenantId === value && item.id === formModel.value.parentId
         )
       ) {
-        formModel.parentId = null
+        formModel.value.parentId = null
       }
-      if (!typeOptions.value.some((item) => item.value === formModel.materialTypeId)) {
-        formModel.materialTypeId = null
+      if (!typeOptions.value.some((item) => item.value === formModel.value.materialTypeId)) {
+        formModel.value.materialTypeId = null
       }
-      if (!siteOptions.value.some((item) => item.value === formModel.defaultSiteId)) {
-        formModel.defaultSiteId = null
+      if (!siteOptions.value.some((item) => item.value === formModel.value.defaultSiteId)) {
+        formModel.value.defaultSiteId = null
       }
-      formModel.purchaserId = null
+      formModel.value.purchaserId = null
     }
   )
   defineExpose({ handleOpen })

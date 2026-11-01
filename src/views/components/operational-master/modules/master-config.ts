@@ -83,19 +83,29 @@ const configurations: Record<string, OperationalMasterConfig> = {
         key: 'identity',
         title: '客户识别',
         description: '维护唯一编号、名称以及用于经营分析的分类口径。',
-        fieldKeys: ['customerCode', 'customerName', 'groupId', 'industry', 'customerLevel']
+        fieldKeys: [
+          'customerCode',
+          'customerName',
+          'groupId',
+          'industry',
+          'customerLevel',
+          'enabled',
+          'remark'
+        ]
       },
       {
         key: 'contact',
-        title: '联系人信息',
-        description: '统一维护主要联系人的部门、职位和联系方式，供下游业务实时引用。',
+        title: '联系与地址',
+        description: '统一维护主要联系人与经营地址，供订单、运输和现场作业复用。',
         fieldKeys: [
           'contactName',
           'contactPhone',
           'contactDepartment',
           'contactPosition',
           'contactEmail',
-          'contactQq'
+          'contactQq',
+          'region',
+          'addressDetail'
         ]
       },
       {
@@ -103,18 +113,6 @@ const configurations: Record<string, OperationalMasterConfig> = {
         title: '财务信息',
         description: '维护开票与收付款资料，供合同、结算和票据业务使用。',
         fieldKeys: ['invoiceTitle', 'taxNo', 'bankName', 'bankAccount']
-      },
-      {
-        key: 'address',
-        title: '业务地址',
-        description: '记录客户经营地址，便于订单、运输与现场作业复用。',
-        fieldKeys: ['region', 'addressDetail']
-      },
-      {
-        key: 'status',
-        title: '状态与说明',
-        description: '控制主档是否可被业务选择，并记录必要的维护说明。',
-        fieldKeys: ['enabled', 'remark']
       }
     ],
     importable: true,
@@ -217,7 +215,7 @@ const configurations: Record<string, OperationalMasterConfig> = {
         key: 'identity',
         title: '项目识别',
         description: '明确项目名称、所属客户与分组，项目编号可由系统自动生成。',
-        fieldKeys: ['projectCode', 'projectName', 'customerId', 'groupId']
+        fieldKeys: ['projectCode', 'projectName', 'customerId', 'groupId', 'enabled', 'remark']
       },
       {
         key: 'lifecycle',
@@ -229,22 +227,14 @@ const configurations: Record<string, OperationalMasterConfig> = {
           'projectStatus',
           'source',
           'ownerId',
-          'salespersonId',
-          'contactName',
-          'contactPhone'
+          'salespersonId'
         ]
       },
       {
         key: 'delivery',
         title: '交付地址',
         description: '记录项目履约地点，供订单、运输与现场作业复用。',
-        fieldKeys: ['region', 'addressDetail']
-      },
-      {
-        key: 'status',
-        title: '状态与说明',
-        description: '控制项目主档是否可用，并补充特殊业务约定。',
-        fieldKeys: ['enabled', 'remark']
+        fieldKeys: ['contactName', 'contactPhone', 'region', 'addressDetail']
       }
     ],
     importable: true,
@@ -330,19 +320,13 @@ const configurations: Record<string, OperationalMasterConfig> = {
         key: 'identity',
         title: '公式识别',
         description: '定义公式名称、用途、活动类型以及默认使用策略。',
-        fieldKeys: ['code', 'name', 'purpose', 'activityTypes', 'isDefault']
+        fieldKeys: ['code', 'name', 'purpose', 'activityTypes', 'isDefault', 'enabled', 'remark']
       },
       {
         key: 'expression',
         title: '公式配置',
         description: '由参数、运算符与函数生成机器表达式和业务译文。',
         fieldKeys: ['formulaExpression', 'formulaTranslation', 'description']
-      },
-      {
-        key: 'status',
-        title: '状态与说明',
-        description: '控制公式是否可被引用，并记录维护说明。',
-        fieldKeys: ['enabled', 'remark']
       }
     ],
     fields: [
@@ -418,7 +402,7 @@ const configurations: Record<string, OperationalMasterConfig> = {
         key: 'identity',
         title: '控制码识别',
         description: '维护可复用控制码，并明确是否进入生产排程。',
-        fieldKeys: ['controlCode', 'controlCodeName', 'participatesScheduling']
+        fieldKeys: ['controlCode', 'controlCodeName', 'participatesScheduling', 'enabled', 'remark']
       },
       {
         key: 'execution',
@@ -432,12 +416,6 @@ const configurations: Record<string, OperationalMasterConfig> = {
           'sequenceControl',
           'reworkMode'
         ]
-      },
-      {
-        key: 'status',
-        title: '状态与说明',
-        description: '控制控制码是否可用，并记录维护说明。',
-        fieldKeys: ['enabled', 'remark']
       }
     ],
     fields: [
@@ -518,31 +496,21 @@ const configurations: Record<string, OperationalMasterConfig> = {
         key: 'identity',
         title: '工序识别',
         description: '维护工序编码、名称、助记信息、业务分组和来源。',
-        fieldKeys: ['code', 'name', 'mnemonic', 'groupId', 'source']
+        fieldKeys: ['code', 'name', 'mnemonic', 'groupId', 'source', 'enabled', 'remark']
       },
       {
         key: 'production',
-        title: '生产归属',
-        description: '限定工序适用的车间与工作中心，保持生产范围清晰。',
-        fieldKeys: ['departmentId', 'workCenterIds']
-      },
-      {
-        key: 'pricing',
-        title: '计价规则',
-        description: '设置计价类型、标准工价与计价单位。',
-        fieldKeys: ['pricingType', 'price', 'pricingUnitId']
-      },
-      {
-        key: 'quality',
-        title: '质量原因',
-        description: '配置加工与来料不良原因，统一现场反馈口径。',
-        fieldKeys: ['processingDefectReasons', 'materialDefectReasons']
-      },
-      {
-        key: 'status',
-        title: '状态与说明',
-        description: '控制工序是否可被路线引用，并记录维护说明。',
-        fieldKeys: ['enabled', 'remark']
+        title: '生产与计价',
+        description: '维护生产范围、计价口径与现场不良原因。',
+        fieldKeys: [
+          'departmentId',
+          'workCenterIds',
+          'pricingType',
+          'price',
+          'pricingUnitId',
+          'processingDefectReasons',
+          'materialDefectReasons'
+        ]
       }
     ],
     importable: true,
@@ -624,21 +592,18 @@ const configurations: Record<string, OperationalMasterConfig> = {
     formSections: [
       {
         key: 'identity',
-        title: '工位识别',
-        description: '维护清晰稳定的工位编号与名称。',
-        fieldKeys: ['workstationCode', 'workstationName']
-      },
-      {
-        key: 'assignment',
-        title: '生产归属与负责人',
-        description: '关联车间、工作中心和生产负责人，明确工位责任边界。',
-        fieldKeys: ['departmentId', 'workCenterId', 'responsiblePersonId']
-      },
-      {
-        key: 'device',
-        title: '设备与状态',
-        description: '绑定安灯设备标识，控制工位是否可用于生产配置。',
-        fieldKeys: ['andonSimNo', 'enabled', 'remark']
+        title: '工位信息',
+        description: '维护工位身份、生产归属、负责人和安灯设备。',
+        fieldKeys: [
+          'workstationCode',
+          'workstationName',
+          'departmentId',
+          'workCenterId',
+          'responsiblePersonId',
+          'andonSimNo',
+          'enabled',
+          'remark'
+        ]
       }
     ],
     fields: [
@@ -647,7 +612,7 @@ const configurations: Record<string, OperationalMasterConfig> = {
       {
         key: 'departmentId',
         label: '车间 / 产线',
-        type: 'select',
+        type: 'treeSelect',
         reference: 'departments',
         required: true,
         minWidth: 170,

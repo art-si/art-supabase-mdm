@@ -14,15 +14,7 @@
       :closable="false"
       show-icon
     />
-    <ArtForm
-      ref="formRef"
-      v-model="form.model"
-      :items="items"
-      :rules="form.rules"
-      :span="12"
-      :show-reset="false"
-      :show-submit="false"
-    >
+    <ArtForm ref="formRef" v-model="form.model" :items="items" :rules="form.rules" :span="12">
       <template #employeeId>
         <ArtEmployeeSelect
           :model-value="form.model.employeeId || undefined"
@@ -89,7 +81,7 @@
     form.departments.filter((department) => department.tenantId === form.model.tenantId)
   )
   const items = computed<FormItem[]>(() => [
-    { key: 'source', label: '身份来源', type: 'divider', span: 24 },
+    { key: 'identity', label: '生产身份', type: 'tab', span: 24 },
     {
       key: 'tenantId',
       label: '所属租户',
@@ -113,7 +105,6 @@
       span: 24,
       help: '选择后按当前数据权限带入员工资料，也支持直接录入。'
     },
-    { key: 'identity', label: '生产身份', type: 'divider', span: 24 },
     {
       key: 'name',
       label: '姓名',
@@ -128,7 +119,7 @@
     },
     { key: 'barcode', label: '条码', type: 'input', help: '默认等于工号，可按生产条码规则调整。' },
     { key: 'phone', label: '手机号', type: 'input', props: { maxlength: 30 } },
-    { key: 'organization', label: '组织与岗位', type: 'divider', span: 24 },
+    { key: 'organization', label: '组织与岗位', type: 'tab', span: 24 },
     {
       key: 'departmentId',
       label: '所属部门',
@@ -157,7 +148,6 @@
       type: 'date',
       props: { valueFormat: 'YYYY-MM-DD', clearable: true }
     },
-    { key: 'scope', label: '权限与补充', type: 'divider', span: 24 },
     {
       key: 'permissionDepartmentIds',
       label: '权限部门',

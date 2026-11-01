@@ -191,15 +191,18 @@
 
     <ShiftScheduleDialog ref="scheduleDialog" @success="loadSchedules" />
   </div>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { computed, reactive, ref, watch } from 'vue'
   import dayjs from 'dayjs'
   import { uniq } from 'lodash-es'
   import { ElButton, ElTag } from 'element-plus'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
@@ -221,10 +224,10 @@
   } from '../modules/shift-schedule-policy'
   import ShiftScheduleDialog from './modules/shift-schedule-dialog.vue'
 
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard('mdm_shift_schedule', '排班')
   defineOptions({ name: 'MdmShiftScheduling' })
 
   const { hasAuth } = useAuth()
-  const { confirmAction } = useArtFeedback()
   const scheduleDialog = ref<InstanceType<typeof ShiftScheduleDialog>>()
   const scope = reactive({
     departments: [] as ProductionDepartment[],
@@ -482,18 +485,14 @@
     void scheduleDialog.value?.handleOpen({ mode, row, department, initialDate })
   }
 
-  async function removeSchedule(row: ShiftScheduleRecord): Promise<void> {
-    try {
-      await confirmAction(
-        `确认删除“${row.shiftName} · ${effectiveDate(row)}”排班？删除后将不再出现在日历和班表中。`,
-        '删除排班',
-        { type: 'warning' }
-      )
-      await deleteShiftSchedule(row.id)
-      await loadSchedules()
-    } catch {
-      // Cancelled confirmations and API failures keep the current workspace intact.
-    }
+  async function removeSchedule(row: ShiftScheduleRecord) {
+    await deleteRecords({
+      resources: [{ id: row.id, label: `${row.shiftName} · ${effectiveDate(row)}` }],
+      permission: 'MdmShiftScheduling:Delete',
+      remove: () => deleteShiftSchedule(row.id),
+      successMessage: '排班已删除',
+      onDeleted: loadSchedules
+    })
   }
 
   watch(monthKey, loadSchedules)

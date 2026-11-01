@@ -28,8 +28,7 @@
         <div class="material-category-page__table-pane">
           <ArtTableQuery
             ref="tableRef"
-            :model-value="search"
-            @update:model-value="replaceReactiveModel(search, $event)"
+            v-model="search"
             :api-fn="fetchData"
             :search-items="searchItems"
             :columns-factory="columnsFactory"
@@ -52,15 +51,16 @@
       <CategoryDialog ref="dialogRef" @success="refresh" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElTag } from 'element-plus'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
@@ -101,7 +101,10 @@
   interface DialogExpose {
     handleOpen: (data: CategoryDialogOpenData) => Promise<void>
   }
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'mdm_material_category',
+    '物料分类'
+  )
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tenantId = computed(() => effectiveTenantId.value ?? '')
@@ -114,7 +117,7 @@
   const treeLoading = ref(false)
   const treeError = ref('')
   const treeUtils = new TreeUtils({ parentKey: 'parentId' })
-  const search = reactive({ keyword: '', status: undefined as 'enabled' | 'disabled' | undefined })
+  const search = ref({ keyword: '', status: undefined as 'enabled' | 'disabled' | undefined })
   const metrics = computed<BusinessWorkspaceMetric[]>(() => [
     {
       label: '分类总数',
@@ -198,9 +201,10 @@
       label: '启用',
       icon: 'ri:checkbox-circle-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'disabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setMaterialCategoriesEnabled(
-          selectedRows.map((item) => String(item.id)),
+          selectedRows.filter((row) => row.status === 'disabled').map((item) => String(item.id)),
           true
         )
         await api.refreshUpdate()
@@ -211,9 +215,10 @@
       label: '停用',
       icon: 'ri:forbid-line',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.status === 'enabled'),
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
         await setMaterialCategoriesEnabled(
-          selectedRows.map((item) => String(item.id)),
+          selectedRows.filter((row) => row.status === 'enabled').map((item) => String(item.id)),
           false
         )
         await api.refreshUpdate()
@@ -222,11 +227,12 @@
     {
       permission: 'MdmMaterialCategory:Delete',
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 个物料分类吗？`,
       onClick: async ({ selectedRows, api }: ArtTableQueryHeaderActionContext) => {
-        await deleteMaterialCategories(selectedRows.map((item) => String(item.id)))
-        await api.refreshRemove()
+        await removeRows(selectedRows as MaterialCategory[], () => api.refreshRemove())
       }
     }
   ]
@@ -238,6 +244,17 @@
       <small>{row.categoryCode}</small>
     </div>
   )
+  async function removeRows(rows: MaterialCategory[], refresh: () => unknown): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id, label: row.categoryName })),
+      permission: 'MdmMaterialCategory:Delete',
+      remove: () => deleteMaterialCategories(rows.map((row) => row.id)),
+      successMessage: '删除成功',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
+  }
   const columnsFactory = (): ColumnOption<MaterialCategory>[] => [
     { type: 'selection', width: 48 },
     { prop: 'sort', label: '顺序', width: 86, align: 'center', sortable: true },
@@ -315,17 +332,14 @@
           <ArtButtonTable
             permission="MdmMaterialCategory:Delete"
             type="delete"
-            onClick={async () => {
-              await confirmDelete(`确定删除“${row.categoryName}”吗？`)
-              await deleteMaterialCategories([row.id])
-              await tableRef.value?.getData()
-            }}
+            disabled={deleteBusy.value}
+            onClick={() => removeRows([row], () => tableRef.value?.getData())}
           />
         </BusinessTableRowActions>
       )
     }
   ]
-  const fetchData = async (params: Api.Common.PaginationParams & typeof search) => {
+  const fetchData = async (params: Api.Common.PaginationParams & typeof search.value) => {
     treeLoading.value = true
     treeError.value = ''
     try {

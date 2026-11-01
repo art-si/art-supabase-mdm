@@ -13,8 +13,6 @@
         v-model="form"
         :items="formItems"
         :rules="formRules"
-        :show-reset="false"
-        :show-submit="false"
         label-position="top"
       />
       <p class="governance-action-dialog__audit">

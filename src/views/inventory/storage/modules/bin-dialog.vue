@@ -2,15 +2,12 @@
   <ArtDialog ref="dialogRef" size="lg">
     <ArtForm
       ref="formRef"
-      :model-value="form"
-      @update:model-value="replaceReactiveModel(form, $event)"
+      v-model="form"
       :items="items"
       :rules="rules"
       :span="12"
       :gutter="20"
       label-position="top"
-      :show-reset="false"
-      :show-submit="false"
     >
       <template #fixedMaterialId>
         <ArtMaterialSelect
@@ -29,7 +26,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import TreeUtils from '@/utils/tree'
@@ -72,7 +68,7 @@
   const binTypeOptions = useDictionaryOptions('mdmWarehouseBinType')
   const binStatusOptions = useDictionaryOptions('mdmWarehouseBinStatus')
   const selectedMaterial = ref<MaterialSelectRecord[]>([])
-  const form = reactive<StorageBinInput>({
+  const form = ref<StorageBinInput>({
     warehouseId: '',
     zoneId: null,
     parentId: null,
@@ -94,7 +90,7 @@
     remark: null
   })
   const items = computed<FormItem[]>(() => [
-    { key: 'identity', label: '库位身份', type: 'divider', span: 24 },
+    { key: 'identity', label: '库位身份', type: 'tab', span: 24 },
     {
       key: 'binCode',
       label: '库位编码',
@@ -121,23 +117,30 @@
     {
       key: 'parentId',
       label: '上级存储单元',
-      type: 'select',
-      options:
+      type: 'treeSelect',
+      options: treeUtils.listToTree(
         context.value?.bins
           .filter(
             (bin) =>
               !excludedParentIds.value.has(bin.id) &&
               bin.zoneId === (context.value?.zone?.id ?? null)
           )
-          .map((bin) => ({ label: `${bin.binCode} · ${bin.binName}`, value: bin.id })) ?? [],
+          .map((bin) => ({
+            id: bin.id,
+            parentId: bin.parentId,
+            label: `${bin.binCode} · ${bin.binName}`,
+            value: bin.id
+          })) ?? []
+      ),
       props: {
         clearable: true,
         filterable: true,
         placeholder: '顶层库位',
+        checkStrictly: true,
         disabled: context.value?.row?.codeSeparator != null
       }
     },
-    { key: 'capacity', label: '货架与容量', type: 'divider', span: 24 },
+    { key: 'capacity', label: '货架与容量', type: 'tab', span: 24 },
     {
       key: 'shelfCode',
       label: '货架号',
@@ -195,7 +198,7 @@
       span: 24,
       help: '指定物料并设置至少一项容量上限后，展板将显示定容边框。'
     },
-    { key: 'policy', label: '存放控制', type: 'divider', span: 24 },
+    { key: 'policy', label: '存放控制', type: 'tab', span: 24 },
     { key: 'allowMix', label: '允许混放物料', type: 'switch' },
     { key: 'supportsSerial', label: '支持 SN 序列号', type: 'switch' },
     {
@@ -236,19 +239,24 @@
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
-      if (form.fixedMaterialId && !form.maxQuantity && !form.maxWeightKg && !form.maxAreaSqm) {
+      if (
+        form.value.fixedMaterialId &&
+        !form.value.maxQuantity &&
+        !form.value.maxWeightKg &&
+        !form.value.maxAreaSqm
+      ) {
         ElMessage.warning('定容库位需要设置至少一项容量上限')
         return false
       }
       await saveStorageBin(
         context.value.warehouse.tenantId,
         {
-          ...form,
-          binCode: form.binCode.trim().toUpperCase(),
-          binName: form.binName.trim(),
-          parentId: normalizeNullableText(form.parentId),
-          shelfCode: normalizeNullableText(form.shelfCode?.toUpperCase()),
-          remark: normalizeNullableText(form.remark)
+          ...form.value,
+          binCode: form.value.binCode.trim().toUpperCase(),
+          binName: form.value.binName.trim(),
+          parentId: normalizeNullableText(form.value.parentId),
+          shelfCode: normalizeNullableText(form.value.shelfCode?.toUpperCase()),
+          remark: normalizeNullableText(form.value.remark)
         },
         context.value.row?.id
       )
@@ -262,7 +270,7 @@
   async function handleOpen(data: BinDialogContext): Promise<void> {
     context.value = data
     const row = data.row
-    Object.assign(form, {
+    Object.assign(form.value, {
       warehouseId: data.warehouse.id,
       zoneId: data.zone?.id ?? null,
       parentId: row?.parentId ?? data.parentId ?? null,

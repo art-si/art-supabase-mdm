@@ -275,12 +275,15 @@
     <CalendarActionDialog ref="actionDialog" @success="loadCalendar" />
     <CalendarDayTypeDialog ref="dayTypeDialog" @success="handleDayTypeSuccess" />
   </div>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 <script setup lang="ts">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { ref, reactive, computed, watch } from 'vue'
   import dayjs from 'dayjs'
   import { uniqBy } from 'lodash-es'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { storeToRefs } from 'pinia'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -309,11 +312,14 @@
   import CalendarActionDialog from './modules/calendar-action-dialog.vue'
   import { calendarDayTypes } from './modules/calendar-day-types'
   import CalendarDayTypeDialog from './modules/calendar-day-type-dialog.vue'
+  const { deleteGuardRef: deleteGuardRef, deleteRecords: deleteRecords } = useRecordDeleteGuard(
+    'mdm_production_shift_pattern',
+    '轮班模式'
+  )
   defineOptions({ name: 'MdmFactoryCalendar' })
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId } = storeToRefs(tenantScopeStore)
   const { hasAuth } = useAuth()
-  const { confirmAction } = useArtFeedback()
   const patternDialog = ref<InstanceType<typeof PatternDialog>>()
   const actionDialog = ref<InstanceType<typeof CalendarActionDialog>>()
   const dayTypeDialog = ref<InstanceType<typeof CalendarDayTypeDialog>>()
@@ -549,17 +555,13 @@
     void patternDialog.value?.handleOpen(scope.selected, row)
   }
   async function removePattern(row: ShiftPattern) {
-    try {
-      await confirmAction(
-        `删除“${row.name}”后，使用此模式的日历将清空，此操作不可恢复。`,
-        '删除轮班模式',
-        { type: 'warning' }
-      )
-      await deleteShiftPattern(row.id)
-      await loadCalendar()
-    } catch {
-      /* Cancellation or API-owned feedback. */
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmFactoryCalendar:DeletePattern',
+      remove: () => deleteShiftPattern(row.id),
+      successMessage: '轮班模式已删除',
+      onDeleted: loadCalendar
+    })
   }
   watch(monthKey, () => {
     calendar.selectedDates = []

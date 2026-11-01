@@ -17,8 +17,6 @@
         :items="formItems"
         :rules="rules"
         :span="12"
-        :show-reset="false"
-        :show-submit="false"
       />
       <ArtSectionCard
         class="template-editor__tasks"

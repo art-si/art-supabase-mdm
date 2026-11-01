@@ -1,6 +1,5 @@
 <template>
   <ArtSectionCard
-    :show-scrollbar="false"
     class="bom-group-panel"
     title="BOM 分组"
     subtitle="选择分组后联动筛选右侧 BOM"
@@ -10,7 +9,6 @@
     empty-title="尚未建立 BOM 分组"
     empty-description="可先建立顶级分组，再逐层归类 BOM。"
     retryable
-    body-class="bom-group-panel__body"
     @retry="$emit('refresh')"
   >
     <template #actions>
@@ -31,67 +29,65 @@
       </div>
     </template>
 
-    <ElInput
-      v-model="keyword"
-      clearable
-      placeholder="搜索分组名称或编码"
-      aria-label="搜索 BOM 分组"
-    >
-      <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
-    </ElInput>
+    <template #toolbar>
+      <div class="bom-group-panel__toolbar">
+        <ElInput
+          v-model="keyword"
+          clearable
+          placeholder="搜索分组名称或编码"
+          aria-label="搜索 BOM 分组"
+        >
+          <template #prefix><ArtSvgIcon icon="ri:search-line" /></template>
+        </ElInput>
 
-    <button
-      type="button"
-      class="bom-group-panel__all art-master-group-all-button"
-      :class="{ 'is-current': !selectedId }"
-      :aria-pressed="!selectedId"
-      @click="$emit('select')"
+        <button
+          type="button"
+          class="bom-group-panel__all art-master-group-all-button"
+          :class="{ 'is-current': !selectedId }"
+          :aria-pressed="!selectedId"
+          @click="$emit('select')"
+        >
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:apps-2-line" /></span>
+          <span
+            ><strong>全部分组</strong><small>{{ groups.length }} 个分组节点</small></span
+          >
+          <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
+        </button>
+      </div>
+    </template>
+    <ElTree
+      ref="treeRef"
+      :data="treeData"
+      node-key="id"
+      :props="{ label: 'name', children: 'children' }"
+      :current-node-key="selectedId || undefined"
+      :filter-node-method="filterNode"
+      :default-expand-all="groups.length < 18"
+      highlight-current
+      :expand-on-click-node="false"
+      @node-click="$emit('select', $event)"
     >
-      <span aria-hidden="true"><ArtSvgIcon icon="ri:apps-2-line" /></span>
-      <span
-        ><strong>全部分组</strong><small>{{ groups.length }} 个分组节点</small></span
-      >
-      <ArtSvgIcon v-if="!selectedId" icon="ri:check-line" aria-hidden="true" />
-    </button>
-
-    <ElScrollbar class="bom-group-panel__scroll">
-      <ElTree
-        ref="treeRef"
-        :data="treeData"
-        node-key="id"
-        :props="{ label: 'name', children: 'children' }"
-        :current-node-key="selectedId || undefined"
-        :filter-node-method="filterNode"
-        :default-expand-all="groups.length < 18"
-        highlight-current
-        :expand-on-click-node="false"
-        @node-click="$emit('select', $event)"
-      >
-        <template #default="{ data }">
-          <div class="bom-group-panel__node">
-            <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
-            <span>
-              <strong :title="data.name">{{ data.name }}</strong>
-              <small>{{ data.code }}</small>
-            </span>
-            <span class="bom-group-panel__node-actions" @click.stop>
-              <ArtButtonMore
-                :list="groupActions"
-                @click="(item) => handleGroupAction(item, data)"
-              />
-            </span>
-          </div>
-        </template>
-        <template #empty>
-          <ArtEmptyState
-            title="未找到匹配项"
-            description="请调整关键词或清空筛选条件。"
-            size="compact"
-            :visual-size="64"
-          />
-        </template>
-      </ElTree>
-    </ElScrollbar>
+      <template #default="{ data }">
+        <div class="bom-group-panel__node">
+          <span aria-hidden="true"><ArtSvgIcon icon="ri:folder-3-line" /></span>
+          <span>
+            <strong :title="data.name">{{ data.name }}</strong>
+            <small>{{ data.code }}</small>
+          </span>
+          <span class="bom-group-panel__node-actions" @click.stop>
+            <ArtButtonMore :list="groupActions" @click="(item) => handleGroupAction(item, data)" />
+          </span>
+        </div>
+      </template>
+      <template #empty>
+        <ArtEmptyState
+          title="未找到匹配项"
+          description="请调整关键词或清空筛选条件。"
+          size="compact"
+          :visual-size="64"
+        />
+      </template>
+    </ElTree>
   </ArtSectionCard>
 </template>
 
@@ -185,12 +181,9 @@
     height: 100%;
     min-height: 0;
 
-    :deep(.bom-group-panel__body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
+    &__toolbar {
+      display: grid;
       gap: 12px;
-      min-height: 0;
     }
 
     &__actions,
@@ -214,11 +207,6 @@
         font-size: 11px;
         color: var(--el-text-color-secondary);
       }
-    }
-
-    &__scroll {
-      flex: 1;
-      min-height: 0;
     }
 
     &__node {

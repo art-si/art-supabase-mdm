@@ -53,6 +53,9 @@ export async function saveComponentIndustryGroup(input: ComponentIndustryGroupIn
 export async function deleteComponentIndustryGroup(id: string) {
   await responseHandle(() => supabase.rpc('mdm_delete_component_industry_group', { p_id: id }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     requireAffected: false,
     message: '行业分组已删除'
   })
@@ -119,6 +122,9 @@ export async function deleteComponentType(id: string) {
     () => supabase.from('mdm_component_type').delete().eq('id', id).select('id'),
     {
       ...writeOptions,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
       message: '组件类型已删除'
     }
   )

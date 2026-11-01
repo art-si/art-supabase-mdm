@@ -71,8 +71,12 @@
       @success="refresh"
     /><RecordDetail ref="detail" />
   </div>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
 
@@ -116,6 +120,10 @@
   import BindingDialog from './modules/binding-dialog.vue'
   import RecordDetail from '../modules/record-detail.vue'
   import ProductionWorkspaceHeader from '../modules/production-workspace-header.vue'
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard(
+    'mdm_operation_template',
+    '工序模板'
+  )
   defineOptions({ name: 'MdmOperationTemplate' })
   const user = useUserStore()
   const { hasAuth } = useAuth()
@@ -241,15 +249,15 @@
   const open = (mode: 'add' | 'copy' | 'edit' | 'view', row?: OperationTemplate) =>
     void templateDialog.value?.handleOpen({ mode, row })
   async function remove(row: OperationTemplate) {
-    try {
-      await confirmAction(`删除“${row.name}”？已绑定的模板需先解绑。`, '删除模板', {
-        type: 'warning'
-      })
-      await deleteOperationTemplates([row.id])
-      await refresh()
-    } catch {
-      /* API owns errors; cancellation keeps the record. */
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmOperationTemplate:Delete',
+      remove: () => deleteOperationTemplates([row.id]),
+      successMessage: '工序模板已删除',
+      onDeleted: async () => {
+        await refresh()
+      }
+    })
   }
   async function toggle(row: OperationTemplate) {
     try {
@@ -531,10 +539,18 @@
   const selectionActions: ArtTableQueryHeaderAction[] = [
     {
       type: 'delete',
+      confirm: false,
       permission: 'MdmOperationTemplate:Delete',
       onClick: async (c) => {
-        await deleteOperationTemplates(c.selectedRows.map((r) => String(r.id)))
-        await refresh()
+        await deleteRecords({
+          resources: c.selectedRows.map((row) => ({ id: String(row.id), label: String(row.name) })),
+          permission: 'MdmOperationTemplate:Delete',
+          remove: () => deleteOperationTemplates(c.selectedRows.map((row) => String(row.id))),
+          successMessage: '工序模板已删除',
+          onDeleted: async () => {
+            await refresh()
+          }
+        })
       }
     },
     {
@@ -542,9 +558,10 @@
       label: '启用',
       permission: 'MdmOperationTemplate:Enable',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.enabled === false),
       onClick: async (c) => {
         await setOperationTemplatesEnabled(
-          c.selectedRows.map((r) => String(r.id)),
+          c.selectedRows.filter((row) => row.enabled === false).map((r) => String(r.id)),
           true
         )
         await refresh()
@@ -556,9 +573,10 @@
       permission: 'MdmOperationTemplate:Disable',
       confirm: true,
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.enabled === true),
       onClick: async (c) => {
         await setOperationTemplatesEnabled(
-          c.selectedRows.map((r) => String(r.id)),
+          c.selectedRows.filter((row) => row.enabled === true).map((r) => String(r.id)),
           false
         )
         await refresh()

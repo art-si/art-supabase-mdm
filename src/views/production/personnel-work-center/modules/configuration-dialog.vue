@@ -14,8 +14,6 @@
         v-model="form.model"
         :items="formItems"
         :rules="rules"
-        :show-submit="false"
-        :show-reset="false"
         :span="24"
         label-position="top"
       >

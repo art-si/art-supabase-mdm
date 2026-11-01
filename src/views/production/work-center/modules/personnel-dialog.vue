@@ -41,7 +41,10 @@
       >
         <template #actions
           ><ElButton v-auth="'MdmWorkCenter:Personnel'" type="primary" @click="openAdjustment"
-            ><template #icon><ArtSvgIcon icon="ri:add-line" /></template>添加临时调整</ElButton
+            ><template #icon
+              ><ArtSvgIcon icon="ri:add-line" />
+              <MasterDataDeleteGuard ref="deleteGuardRef" /> </template
+            >添加临时调整</ElButton
           ></template
         >
         <ArtTable
@@ -55,14 +58,7 @@
     </div>
   </ArtDialog>
   <ArtDialog ref="adjustmentDialog" size="md"
-    ><ArtForm
-      ref="formRef"
-      v-model="form"
-      :items="items"
-      :rules="rules"
-      :show-submit="false"
-      :show-reset="false"
-      :span="24"
+    ><ArtForm ref="formRef" v-model="form" :items="items" :rules="rules" :span="24"
       ><template #personId
         ><ArtEmployeeSelect
           v-model="form.personId"
@@ -75,11 +71,13 @@
   /></ArtDialog>
 </template>
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
-  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
-  const { confirmAction } = useArtFeedback()
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, ref, reactive, shallowRef } from 'vue'
   import { ElMessage } from 'element-plus'
   import { formatWithDayjs } from '@/utils/time'
@@ -101,6 +99,10 @@
   } from '@mdm/api'
   const emit = defineEmits<{ success: [] }>()
   const adjustmentKindOptions = useDictionaryOptions('mdmWorkCenterPersonnelAdjustmentKind')
+  const { deleteGuardRef: deleteGuardRef, deleteRecords: deleteRecords } = useRecordDeleteGuard(
+    'mdm_work_center_adjustment',
+    '临时人员调整'
+  )
   const dialogRef = ref<ArtDialogExpose>()
   const adjustmentDialog = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -217,13 +219,13 @@
     }
   }
   async function remove(row: CenterAdjustment) {
-    try {
-      await confirmAction('确认删除该临时调整？', '删除调整', { type: 'warning' })
-      await deleteCenterAdjustment(row.id)
-      await load()
-    } catch {
-      /* API owns feedback. */
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: `${row.person?.name || '人员'} · ${row.startTime}` }],
+      permission: 'MdmWorkCenter:Personnel',
+      remove: () => deleteCenterAdjustment(row.id),
+      successMessage: '临时人员调整已删除',
+      onDeleted: load
+    })
   }
   async function openAdjustment() {
     Object.assign(form.value, { personId: undefined, kind: '短期加入', range: [] })

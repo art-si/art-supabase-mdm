@@ -121,6 +121,9 @@ export async function saveEsopCategory(input: EsopCategoryInput): Promise<void> 
 export async function deleteEsopCategory(id: string): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_esop_category', { p_category_id: id }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: '分类已删除'
   })
 }
@@ -148,6 +151,9 @@ export async function setEsopDocumentsEnabled(ids: string[], enabled: boolean): 
 export async function deleteEsopDocuments(ids: string[]): Promise<void> {
   await responseHandle(() => supabase.rpc('mdm_delete_esop_documents', { p_ids: ids }), {
     ...writeOptions,
+    showMessage: false,
+    showErrorMessage: false,
+    showReferenceFeedback: false,
     message: 'ESOP 已删除'
   })
 }

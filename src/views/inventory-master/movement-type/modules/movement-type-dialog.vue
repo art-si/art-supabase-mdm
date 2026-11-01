@@ -13,15 +13,12 @@
       </ElAlert>
       <ArtForm
         ref="formRef"
-        :model-value="form"
-        @update:model-value="replaceReactiveModel(form, $event)"
+        v-model="form"
         :items="items"
         :rules="rules"
         :span="12"
         :gutter="20"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
         :validate-on-rule-change="false"
         scroll-to-error
       />
@@ -30,7 +27,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { storeToRefs } from 'pinia'
@@ -83,12 +79,11 @@
     status: 'enabled',
     remark: null
   })
-  const form = reactive<FormModel>(createModel())
+  const form = ref<FormModel>(createModel())
 
   const items = computed<FormItem[]>(() => [
     ...(shouldExposeTenantField.value
       ? [
-          { key: 'tenantSection', label: '数据归属', type: 'divider' as const, span: 24 },
           {
             key: 'tenantId',
             label: '所属租户',
@@ -103,7 +98,7 @@
               disabled: mode.value !== 'add',
               placeholder: '请选择出入库类型所属租户',
               onChange: () => {
-                form.reverseTypeId = null
+                form.value.reverseTypeId = null
                 void formRef.value?.reloadOptions('reverseTypeId')
               }
             },
@@ -111,7 +106,6 @@
           }
         ]
       : []),
-    { key: 'identity', label: '类型标识', type: 'divider', span: 24 },
     {
       key: 'movementCode',
       label: '移动类型编码',
@@ -138,8 +132,8 @@
       type: 'select',
       span: 24,
       api: async () => ({
-        data: (await fetchMovementTypeOptions(form.tenantId ?? '')).filter(
-          (item) => item.id !== form.id
+        data: (await fetchMovementTypeOptions(form.value.tenantId ?? '')).filter(
+          (item) => item.id !== form.value.id
         )
       }),
       immediate: false,
@@ -151,12 +145,11 @@
       props: {
         clearable: true,
         filterable: true,
-        disabled: !form.tenantId,
+        disabled: !form.value.tenantId,
         placeholder: '可选；从同租户出入库类型中选择'
       },
       help: '用于退回或冲销场景，不能选择当前类型自身。'
     },
-    { key: 'control', label: '业务控制', type: 'divider', span: 24 },
     {
       key: 'reversal',
       label: '冲销标志',
@@ -208,17 +201,17 @@
       if (optionError.value) return false
       await saveMovementType(
         {
-          tenantId: form.tenantId,
-          movementCode: form.movementCode.trim().toUpperCase(),
-          movementName: form.movementName.trim(),
-          direction: form.direction,
-          reverseTypeId: form.reverseTypeId || null,
-          reversal: form.reversal,
-          otherIo: form.otherIo,
-          status: form.status,
-          remark: form.remark
+          tenantId: form.value.tenantId,
+          movementCode: form.value.movementCode.trim().toUpperCase(),
+          movementName: form.value.movementName.trim(),
+          direction: form.value.direction,
+          reverseTypeId: form.value.reverseTypeId || null,
+          reversal: form.value.reversal,
+          otherIo: form.value.otherIo,
+          status: form.value.status,
+          remark: form.value.remark
         },
-        mode.value === 'edit' ? form.id : undefined
+        mode.value === 'edit' ? form.value.id : undefined
       )
       emit('success')
       return true
@@ -241,12 +234,12 @@
 
   async function handleOpen(data: MovementTypeDialogOpenData): Promise<void> {
     mode.value = data.mode
-    Object.assign(form, createModel(), data.row ?? {})
-    form.tenantId = data.row?.tenantId || data.tenantId || ''
+    Object.assign(form.value, createModel(), data.row ?? {})
+    form.value.tenantId = data.row?.tenantId || data.tenantId || ''
     if (data.mode === 'copy') {
-      form.id = ''
-      form.movementCode = ''
-      form.movementName = data.row?.movementName ? `${data.row.movementName}（副本）` : ''
+      form.value.id = ''
+      form.value.movementCode = ''
+      form.value.movementName = data.row?.movementName ? `${data.row.movementName}（副本）` : ''
     }
     await dialogRef.value?.handleOpen(data, {
       title:

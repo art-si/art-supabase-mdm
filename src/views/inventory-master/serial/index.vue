@@ -16,8 +16,7 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        :model-value="search"
-        @update:model-value="replaceReactiveModel(search, $event)"
+        v-model="search"
         :api-fn="fetchData"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
@@ -39,8 +38,6 @@
 
 <script setup lang="tsx">
   import { createDateTimeFormatter } from '@/utils/ui/format'
-
-  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -79,9 +76,9 @@
   const materialTypes = ref<MaterialType[]>([])
   const materialTypeLabel = (code?: string | null): string =>
     code ? materialTypes.value.find((type) => type.typeCode === code)?.typeName || code : '—'
-  const search = reactive({ warehouseId: '', status: '', keyword: '' })
+  const search = ref({ warehouseId: '', status: '', keyword: '' })
   const selectedWarehouse = computed(() =>
-    warehouses.value.find((warehouse) => warehouse.id === search.warehouseId)
+    warehouses.value.find((warehouse) => warehouse.id === search.value.warehouseId)
   )
   const searchItems = computed<SearchFormItem[]>(() => [
     {

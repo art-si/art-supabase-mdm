@@ -31,7 +31,6 @@
       </div>
 
       <ArtSectionCard
-        :show-scrollbar="false"
         v-show="viewMode === 'calendar'"
         class="holiday-page__calendar-card"
         title="假期日历"
@@ -50,94 +49,94 @@
           >
         </template>
 
-        <div class="holiday-page__calendar-filters">
-          <ElTreeSelect
-            v-model="calendarFilters.organizationId"
-            :data="organizationTree"
-            :props="organizationTreeProps"
-            node-key="id"
-            value-key="id"
-            check-strictly
-            filterable
-            clearable
-            default-expand-all
-            placeholder="全部公司/组织"
-          />
-          <ElSelect v-model="calendarFilters.holidayType" clearable placeholder="全部假期类型">
-            <ElOption
-              v-for="item in holidayTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+        <template #toolbar
+          ><div class="holiday-page__calendar-filters">
+            <ElTreeSelect
+              v-model="calendarFilters.organizationId"
+              :data="organizationTree"
+              :props="organizationTreeProps"
+              node-key="id"
+              value-key="id"
+              check-strictly
+              filterable
+              clearable
+              default-expand-all
+              placeholder="全部公司/组织"
             />
-          </ElSelect>
-          <ElDatePicker
-            v-model="calendarFilters.year"
-            type="year"
-            value-format="YYYY"
-            format="YYYY 年"
-            :clearable="false"
-          />
-        </div>
-
-        <ElScrollbar class="holiday-page__calendar-scrollbar">
-          <ElCalendar v-model="calendarDate" class="holiday-page__calendar">
-            <template #header="{ date }">
-              <div class="holiday-page__calendar-header">
-                <ElButton text aria-label="上个月" @click="shiftMonth(-1)"
-                  ><ArtSvgIcon icon="ri:arrow-left-s-line"
-                /></ElButton>
-                <strong>{{ date }}</strong>
-                <ElButton text aria-label="下个月" @click="shiftMonth(1)"
-                  ><ArtSvgIcon icon="ri:arrow-right-s-line"
-                /></ElButton>
-              </div>
-            </template>
-            <template #date-cell="{ data }">
-              <div
-                class="holiday-page__day"
-                :class="{ 'is-other-month': data.type !== 'current-month' }"
-              >
-                <span class="holiday-page__day-heading">
-                  <span>{{ dayjs(data.day).date() }}</span>
-                  <button
-                    type="button"
-                    :aria-label="`${data.day}，新增节假日安排`"
-                    title="新增当天安排"
-                    v-if="hasAuth('MdmStatutoryHoliday:Add')"
-                    @click="openDialog(undefined, data.day)"
-                    ><ArtSvgIcon icon="ri:add-line"
-                  /></button>
-                </span>
-                <span class="holiday-page__events">
-                  <button
-                    v-for="holiday in getDayHolidays(data.day).slice(0, 3)"
-                    :key="holiday.id"
-                    type="button"
-                    class="holiday-page__event"
-                    :disabled="!hasAuth('MdmStatutoryHoliday:Edit')"
-                    :class="{
-                      'is-work': holiday.holidayType === 'makeup_work',
-                      'is-rest': holiday.holidayType === 'compensatory_leave'
-                    }"
-                    :title="`${resolveHolidayType(holiday.holidayType)} · ${holiday.organization.organizationName}`"
-                    @click.stop="openDialog(holiday)"
-                    >{{
-                      holiday.holidayType === 'makeup_work'
-                        ? '班 · 补班'
-                        : holiday.holidayType === 'compensatory_leave'
-                          ? '休 · 调休'
-                          : resolveHolidayType(holiday.holidayType)
-                    }}</button
-                  >
-                  <small v-if="getDayHolidays(data.day).length > 3"
-                    >+{{ getDayHolidays(data.day).length - 3 }}</small
-                  >
-                </span>
-              </div>
-            </template>
-          </ElCalendar>
-        </ElScrollbar>
+            <ElSelect v-model="calendarFilters.holidayType" clearable placeholder="全部假期类型">
+              <ElOption
+                v-for="item in holidayTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </ElSelect>
+            <ElDatePicker
+              class="w-full!"
+              v-model="calendarFilters.year"
+              type="year"
+              value-format="YYYY"
+              format="YYYY 年"
+              :clearable="false"
+            />
+          </div>
+        </template>
+        <ElCalendar v-model="calendarDate" class="holiday-page__calendar">
+          <template #header="{ date }">
+            <div class="holiday-page__calendar-header">
+              <ElButton text aria-label="上个月" @click="shiftMonth(-1)"
+                ><ArtSvgIcon icon="ri:arrow-left-s-line"
+              /></ElButton>
+              <strong>{{ date }}</strong>
+              <ElButton text aria-label="下个月" @click="shiftMonth(1)"
+                ><ArtSvgIcon icon="ri:arrow-right-s-line"
+              /></ElButton>
+            </div>
+          </template>
+          <template #date-cell="{ data }">
+            <div
+              class="holiday-page__day"
+              :class="{ 'is-other-month': data.type !== 'current-month' }"
+            >
+              <span class="holiday-page__day-heading">
+                <span>{{ dayjs(data.day).date() }}</span>
+                <button
+                  type="button"
+                  :aria-label="`${data.day}，新增节假日安排`"
+                  title="新增当天安排"
+                  v-if="hasAuth('MdmStatutoryHoliday:Add')"
+                  @click="openDialog(undefined, data.day)"
+                  ><ArtSvgIcon icon="ri:add-line"
+                /></button>
+              </span>
+              <span class="holiday-page__events">
+                <button
+                  v-for="holiday in getDayHolidays(data.day).slice(0, 3)"
+                  :key="holiday.id"
+                  type="button"
+                  class="holiday-page__event"
+                  :disabled="!hasAuth('MdmStatutoryHoliday:Edit')"
+                  :class="{
+                    'is-work': holiday.holidayType === 'makeup_work',
+                    'is-rest': holiday.holidayType === 'compensatory_leave'
+                  }"
+                  :title="`${resolveHolidayType(holiday.holidayType)} · ${holiday.organization.organizationName}`"
+                  @click.stop="openDialog(holiday)"
+                  >{{
+                    holiday.holidayType === 'makeup_work'
+                      ? '班 · 补班'
+                      : holiday.holidayType === 'compensatory_leave'
+                        ? '休 · 调休'
+                        : resolveHolidayType(holiday.holidayType)
+                  }}</button
+                >
+                <small v-if="getDayHolidays(data.day).length > 3"
+                  >+{{ getDayHolidays(data.day).length - 3 }}</small
+                >
+              </span>
+            </div>
+          </template>
+        </ElCalendar>
       </ArtSectionCard>
 
       <ArtTableQuery
@@ -162,6 +161,7 @@
       <StatutoryHolidayDialog ref="dialogRef" @success="handleSaveSuccess" />
     </div>
   </ArtPermissionGuard>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
 </template>
 
 <script setup lang="tsx">
@@ -185,7 +185,8 @@
   import type { ColumnOption } from '@/types'
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import TreeUtils from '@/utils/tree'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { fetchOrganizationOptionsTree } from '@/api/system-manage'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -229,7 +230,10 @@
   }
 
   const { hasAuth } = useAuth()
-  const { confirmDelete } = useArtFeedback()
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(
+    'smis_statutory_holiday',
+    '节假日安排'
+  )
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
@@ -385,15 +389,12 @@
     {
       permission: 'MdmStatutoryHoliday:Delete',
       type: 'delete',
+      confirm: false,
+      disabled: () => deleteBusy.value,
       content: ({ selectedCount }: ArtTableQueryHeaderActionContext) =>
         `确定删除选中的 ${selectedCount} 条节假日安排吗？删除后无法恢复。`,
-      onClick: async ({ selectedRows, api }) => {
-        const ids = selectedRows
-          .map((row) => row.id)
-          .filter((id): id is string => typeof id === 'string')
-        await deleteStatutoryHolidays(ids)
-        await api.refreshRemove()
-        await loadCalendarRows()
+      onClick: async ({ selectedRows }) => {
+        await removeHolidays(selectedRows as StatutoryHoliday[])
       }
     }
   ])
@@ -525,18 +526,22 @@
       : tableQueryRef.value?.refreshUpdate())
     await loadCalendarRows()
   }
-  const handleDelete = async (row: StatutoryHoliday): Promise<void> => {
-    if (!row.id) return
-    try {
-      await confirmDelete(
-        `确定删除“${resolveHolidayType(row.holidayType)}”安排吗？删除后无法恢复。`
-      )
-      await deleteStatutoryHolidays([row.id])
-      await tableQueryRef.value?.refreshRemove()
-      await loadCalendarRows()
-    } catch {
-      /* 用户取消 */
-    }
+  const handleDelete = async (row: StatutoryHoliday): Promise<void> => removeHolidays([row])
+  async function removeHolidays(rows: StatutoryHoliday[]): Promise<void> {
+    const resources = rows.map((row) => ({
+      id: row.id || '',
+      label: `${resolveHolidayType(row.holidayType)} · ${row.startDate} 至 ${row.endDate}`
+    }))
+    await deleteRecords({
+      resources,
+      permission: 'MdmStatutoryHoliday:Delete',
+      remove: () => deleteStatutoryHolidays(resources.map((row) => row.id)),
+      successMessage: '节假日安排已删除',
+      onDeleted: async () => {
+        await tableQueryRef.value?.refreshRemove()
+        await loadCalendarRows()
+      }
+    })
   }
   watch(calendarDate, (value) => {
     const year = dayjs(value).format('YYYY')
@@ -585,32 +590,19 @@
       overflow: hidden;
     }
 
-    &__calendar-card :deep(.art-section-card__body) {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
-    }
-
     &__calendar-filters {
       display: grid;
       grid-template-columns: minmax(220px, 1.35fr) minmax(160px, 1fr) 150px;
       gap: 12px;
-      margin-bottom: 12px;
     }
 
     &__calendar-filters > * {
       width: 100%;
+      min-width: 0;
     }
 
     &__calendar {
       border-top: 1px solid var(--el-border-color-lighter);
-    }
-
-    &__calendar-scrollbar {
-      flex: 1;
-      min-height: 0;
     }
 
     &__calendar :deep(.el-calendar__header) {

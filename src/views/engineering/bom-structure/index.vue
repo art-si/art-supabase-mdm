@@ -35,9 +35,7 @@
         >
           <template #primary>
             <ArtSectionCard
-              :show-scrollbar="false"
               class="bom-structure-page__navigator"
-              body-class="bom-structure-page__navigator-body"
               title="树形 BOM"
               subtitle="选择父项物料并控制展开层级"
             >
@@ -50,102 +48,103 @@
                   default-expanded
                 />
               </template>
-              <div class="bom-structure-page__controls">
-                <label class="bom-structure-page__material-control"
-                  ><span>物料描述</span>
-                  <ArtTableSingleSelect
-                    v-model="selectedMaterialId"
-                    :selected-data="selectedMaterial ? [selectedMaterial] : []"
-                    :api-fn="fetchMaterialOptions"
-                    :columns="materialColumns"
-                    :label-key="(row) => formatBomMaterialDescription(row as MaterialArchive)"
-                    description-key="materialCode"
-                    title="选择父项物料"
-                    subtitle="支持物料编码、名称、规格型号和图号综合查询"
-                    show-pagination
-                    @change="handleMaterialChange"
-                  />
-                </label>
-                <div class="bom-structure-page__view-controls">
-                  <label
-                    ><span>展开方式</span
-                    ><ElSegmented
-                      v-model="mode"
-                      :options="modeOptions"
-                      block
-                      @change="loadStructure"
-                  /></label>
-                  <label
-                    ><span>最大层级</span
-                    ><ElInputNumber
-                      v-model="maxDepth"
-                      :min="2"
-                      :max="20"
-                      :disabled="mode === 'single'"
-                      controls-position="right"
-                      @change="loadStructure"
-                  /></label>
+              <template #toolbar
+                ><div class="bom-structure-page__controls">
+                  <label class="bom-structure-page__material-control"
+                    ><span>物料描述</span>
+                    <ArtTableSingleSelect
+                      v-model="selectedMaterialId"
+                      :selected-data="selectedMaterial ? [selectedMaterial] : []"
+                      :api-fn="fetchMaterialOptions"
+                      :columns="materialColumns"
+                      :label-key="(row) => formatBomMaterialDescription(row as MaterialArchive)"
+                      description-key="materialCode"
+                      title="选择父项物料"
+                      subtitle="支持物料编码、名称、规格型号和图号综合查询"
+                      show-pagination
+                      @change="handleMaterialChange"
+                    />
+                  </label>
+                  <div class="bom-structure-page__view-controls">
+                    <label
+                      ><span>展开方式</span
+                      ><ElSegmented
+                        v-model="mode"
+                        :options="modeOptions"
+                        block
+                        @change="loadStructure"
+                    /></label>
+                    <label
+                      ><span>最大层级</span
+                      ><ElInputNumber
+                        v-model="maxDepth"
+                        :min="2"
+                        :max="20"
+                        :disabled="mode === 'single'"
+                        controls-position="right"
+                        @change="loadStructure"
+                    /></label>
+                  </div>
                 </div>
-              </div>
-              <ElScrollbar class="bom-structure-page__tree-scroll">
-                <ArtAsyncState
-                  :loading="loading"
-                  :empty="!tree.length"
-                  :error="loadError"
-                  empty-text="暂无可展示的 BOM 层级"
-                  empty-description="请选择已建立 BOM 的父项物料。"
-                  @retry="loadStructure"
+              </template>
+              <ArtAsyncState
+                class="bom-structure-page__tree"
+                :loading="loading"
+                :empty="!tree.length"
+                :error="loadError"
+                empty-text="暂无可展示的 BOM 层级"
+                empty-description="请选择已建立 BOM 的父项物料。"
+                @retry="loadStructure"
+              >
+                <ElTree
+                  ref="treeRef"
+                  :data="tree"
+                  node-key="nodeId"
+                  :props="{ children: 'children', label: 'materialName' }"
+                  :indent="18"
+                  default-expand-all
+                  highlight-current
+                  :expand-on-click-node="false"
                 >
-                  <ElTree
-                    ref="treeRef"
-                    :data="tree"
-                    node-key="nodeId"
-                    :props="{ children: 'children', label: 'materialName' }"
-                    :indent="18"
-                    default-expand-all
-                    highlight-current
-                    :expand-on-click-node="false"
-                  >
-                    <template #default="{ data }">
-                      <span class="bom-structure-page__tree-node">
-                        <span class="bom-structure-page__tree-icon">
-                          <ArtSvgIcon
-                            :icon="
-                              data.isVirtual
-                                ? 'ri:stack-line'
-                                : data.hasChildren
-                                  ? 'ri:git-branch-line'
-                                  : 'ri:box-3-line'
-                            "
+                  <template #default="{ data }">
+                    <span class="bom-structure-page__tree-node">
+                      <span class="bom-structure-page__tree-icon">
+                        <ArtSvgIcon
+                          :icon="
+                            data.isVirtual
+                              ? 'ri:stack-line'
+                              : data.hasChildren
+                                ? 'ri:git-branch-line'
+                                : 'ri:box-3-line'
+                          "
+                        />
+                      </span>
+                      <span class="bom-structure-page__tree-identity">
+                        <span class="bom-structure-page__tree-name">
+                          <strong>{{ data.materialName }}</strong>
+                          <ArtDictDisplay
+                            v-if="data.specialPurchaseType"
+                            dict-code="mdmMaterialSpecialPurchaseType"
+                            :value="data.specialPurchaseType"
+                            display="tag"
                           />
                         </span>
-                        <span class="bom-structure-page__tree-identity">
-                          <span class="bom-structure-page__tree-name">
-                            <strong>{{ data.materialName }}</strong>
-                            <ArtDictDisplay
-                              v-if="data.specialPurchaseType"
-                              dict-code="mdmMaterialSpecialPurchaseType"
-                              :value="data.specialPurchaseType"
-                              display="tag"
-                            />
-                          </span>
-                          <small>
-                            {{ data.materialCode }} · {{ data.specificationModel || '无规格' }}
-                          </small>
-                        </span>
+                        <small>
+                          {{ data.materialCode }} · {{ data.specificationModel || '无规格' }}
+                        </small>
                       </span>
-                    </template>
-                    <template #empty>
-                      <ArtEmptyState
-                        title="暂无可显示内容"
-                        description="请调整当前范围或稍后刷新。"
-                        size="compact"
-                        :visual-size="64"
-                      />
-                    </template>
-                  </ElTree>
-                </ArtAsyncState>
-              </ElScrollbar>
+                    </span>
+                  </template>
+                  <template #empty>
+                    <ArtEmptyState
+                      title="暂无可显示内容"
+                      description="请调整当前范围或稍后刷新。"
+                      size="compact"
+                      :visual-size="64"
+                    />
+                  </template>
+                </ElTree>
+              </ArtAsyncState>
             </ArtSectionCard>
           </template>
 
@@ -651,15 +650,9 @@
       overflow: hidden;
     }
 
-    :deep(.bom-structure-page__navigator-body),
     :deep(.bom-structure-page__detail-body) {
       flex: 1;
       min-height: 0;
-    }
-
-    :deep(.bom-structure-page__navigator-body) {
-      display: flex;
-      flex-direction: column;
     }
 
     :deep(.bom-structure-page__detail-body) {
@@ -701,11 +694,8 @@
       }
     }
 
-    &__tree-scroll {
-      flex: 1;
-      min-height: 0;
+    &__tree {
       padding-top: var(--art-space-2);
-      margin-top: var(--art-space-3);
       border-top: 1px solid var(--el-border-color-lighter);
     }
 

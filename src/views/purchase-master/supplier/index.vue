@@ -41,8 +41,7 @@
           </template>
           <ArtTableQuery
             ref="tableRef"
-            :model-value="search"
-            @update:model-value="replaceReactiveModel(search, $event)"
+            v-model="search"
             :api-fn="fetchRows"
             :search-items="searchItems"
             :columns-factory="columnsFactory"
@@ -75,8 +74,6 @@
 <script setup lang="tsx">
   import { toTenantSelectOptions } from '@/utils/tenant-display'
   import { createDateTimeFormatter } from '@/utils/ui/format'
-
-  import { replaceReactiveModel } from '@/utils/form/model'
   import TreeUtils from '@/utils/tree'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -160,7 +157,7 @@
   const selectedGroupId = ref('')
   const route = useRoute()
   const total = ref(0)
-  const search = reactive({ keyword: '', supplierCategory: '', supplierType: '' })
+  const search = ref({ keyword: '', supplierCategory: '', supplierType: '' })
   const groupTree = new TreeUtils({ parentKey: 'parentId' })
   const groupIds = computed(() =>
     selectedGroupId.value
@@ -464,7 +461,11 @@
         if (groups.value.some((group) => group.id === query.recordId)) selectGroup(query.recordId)
       } else if (query.dependencyCode === 'mdm_supplier' && typeof query.recordNo === 'string') {
         selectedGroupId.value = ''
-        Object.assign(search, { keyword: query.recordNo, supplierCategory: '', supplierType: '' })
+        Object.assign(search.value, {
+          keyword: query.recordNo,
+          supplierCategory: '',
+          supplierType: ''
+        })
         void tableRef.value?.getData()
       }
     },

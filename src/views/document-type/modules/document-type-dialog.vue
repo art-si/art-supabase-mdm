@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="lg">
+  <ArtDialog ref="dialogRef" :size="isProductionType ? 'xl' : isPayableType ? 'lg' : 'md'">
     <div class="document-type-dialog">
       <ArtEntitySummary
         :icon="modeIcon"
@@ -28,8 +28,6 @@
         :gutter="20"
         label-position="top"
         label-width="auto"
-        :show-reset="false"
-        :show-submit="false"
         :validate-on-rule-change="false"
         scroll-to-error
       >
@@ -316,7 +314,13 @@
 
       return [
         ...tenantItems,
-        { label: '归属与类型标识', key: 'identitySection', type: 'divider', span: 24 },
+        {
+          label: '归属与类型标识',
+          key: 'identitySection',
+          type: isProductionType.value || isPayableType.value ? 'tab' : 'divider',
+          hidden: !isProductionType.value && !isPayableType.value,
+          span: 24
+        },
         {
           label: '所属菜单功能',
           key: 'menuIds',
@@ -374,7 +378,7 @@
           label: '单据类型名称',
           key: 'documentTypeName',
           type: 'input',
-          span: 24,
+          span: 12,
           props: { maxlength: 100, clearable: true, placeholder: '请输入业务可识别的类型名称' }
         },
         ...(isPayableType.value
@@ -443,7 +447,13 @@
                 : [])
             ]
           : []),
-        { label: '显示、排序与状态', key: 'presentationSection', type: 'divider', span: 24 },
+        {
+          label: '显示、排序与状态',
+          key: 'presentationSection',
+          type: isPayableType.value ? 'tab' : 'divider',
+          hidden: !isProductionType.value && !isPayableType.value,
+          span: 24
+        },
         {
           label: '默认单据类型',
           key: 'isDefault',
@@ -490,9 +500,9 @@
         ...(isProductionType.value
           ? [
               {
-                label: '领料仓库范围',
+                label: '生产与排包控制',
                 key: 'issueWarehouseSection',
-                type: 'divider',
+                type: 'tab',
                 span: 24
               } as FormItem,
               {
@@ -591,7 +601,7 @@
                     {
                       label: '排包工单专用参数',
                       key: 'extensionSection',
-                      type: 'divider',
+                      type: 'tab',
                       span: 24
                     } as FormItem,
                     {
@@ -621,7 +631,6 @@
                 : [])
             ]
           : []),
-        { label: '补充说明', key: 'remarkSection', type: 'divider', span: 24 },
         {
           label: '备注',
           key: 'remark',
@@ -867,6 +876,7 @@
 
     await dialogRef.value?.handleOpen(data, {
       title: titleMap[data.mode],
+      size: isProductionType.value ? 'xl' : isPayableType.value ? 'lg' : 'md',
       subtitle:
         data.mode === 'copy'
           ? '已继承原记录的显示配置，请重新填写唯一编号。'

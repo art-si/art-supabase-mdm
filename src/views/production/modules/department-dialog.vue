@@ -6,15 +6,7 @@
       show-icon
       :closable="false"
     />
-    <ArtForm
-      ref="formRef"
-      v-model="form.model"
-      :items="items"
-      :rules="form.rules"
-      :span="12"
-      :show-reset="false"
-      :show-submit="false"
-    />
+    <ArtForm ref="formRef" v-model="form.model" :items="items" :rules="form.rules" :span="12" />
   </ArtDialog>
 </template>
 <script setup lang="ts">
@@ -66,7 +58,6 @@
     return departmentOptions(scopedDepartments.filter((d) => !excluded.includes(d.id)))
   })
   const items = computed<FormItem[]>(() => [
-    { key: 'source', label: '组织映射', type: 'divider', span: 24 },
     {
       key: 'tenantId',
       label: '所属租户',
@@ -109,7 +100,6 @@
       },
       help: '可选择系统部门带入名称和编码，也可以直接填写下方字段。'
     },
-    { key: 'basic', label: '基本资料', type: 'divider', span: 24 },
     {
       key: 'name',
       label: '部门名称',
@@ -122,7 +112,6 @@
       type: 'input',
       props: { maxlength: 80, placeholder: '例如：ASSY-01' }
     },
-    { key: 'hierarchy', label: '层级与归属', type: 'divider', span: 24 },
     {
       key: 'parentId',
       label: '上级部门',
@@ -144,7 +133,6 @@
       props: { allowCreate: true, filterable: true }
     },
     { key: 'sort', label: '排序', type: 'number', props: { min: 0, precision: 0 } },
-    { key: 'supplement', label: '补充说明', type: 'divider', span: 24 },
     {
       key: 'remark',
       label: '备注',

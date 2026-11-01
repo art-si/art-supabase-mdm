@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="xl">
+  <ArtDialog ref="dialogRef" :size="config?.kind === 'workstation' ? 'md' : 'xl'">
     <div class="operational-master-dialog">
       <ArtEntitySummary
         class="operational-master-dialog__context"
@@ -35,8 +35,6 @@
           :span="config.formSpan ?? 12"
           :gutter="24"
           label-position="top"
-          :show-reset="false"
-          :show-submit="false"
         >
           <template #ownerId>
             <ArtEmployeeSelect
@@ -281,15 +279,12 @@
     return { data: rows.slice(from, from + params.pageSize), total: rows.length }
   }
 
-  function createSectionDivider(section: MasterFormSectionConfig): FormItem {
+  function createSectionMarker(section: MasterFormSectionConfig): FormItem {
     return {
       key: `section-${section.key}`,
-      label: () =>
-        h('span', { class: 'operational-master-dialog__section-heading' }, [
-          h('strong', section.title),
-          h('small', section.description)
-        ]),
-      type: 'divider',
+      label: section.title,
+      description: section.description,
+      type: 'tab',
       span: 24,
       props: { accessibleLabel: section.title }
     }
@@ -402,7 +397,9 @@
         return field ? createFieldItems(field) : []
       })
 
-      return [createSectionDivider(section), ...fieldItems]
+      return config.value.formSections.length > 1
+        ? [createSectionMarker(section), ...fieldItems]
+        : fieldItems
     })
 
     return [...tenantItems, ...sectionItems]
@@ -476,6 +473,7 @@
       .filter(Boolean)
     await dialogRef.value?.handleOpen(data, {
       title: dialogHeading.value,
+      size: data.config.kind === 'workstation' ? 'md' : 'xl',
       subtitle: data.row
         ? `当前记录：${String(data.row[data.config.nameKey] || '未命名')}`
         : data.config.description,

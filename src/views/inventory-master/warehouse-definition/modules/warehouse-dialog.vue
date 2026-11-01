@@ -27,8 +27,6 @@
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
         root-class="warehouse-identity-form"
       >
         <template #responsibleEmployeeId>
@@ -50,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { toNameCodeOption } from '@/utils/form/option'
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -80,6 +79,7 @@
     selectedGroupId?: string
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
   const warehouseTypeOptions = useDictionaryOptions('mdmWarehouseType')
   const businessScopeOptions = useDictionaryOptions('mdmWarehouseBusinessScope')
@@ -107,7 +107,12 @@
     model: initialForm(),
     tenantId: '',
     groups: [] as WarehouseGroup[],
-    organizations: [] as Array<{ id: string; organizationCode: string; organizationName: string }>,
+    organizations: [] as Array<{
+      id: string
+      parentId?: string | null
+      organizationCode: string
+      organizationName: string
+    }>,
     selectedEmployee: [] as EmployeeIntegrationItem[]
   })
   const warehouseDescription = computed(() =>
@@ -119,7 +124,7 @@
     {
       key: 'identity',
       label: '仓库身份',
-      type: 'divider',
+      type: 'tab',
       span: 24
     },
     {
@@ -145,20 +150,29 @@
     {
       label: '库存组织',
       key: 'organizationId',
-      type: 'select',
-      options: form.organizations.map((item) => ({
-        label: `${item.organizationName} · ${item.organizationCode}`,
-        value: item.id
-      })),
-      props: { filterable: true, placeholder: '选择库存所属组织' },
+      type: 'treeSelect',
+      options: optionTree.listToTree(
+        form.organizations.map((item) => ({
+          label: `${item.organizationName} · ${item.organizationCode}`,
+          value: item.id,
+          parentId: item.parentId
+        }))
+      ),
+      props: { filterable: true, checkStrictly: true, placeholder: '选择库存所属组织' },
       help: '新入库默认归属此组织；跨组织物料转移须走 WMS 调拨单。'
     },
     {
       label: '仓库分组',
       key: 'groupId',
-      type: 'select',
-      options: form.groups.filter((item) => item.enabled).map(toNameCodeOption),
-      props: { clearable: true, filterable: true, placeholder: '选择仓库分组' }
+      type: 'treeSelect',
+      options: optionTree.listToTree(
+        form.groups.map((item) => ({
+          ...toNameCodeOption(item),
+          parentId: item.parentId,
+          disabled: !item.enabled
+        }))
+      ),
+      props: { clearable: true, filterable: true, checkStrictly: true, placeholder: '选择仓库分组' }
     },
     {
       label: '仓库负责人',
@@ -168,7 +182,7 @@
     {
       key: 'operation',
       label: '业务控制',
-      type: 'divider',
+      type: 'tab',
       span: 24
     },
     {

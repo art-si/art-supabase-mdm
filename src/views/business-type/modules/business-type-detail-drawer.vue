@@ -19,69 +19,74 @@
         </template>
       </ArtEntitySummary>
 
-      <ArtSectionCard title="类型定义" subtitle="业务类型的单据归属、稳定标识与来源关系。">
-        <ArtDescriptions :data="detail" :items="definitionItems" :columns="2">
-          <template #item-isDefault>
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="String(detail.record.isDefault)"
-              display="tag"
-            />
-          </template>
-          <template #item-enabled>
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="String(detail.record.enabled)"
-              display="tag"
-            />
-          </template>
-          <template #item-inventoryDirection>
-            <ArtDictDisplay
-              v-if="detail.record.inventoryDirection"
-              dict-code="mdmBusinessInventoryDirection"
-              :value="detail.record.inventoryDirection"
-              display="auto"
-            />
-            <span v-else>--</span>
-          </template>
-          <template #item-ownerType>
-            <ArtDictDisplay
-              v-if="detail.record.ownerType"
-              dict-code="mdmBusinessOwnerType"
-              :value="detail.record.ownerType"
-              display="auto"
-            />
-            <span v-else>--</span>
-          </template>
-          <template #item-inventoryAccounting>
-            <ArtDictDisplay
-              dict-code="commonBoolean"
-              :value="String(detail.record.inventoryAccounting)"
-              display="tag"
-            />
-          </template>
-        </ArtDescriptions>
-      </ArtSectionCard>
-
-      <ArtSectionCard title="显示与审计" subtitle="列表展示风格以及最近一次维护信息。">
-        <ArtDescriptions :data="detail" :items="auditItems" :columns="2">
-          <template #item-tagStyle>
-            <ElTag
-              :type="detail.record.tagStyle || 'primary'"
-              effect="light"
-              :style="tagPreviewStyle"
-            >
-              {{ detail.record.tagStyle || '默认' }}
-            </ElTag>
-          </template>
-          <template #item-textColor>
-            <span class="business-type-detail__color">
-              <i :style="{ backgroundColor: detail.record.textColor || 'currentColor' }" />
-              {{ detail.record.textColor || '跟随标签样式' }}
-            </span>
-          </template>
-        </ArtDescriptions>
-      </ArtSectionCard>
+      <ElTabs v-model="activeTab">
+        <ElTabPane name="definition" label="类型定义">
+          <ArtSectionCard title="类型定义" subtitle="业务类型的单据归属、稳定标识与来源关系。">
+            <ArtDescriptions :data="detail" :items="definitionItems" :columns="2">
+              <template #item-isDefault>
+                <ArtDictDisplay
+                  dict-code="commonBoolean"
+                  :value="String(detail.record.isDefault)"
+                  display="tag"
+                />
+              </template>
+              <template #item-enabled>
+                <ArtDictDisplay
+                  dict-code="commonBoolean"
+                  :value="String(detail.record.enabled)"
+                  display="tag"
+                />
+              </template>
+              <template #item-inventoryDirection>
+                <ArtDictDisplay
+                  v-if="detail.record.inventoryDirection"
+                  dict-code="mdmBusinessInventoryDirection"
+                  :value="detail.record.inventoryDirection"
+                  display="auto"
+                />
+                <span v-else>--</span>
+              </template>
+              <template #item-ownerType>
+                <ArtDictDisplay
+                  v-if="detail.record.ownerType"
+                  dict-code="mdmBusinessOwnerType"
+                  :value="detail.record.ownerType"
+                  display="auto"
+                />
+                <span v-else>--</span>
+              </template>
+              <template #item-inventoryAccounting>
+                <ArtDictDisplay
+                  dict-code="commonBoolean"
+                  :value="String(detail.record.inventoryAccounting)"
+                  display="tag"
+                />
+              </template>
+            </ArtDescriptions>
+          </ArtSectionCard>
+        </ElTabPane>
+        <ElTabPane name="audit" label="显示与审计">
+          <ArtSectionCard title="显示与审计" subtitle="列表展示风格以及最近一次维护信息。">
+            <ArtDescriptions :data="detail" :items="auditItems" :columns="2">
+              <template #item-tagStyle>
+                <ElTag
+                  :type="detail.record.tagStyle || 'primary'"
+                  effect="light"
+                  :style="tagPreviewStyle"
+                >
+                  {{ detail.record.tagStyle || '默认' }}
+                </ElTag>
+              </template>
+              <template #item-textColor>
+                <span class="business-type-detail__color">
+                  <i :style="{ backgroundColor: detail.record.textColor || 'currentColor' }" />
+                  {{ detail.record.textColor || '跟随标签样式' }}
+                </span>
+              </template>
+            </ArtDescriptions>
+          </ArtSectionCard>
+        </ElTabPane>
+      </ElTabs>
     </div>
   </ArtDrawer>
 </template>
@@ -104,6 +109,7 @@
   }
 
   const drawerRef = ref<ArtDrawerExpose<BusinessTypeDetailData>>()
+  const activeTab = ref('definition')
   const detail = reactive<BusinessTypeDetailData>({
     record: {
       id: '',
@@ -205,6 +211,7 @@
   ]
 
   const handleOpen = async (data: BusinessTypeDetailData): Promise<void> => {
+    activeTab.value = 'definition'
     Object.assign(detail, data)
     await drawerRef.value?.handleOpen(data, {
       title: '查看业务类型',

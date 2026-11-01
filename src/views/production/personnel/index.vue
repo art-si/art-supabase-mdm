@@ -99,8 +99,13 @@
     <PersonDialog v-if="canViewPeople" ref="personDialog" @success="refreshPeople" />
     <RecordDetail ref="detailRef" />
   </div>
+  <MasterDataDeleteGuard ref="deleteGuardRef" />
+  <MasterDataDeleteGuard ref="departmentDeleteGuardRef" />
 </template>
 <script setup lang="tsx">
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ref, reactive, computed, watch } from 'vue'
@@ -122,7 +127,6 @@
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import {
     fetchProductionDepartments,
@@ -156,6 +160,12 @@
     'commonEnabledDisabledStatus',
     (value) => value === 'enabled'
   )
+  const { deleteGuardRef, deleteRecords } = useRecordDeleteGuard(
+    'mdm_production_personnel',
+    '生产人员'
+  )
+  const { deleteGuardRef: departmentDeleteGuardRef, deleteRecords: deleteDepartments } =
+    useRecordDeleteGuard('mdm_production_department', '生产部门')
   defineOptions({ name: 'MdmProductionPersonnel' })
   const props = withDefaults(
     defineProps<{
@@ -190,7 +200,6 @@
   const canViewPeople = computed(
     () => !props.departmentMode && hasAuth('MdmProductionPersonnel:View')
   )
-  const { confirmAction } = useArtFeedback()
   const tableRef = ref<ArtTableQueryExpose>()
   const departmentTableRef = ref<ArtTableQueryExpose>()
   const departmentDialog = ref<InstanceType<typeof DepartmentDialog>>()
@@ -398,15 +407,13 @@
     )
   }
   async function removeDepartment(row: ProductionDepartment) {
-    try {
-      await confirmAction(`确认删除“${row.name}”？有关联人员或下级部门时无法删除。`, '删除部门', {
-        type: 'warning'
-      })
-      await deleteProductionDepartment(row.id)
-      await loadDepartments()
-    } catch {
-      /* Cancellation or API-owned notification. */
-    }
+    await deleteDepartments({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmProductionDepartment:Delete',
+      remove: () => deleteProductionDepartment(row.id),
+      successMessage: '删除成功',
+      onDeleted: loadDepartments
+    })
   }
   async function toggleDepartment(row: ProductionDepartment) {
     try {
@@ -526,15 +533,13 @@
     }
   ]
   async function removePerson(row: ProductionPerson) {
-    try {
-      await confirmAction(`确认删除“${row.name}”的生产人员配置？`, '删除人员', {
-        type: 'warning'
-      })
-      await deleteProductionPeople([row.id])
-      await refreshPeople()
-    } catch {
-      /* Cancellation or API-owned notification. */
-    }
+    await deleteRecords({
+      resources: [{ id: row.id, label: row.name }],
+      permission: 'MdmProductionPersonnel:Delete',
+      remove: () => deleteProductionPeople([row.id]),
+      successMessage: '删除成功',
+      onDeleted: refreshPeople
+    })
   }
   async function togglePerson(row: ProductionPerson) {
     try {
@@ -693,10 +698,19 @@
   const selectionActions: ArtTableQueryHeaderAction[] = [
     {
       type: 'delete',
+      confirm: false,
       permission: 'MdmProductionPersonnel:Delete',
       onClick: async (ctx) => {
-        await deleteProductionPeople(ctx.selectedRows.map((row) => String(row.id)))
-        await refreshPeople()
+        await deleteRecords({
+          resources: ctx.selectedRows.map((row) => ({
+            id: String(row.id),
+            label: String(row.name)
+          })),
+          permission: 'MdmProductionPersonnel:Delete',
+          remove: () => deleteProductionPeople(ctx.selectedRows.map((row) => String(row.id))),
+          successMessage: '生产人员已删除',
+          onDeleted: refreshPeople
+        })
       }
     },
     {
@@ -704,9 +718,10 @@
       label: '启用',
       permission: 'MdmProductionPersonnel:Enable',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.enabled === false),
       onClick: async (ctx) => {
         await setProductionPeopleEnabled(
-          ctx.selectedRows.map((row) => String(row.id)),
+          ctx.selectedRows.filter((row) => row.enabled === false).map((row) => String(row.id)),
           true
         )
         await refreshPeople()
@@ -717,10 +732,11 @@
       label: '禁用',
       permission: 'MdmProductionPersonnel:Disable',
       selectionRequired: true,
+      hidden: ({ selectedRows }) => !selectedRows.some((row) => row.enabled === true),
       confirm: true,
       onClick: async (ctx) => {
         await setProductionPeopleEnabled(
-          ctx.selectedRows.map((row) => String(row.id)),
+          ctx.selectedRows.filter((row) => row.enabled === true).map((row) => String(row.id)),
           false
         )
         await refreshPeople()

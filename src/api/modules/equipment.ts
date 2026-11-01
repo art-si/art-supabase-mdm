@@ -89,6 +89,12 @@ export async function setProductionEquipmentEnabled(ids: string[], enabled: bool
 export async function deleteProductionEquipment(ids: string[]) {
   await responseHandle(
     () => supabase.rpc('mdm_delete_production_equipment_secure', { p_ids: ids }),
-    { breakReturn: true, showMessage: true, message: '生产设备已删除' }
+    {
+      breakReturn: true,
+      showMessage: false,
+      showErrorMessage: false,
+      showReferenceFeedback: false,
+      message: '生产设备已删除'
+    }
   )
 }

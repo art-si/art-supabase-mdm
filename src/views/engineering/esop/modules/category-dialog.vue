@@ -10,15 +10,12 @@
       />
       <ArtForm
         ref="formRef"
-        :model-value="form"
-        @update:model-value="replaceReactiveModel(form, $event)"
+        v-model="form"
         :items="items"
         :rules="rules"
         :span="24"
         :gutter="16"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       >
         <template #parentId>
           <ElTreeSelect
@@ -40,7 +37,6 @@
 </template>
 
 <script setup lang="ts">
-  import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { FormRules } from 'element-plus'
@@ -88,17 +84,19 @@
     status: 'enabled',
     sort: 10
   })
-  const form = reactive<EsopCategoryInput>(initial())
+  const form = ref<EsopCategoryInput>(initial())
   const availableCategories = computed(() => {
     const excluded = new Set(
-      form.id
-        ? categoryTreeUtils.getDescendants(categories.value, form.id, true).map((node) => node.id)
+      form.value.id
+        ? categoryTreeUtils
+            .getDescendants(categories.value, form.value.id, true)
+            .map((node) => node.id)
         : []
     )
     return categoryTreeUtils.listToTree(
       categoryTreeUtils
         .treeToList(categories.value)
-        .filter((node) => node.tenantId === form.tenantId && !excluded.has(node.id))
+        .filter((node) => node.tenantId === form.value.tenantId && !excluded.has(node.id))
     )
   })
   const items = computed<FormItem[]>(() => [
@@ -109,7 +107,7 @@
       span: 24,
       options: tenantOptions.value,
       props: {
-        disabled: Boolean(form.id),
+        disabled: Boolean(form.value.id),
         filterable: true,
         placeholder: '请选择本次维护的数据归属租户'
       }
@@ -169,7 +167,10 @@
   const submit = async (): Promise<boolean> => {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      await saveEsopCategory({ ...form, categoryCode: form.categoryCode.trim().toUpperCase() })
+      await saveEsopCategory({
+        ...form.value,
+        categoryCode: form.value.categoryCode.trim().toUpperCase()
+      })
       emit('success')
       return true
     } catch (error) {
@@ -178,12 +179,12 @@
     }
   }
   const handleOpen = async (data: EsopCategoryDialogOpenData): Promise<void> => {
-    Object.assign(form, initial())
+    Object.assign(form.value, initial())
     categories.value = data.categories
     tenantOptions.value = data.tenantOptions
-    if (data.row) Object.assign(form, data.row)
-    form.tenantId = data.row?.tenantId || data.tenantId
-    if (!data.row) form.parentId = data.parentId || null
+    if (data.row) Object.assign(form.value, data.row)
+    form.value.tenantId = data.row?.tenantId || data.tenantId
+    if (!data.row) form.value.parentId = data.parentId || null
     await nextTick()
     formRef.value?.clearValidate()
     await dialogRef.value?.handleOpen(data, {
@@ -194,10 +195,10 @@
     })
   }
   watch(
-    () => form.tenantId,
+    () => form.value.tenantId,
     (value, previous) => {
       if (value === previous || !previous) return
-      form.parentId = null
+      form.value.parentId = null
     }
   )
   defineExpose({ handleOpen })

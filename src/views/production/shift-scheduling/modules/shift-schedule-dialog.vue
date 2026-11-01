@@ -38,8 +38,6 @@
         v-model="form.model"
         :items="formItems"
         :rules="rules"
-        :show-submit="false"
-        :show-reset="false"
         :span="12"
         label-position="top"
       >
@@ -231,20 +229,13 @@
   const formItems = computed<FormItem[]>(() => [
     {
       key: 'source',
-      label: '班次安排',
-      type: 'divider',
+      label: '班次与日期',
+      type: 'tab',
       span: 24,
       description: '轮班模式与班次均来自当前部门 / 产线的工厂日历。'
     },
     { key: 'patternId', label: '轮班模式', help: '数据来源：工厂日历 · 轮班模式' },
     { key: 'shiftIndex', label: '班次', help: '选择该轮班模式中的具体班次' },
-    {
-      key: 'date',
-      label: '排班日期',
-      type: 'divider',
-      span: 24,
-      description: '三种时间维度互斥，长期有效的排班可随时编辑或删除。'
-    },
     {
       key: 'dateMode',
       label: '有效方式',
@@ -292,7 +283,7 @@
     {
       key: 'people',
       label: '班组人员',
-      type: 'divider',
+      type: 'tab',
       span: 24,
       description: '支持跨分页多选；仅保存人员配置 ID，不复制人员隐私资料。'
     },

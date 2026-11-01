@@ -17,14 +17,13 @@
         :span="12"
         :gutter="24"
         label-position="top"
-        :show-reset="false"
-        :show-submit="false"
       />
     </div>
   </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import TreeUtils from '@/utils/tree'
   import { toNameCodeOption } from '@/utils/form/option'
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -48,6 +47,7 @@
     groups: WarehouseGroup[]
   }
 
+  const optionTree = new TreeUtils({ idKey: 'value', parentKey: 'parentId' })
   const emit = defineEmits<{ success: [mode: 'add' | 'edit'] }>()
   const dialogRef = ref<ArtDialogExpose<WarehouseGroupDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -82,7 +82,12 @@
       label: '上级分组',
       key: 'parentId',
       type: 'treeSelect',
-      options: form.groups.filter((item) => item.id !== form.model.id).map(toNameCodeOption),
+      options: optionTree.removeNodesByCondition(
+        optionTree.listToTree(
+          form.groups.map((item) => ({ ...toNameCodeOption(item), parentId: item.parentId }))
+        ),
+        (node) => node.value === form.model.id
+      ).tree,
       props: { clearable: true, checkStrictly: true, placeholder: '不选择则为顶级分组' }
     },
     {
