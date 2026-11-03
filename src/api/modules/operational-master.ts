@@ -3,6 +3,7 @@ import { uniq } from 'lodash-es'
 export { fetchMasterGroups } from '@/api/master-groups'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
+import { normalizeNullableText } from '@/utils/form/normalize'
 import type {
   ActivityFormulaParameter,
   ActivityFormulaParameterInput,
@@ -30,17 +31,7 @@ const resources: Record<OperationalMasterKind, ResourceDefinition> = {
     table: 'mdm_customer',
     codeColumn: 'customer_code',
     nameColumn: 'customer_name',
-    keywordColumns: [
-      'customer_code',
-      'customer_name',
-      'contact_name',
-      'contact_phone',
-      'contact_department',
-      'contact_position',
-      'contact_email',
-      'contact_qq',
-      'invoice_title'
-    ]
+    keywordColumns: ['customer_code', 'customer_name']
   },
   project: {
     table: 'mdm_project',
@@ -96,6 +87,30 @@ export async function fetchOperationalMaster(
   options?: { signal?: AbortSignal }
 ) {
   const { from, to } = buildSupabasePageRange(params)
+  if (kind === 'customer') {
+    const query = supabase.rpc('tms_list_customers_secure', {
+      p_from: from,
+      p_to: to,
+      p_group_ids: params.groupIds?.length
+        ? params.groupIds
+        : params.groupId
+          ? [params.groupId]
+          : null,
+      p_enabled: typeof params.enabled === 'boolean' ? params.enabled : null,
+      p_keyword: normalizeNullableText(params.keyword),
+      p_purpose: 'list'
+    })
+    const { data } = await responseHandle<{ records: OperationalMasterRecord[]; total: number }>(
+      () => (options?.signal ? query.abortSignal(options.signal) : query),
+      readOptions
+    )
+    return {
+      data: data?.records ?? [],
+      total: data?.total ?? 0,
+      current: params.current,
+      size: params.size
+    }
+  }
   const definition = resources[kind]
   let query = supabase
     .from(definition.table)

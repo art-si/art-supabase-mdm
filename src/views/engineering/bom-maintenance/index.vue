@@ -642,8 +642,8 @@
         materialCode: row.material?.materialCode,
         materialName: row.material?.materialName,
         version: row.version,
-        purpose: userStore.getDictLabelByValue('mdmBomPurpose', row.purpose) || row.purpose,
-        status: userStore.getDictLabelByValue('mdmBomStatus', row.status) || row.status,
+        purpose: userStore.getDictLabelByValue('mdmBomPurpose', row.purpose) || '未识别用途',
+        status: userStore.getDictLabelByValue('mdmBomStatus', row.status) || '未识别状态',
         itemCount: row.items.length
       })),
       columns: [

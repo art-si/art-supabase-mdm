@@ -17,38 +17,65 @@
         </template>
       </ArtEntitySummary>
 
-      <MasterDetail
-        v-if="form.readonly"
-        :config="config"
-        :record="form.model"
-        :groups="form.groups"
-        :references="form.references"
-        :tenant-options="form.tenantOptions"
-      />
+      <MasterCustomerTabs
+        :enabled="config.kind === 'customer' && !!form.model.id && !form.copy"
+        :record-id="form.model.id"
+      >
+        <MasterDetail
+          v-if="form.readonly"
+          :config="config"
+          :record="form.model"
+          :groups="form.groups"
+          :references="form.references"
+          :tenant-options="form.tenantOptions"
+        />
 
-      <div v-else class="operational-master-dialog__form-panel">
-        <ArtForm
-          ref="formRef"
-          v-model="form.model"
-          :items="formItems"
-          :rules="formRules"
-          :span="config.formSpan ?? 12"
-          :gutter="24"
-          label-position="top"
-        >
-          <template #addressPicker>
-            <ArtAddressPicker
-              v-model:region-path="addressRegionPath"
-              v-model:address-detail="addressDetailModel"
-              :region-api="fetchRegionOptions"
-              label-width="0"
-              region-label="省 / 市 / 区"
-              detail-label="详细地址"
-              :show-coordinate-hint="false"
-            />
-          </template>
-        </ArtForm>
-      </div>
+        <div v-else class="operational-master-dialog__form-panel">
+          <ArtForm
+            ref="formRef"
+            v-model="form.model"
+            :items="formItems"
+            :rules="formRules"
+            :span="config.formSpan ?? 12"
+            :gutter="24"
+            label-position="top"
+          >
+            <template #addressPicker>
+              <ArtAddressPicker
+                v-model:region-path="addressRegionPath"
+                v-model:address-detail="addressDetailModel"
+                :region-api="fetchRegionOptions"
+                label-width="0"
+                region-label="省 / 市 / 区"
+                detail-label="详细地址"
+                :show-coordinate-hint="false"
+              />
+            </template>
+          </ArtForm>
+        </div>
+        <template #contacts>
+          <CustomerChildRecords
+            kind="contact"
+            :customer-id="form.model.id"
+            :tenant-id="form.model.tenantId"
+            :field-access="form.model.fieldAccess"
+            permission-scope="MdmSalesCustomer"
+            :readonly="form.readonly"
+            @changed="emit('success', 'edit')"
+          />
+        </template>
+        <template #finance>
+          <CustomerChildRecords
+            kind="finance"
+            :customer-id="form.model.id"
+            :tenant-id="form.model.tenantId"
+            :field-access="form.model.fieldAccess"
+            permission-scope="MdmSalesCustomer"
+            :readonly="form.readonly"
+            @changed="emit('success', 'edit')"
+          />
+        </template>
+      </MasterCustomerTabs>
     </div>
   </ArtDialog>
 </template>
@@ -68,6 +95,8 @@
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import CustomerChildRecords from '@/components/business/customer-child-records/index.vue'
+  import type { CustomerChildFieldAccessMap } from '@/api/customer-children'
 
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { fetchRegionOptions } from '@/api/region-options'
@@ -89,6 +118,7 @@
     OperationalMasterConfig
   } from './master-config'
   import MasterDetail from './master-detail.vue'
+  import MasterCustomerTabs from './master-customer-tabs.vue'
   import { buildOperationalMasterWriteInput } from './master-payload'
   import { createOperationalMasterModel } from './master-model'
 
@@ -120,7 +150,7 @@
     menus: []
   })
   const form = reactive({
-    model: {} as OperationalMasterRecord,
+    model: {} as OperationalMasterRecord & { fieldAccess?: CustomerChildFieldAccessMap },
     config: undefined as OperationalMasterConfig | undefined,
     groups: [] as MasterGroup[],
     references: emptyReferences(),

@@ -862,7 +862,10 @@
                   icon="ri:delete-bin-6-line"
                   label="删除活动"
                   tone="danger"
-                  onClick={() => activityRows.value.splice(activityRows.value.indexOf(row), 1)}
+                  onClick={() => {
+                    const index = activityRows.value.indexOf(row)
+                    if (index >= 0) activityRows.value.splice(index, 1)
+                  }}
                 />
               </BusinessTableRowActions>
             )
@@ -2285,7 +2288,7 @@
   }
   function moveActivity(index: number, delta: number) {
     const target = index + delta
-    if (target < 0 || target >= activityRows.value.length) return
+    if (index < 0 || target < 0 || target >= activityRows.value.length) return
     const rows = activityRows.value
     ;[rows[index], rows[target]] = [rows[target], rows[index]]
   }

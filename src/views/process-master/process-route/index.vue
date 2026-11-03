@@ -317,7 +317,7 @@
       label: '类型',
       width: 100,
       formatter: (row) =>
-        userStore.getDictItemByValue('mdmProcessRouteType', row.routeType)?.label || row.routeType
+        userStore.getDictLabelByValue('mdmProcessRouteType', row.routeType, '未识别类型')
     },
     {
       prop: 'allocationMode',
@@ -368,7 +368,7 @@
       label: '来源',
       width: 100,
       formatter: (row) =>
-        userStore.getDictItemByValue('mdmProcessRouteSource', row.source)?.label || row.source
+        userStore.getDictLabelByValue('mdmProcessRouteSource', row.source, '未识别来源')
     },
     {
       prop: 'enabled',

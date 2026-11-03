@@ -94,25 +94,10 @@ const configurations: Record<string, OperationalMasterConfig> = {
         ]
       },
       {
-        key: 'contact',
-        title: '联系与地址',
-        description: '统一维护主要联系人与经营地址，供订单、运输和现场作业复用。',
-        fieldKeys: [
-          'contactName',
-          'contactPhone',
-          'contactDepartment',
-          'contactPosition',
-          'contactEmail',
-          'contactQq',
-          'region',
-          'addressDetail'
-        ]
-      },
-      {
-        key: 'finance',
-        title: '财务信息',
-        description: '维护开票与收付款资料，供合同、结算和票据业务使用。',
-        fieldKeys: ['invoiceTitle', 'taxNo', 'bankName', 'bankAccount']
+        key: 'address',
+        title: '经营地址',
+        description: '维护客户经营地址，供订单、运输和现场作业复用。',
+        fieldKeys: ['region', 'addressDetail']
       }
     ],
     importable: true,
@@ -135,64 +120,6 @@ const configurations: Record<string, OperationalMasterConfig> = {
         dictCode: 'tmsCustomerLevel',
         minWidth: 120,
         table: true
-      },
-      { key: 'contactName', label: '姓名', maxlength: 50, minWidth: 120, table: true },
-      {
-        key: 'contactPhone',
-        label: '联系电话',
-        validation: 'phone',
-        maxlength: 20,
-        minWidth: 150,
-        table: true
-      },
-      {
-        key: 'contactDepartment',
-        label: '部门',
-        maxlength: 50,
-        exportable: true,
-        placeholder: '请输入联系人部门'
-      },
-      {
-        key: 'contactPosition',
-        label: '职位',
-        maxlength: 50,
-        exportable: true,
-        placeholder: '请输入联系人职位'
-      },
-      {
-        key: 'contactEmail',
-        label: 'E-mail',
-        validation: 'email',
-        maxlength: 100,
-        exportable: true,
-        placeholder: '请输入邮箱地址'
-      },
-      {
-        key: 'contactQq',
-        label: 'QQ',
-        maxlength: 20,
-        exportable: true,
-        placeholder: '请输入 QQ'
-      },
-      {
-        key: 'invoiceTitle',
-        label: '发票抬头',
-        maxlength: 100,
-        exportable: true
-      },
-      {
-        key: 'taxNo',
-        label: '纳税人识别号',
-        maxlength: 40,
-        exportable: true
-      },
-      { key: 'bankName', label: '开户行', maxlength: 100, exportable: true },
-      {
-        key: 'bankAccount',
-        label: '银行账号',
-        maxlength: 50,
-        span: 16,
-        exportable: true
       },
       { key: 'region', label: '省市区', span: 12, minWidth: 160, table: true },
       { key: 'addressDetail', label: '详细地址', span: 12, minWidth: 220, table: true },

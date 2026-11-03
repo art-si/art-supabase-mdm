@@ -479,6 +479,7 @@ export async function deleteLegacyAccessoryOrderDrafts(orderIds: string[]): Prom
     {
       breakReturn: true,
       showErrorMessage: false,
+      showReferenceFeedback: false,
       errorMessage: '旧版加工工单草稿删除失败，请重新检查关联后重试'
     }
   )

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { OperationalMasterRecord } from '@mdm/api'
 import { buildOperationalMasterWriteInput } from './master-payload'
+import { resolveMasterConfig } from './master-config'
 
 const customerModel: OperationalMasterRecord & { addressPicker: string } = {
   id: '',
@@ -28,27 +29,7 @@ const customerModel: OperationalMasterRecord & { addressPicker: string } = {
   remark: ''
 }
 
-const customerFieldKeys: Array<keyof OperationalMasterRecord> = [
-  'customerCode',
-  'customerName',
-  'groupId',
-  'industry',
-  'customerLevel',
-  'contactName',
-  'contactPhone',
-  'contactDepartment',
-  'contactPosition',
-  'contactEmail',
-  'contactQq',
-  'invoiceTitle',
-  'taxNo',
-  'bankName',
-  'bankAccount',
-  'region',
-  'addressDetail',
-  'enabled',
-  'remark'
-]
+const customerFieldKeys = resolveMasterConfig('/mdm/customer').fields.map((field) => field.key)
 
 const operationFieldKeys: Array<keyof OperationalMasterRecord> = [
   'code',
@@ -67,7 +48,7 @@ const operationFieldKeys: Array<keyof OperationalMasterRecord> = [
   'remark'
 ]
 
-test('customer write payload excludes the address picker UI field', () => {
+test('customer write payload keeps contact and finance child data out of the main record', () => {
   const payload = buildOperationalMasterWriteInput(customerModel, {
     kind: 'customer',
     fieldKeys: customerFieldKeys,
@@ -77,8 +58,19 @@ test('customer write payload excludes the address picker UI field', () => {
   assert.equal('addressPicker' in payload, false)
   assert.equal(payload.region, '安徽省/滁州市/琅琊区')
   assert.equal(payload.addressDetail, '示例客户测试地址')
-  assert.equal(payload.contactDepartment, '销售部')
-  assert.equal(payload.invoiceTitle, '示例客户有限公司')
+  for (const key of [
+    'contactName',
+    'contactPhone',
+    'contactDepartment',
+    'contactPosition',
+    'contactEmail',
+    'contactQq',
+    'invoiceTitle',
+    'taxNo',
+    'bankName',
+    'bankAccount'
+  ])
+    assert.equal(key in payload, false, `${key} must be maintained in a child table`)
 })
 
 test('write payload only contains configured persistent fields', () => {
