@@ -1,43 +1,21 @@
 <template>
   <ArtPermissionGuard permission="MdmWarehouseBin3d:View" resource-name="立体库位">
-    <div class="business-workspace-page art-full-height gap-4">
+    <div
+      class="bin-3d-page business-workspace-page art-full-height gap-4"
+      :class="{ 'is-focus-mode': focusMode }"
+    >
       <BusinessWorkspaceHeader
+        v-show="!focusMode"
         density="compact"
         eyebrow="INVENTORY MASTER DATA"
         title="立体库位"
         description="沿仓库与库区定位货架，从空间视图快速识别层位和库存状态。"
         icon="ri:building-2-line"
-      />
-
-      <div
-        class="overview-strip art-card-xs flex flex-wrap items-center gap-x-7 gap-y-3 px-5 py-3.5"
       >
-        <div class="min-w-0 flex-1">
-          <span class="block text-xs text-[var(--el-text-color-secondary)]">当前库区</span>
-          <strong
-            class="block truncate text-sm"
-            :title="selectedZone?.zoneName || selectedWarehouse?.warehouseName"
-          >
-            {{ selectedZone?.zoneName || selectedWarehouse?.warehouseName || '请选择库区' }}
-          </strong>
-        </div>
-        <div class="overview-metric"
-          ><strong>{{ racks.length }}</strong
-          ><span>组货架</span></div
-        >
-        <div class="overview-metric"
-          ><strong>{{ zoneBins.length }}</strong
-          ><span>个层位</span></div
-        >
-        <div class="overview-metric is-occupied"
-          ><strong>{{ occupiedCount }}</strong
-          ><span>有货</span></div
-        >
-        <div class="overview-metric"
-          ><strong>{{ emptyCount }}</strong
-          ><span>空位</span></div
-        >
-      </div>
+        <template #actions>
+          <BusinessWorkspaceFocusToggle v-model="focusMode" />
+        </template>
+      </BusinessWorkspaceHeader>
 
       <ArtWorkspaceSplitter
         primary-size="228px"
@@ -127,7 +105,7 @@
           :primary-collapsible="false"
           secondary-min="235px"
           :breakpoint="1120"
-          stacked-primary-size="580px"
+          stacked-primary-size="440px"
           stacked-secondary-min-size="320px"
         >
           <template #primary>
@@ -147,6 +125,7 @@
             >
               <template #actions>
                 <div class="scene-actions flex flex-wrap items-center gap-2">
+                  <BusinessWorkspaceFocusToggle v-show="focusMode" v-model="focusMode" />
                   <div class="view-switch" aria-label="视角切换">
                     <button
                       type="button"
@@ -215,23 +194,17 @@
                       >
                     </div>
                     <template #reference>
-                      <ArtIconButton
-                        icon="ri:equalizer-2-line"
-                        label="间距设置"
-                        class="scene-icon-button"
-                      />
+                      <ArtIconButton icon="ri:equalizer-2-line" label="间距设置" />
                     </template>
                   </ElPopover>
                   <ArtIconButton
                     icon="ri:focus-3-line"
                     label="重置视角"
-                    class="scene-icon-button"
                     @click="sceneRef?.resetView()"
                   />
                   <ArtIconButton
                     icon="ri:refresh-line"
                     label="刷新库位"
-                    class="scene-icon-button"
                     :loading="loadingBins"
                     @click="loadBins"
                   />
@@ -267,10 +240,29 @@
                   @select-bin="selectBin"
                   @select-rack="selectRack"
                 />
-                <div class="scene-context" aria-hidden="true">
+                <div class="scene-context">
                   <span class="text-[10px] font-semibold tracking-widest">WAREHOUSE SPACE</span>
-                  <strong>{{ selectedZone?.zoneName || '仓库直挂' }}</strong>
-                  <small>{{ racks.length }} 组货架 · {{ zoneBins.length }} 个层位</small>
+                  <strong :title="selectedZone?.zoneName || selectedWarehouse?.warehouseName">
+                    {{ selectedZone?.zoneName || selectedWarehouse?.warehouseName || '请选择库区' }}
+                  </strong>
+                  <small
+                    >{{ selectedWarehouse?.warehouseName || '—' }} · {{ racks.length }} 组货架 ·
+                    {{ zoneBins.length }} 个库位</small
+                  >
+                  <div class="scene-context__counts">
+                    <span
+                      >有货 <b>{{ occupiedCount }}</b></span
+                    >
+                    <span
+                      >空位 <b>{{ emptyCount }}</b></span
+                    >
+                    <span
+                      >异常 <b>{{ abnormalCount }}</b></span
+                    >
+                    <span
+                      >停用 <b>{{ disabledCount }}</b></span
+                    >
+                  </div>
                 </div>
                 <div class="scene-footer">
                   <div class="scene-legend" aria-label="货架状态图例">
@@ -400,6 +392,8 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import BusinessWorkspaceFocusToggle from '@/components/business/business-workspace-focus-toggle/index.vue'
+  import { useWorkspaceFocus } from '@/hooks/core/useWorkspaceFocus'
   import {
     fetchStorageBins,
     fetchStorageOverview,
@@ -433,6 +427,7 @@
   const binError = ref('')
   const detailDialogRef = ref<InstanceType<typeof InventoryDetailDialog>>()
   const sceneRef = ref<InstanceType<typeof RackScene>>()
+  const { focusMode } = useWorkspaceFocus()
   const spacing = useLocalStorage(
     'mdm-bin-3d-spacing',
     { column: 20, row: 36, level: 8 },
@@ -491,6 +486,12 @@
   )
   const emptyCount = computed(
     () => zoneBins.value.filter((bin) => binTone(bin) === 'available').length
+  )
+  const abnormalCount = computed(
+    () => zoneBins.value.filter((bin) => binTone(bin) === 'abnormal').length
+  )
+  const disabledCount = computed(
+    () => zoneBins.value.filter((bin) => binTone(bin) === 'disabled').length
   )
   const zoneShelfCount = (zoneId: string | null): number =>
     uniq(
@@ -591,57 +592,13 @@
 </script>
 
 <style scoped lang="scss">
-  .overview-strip {
+  .bin-3d-page {
     min-width: 0;
-  }
+    overflow: hidden;
 
-  .overview-metric {
-    display: flex;
-    gap: 6px;
-    align-items: baseline;
-    white-space: nowrap;
-  }
-
-  .overview-metric strong {
-    font-size: 19px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .overview-metric span {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .overview-metric.is-occupied strong {
-    color: var(--el-color-success);
-  }
-
-  @media (width <= 640px) {
-    .overview-strip {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
+    &.is-focus-mode {
+      gap: 0;
     }
-
-    .overview-strip > div:first-child {
-      grid-column: 1 / -1;
-    }
-
-    .overview-metric {
-      display: block;
-      text-align: center;
-    }
-
-    .overview-metric strong,
-    .overview-metric span {
-      display: block;
-    }
-  }
-
-  .scene-icon-button {
-    color: var(--el-color-primary);
-    border: 1px solid var(--el-color-primary-light-5);
-    border-radius: var(--art-control-radius);
   }
 
   .nav-warehouse {
@@ -697,7 +654,7 @@
   }
 
   .scene-frame {
-    min-height: 500px;
+    min-height: 0;
   }
 
   .scene-context {
@@ -717,12 +674,32 @@
   }
 
   .scene-context strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 16px;
+    white-space: nowrap;
   }
 
   .scene-context small {
     font-size: 11px;
     color: #b7c6d9;
+  }
+
+  .scene-context__counts {
+    display: flex;
+    gap: 12px;
+    margin-top: 3px;
+    font-size: 11px;
+  }
+
+  .scene-context__counts span {
+    color: #c6d4e6;
+  }
+
+  .scene-context__counts b {
+    margin-left: 3px;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
   }
 
   .scene-footer {

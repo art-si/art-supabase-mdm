@@ -197,7 +197,8 @@
     renderer.setSize(width, height, false)
     camera.aspect = width / height
     camera.updateProjectionMatrix()
-    render()
+    if (props.racks.length) fitCamera()
+    else render()
   }
   function clearLayout(): void {
     if (binMesh) {
@@ -318,25 +319,34 @@
   }
   function fitCamera(): void {
     if (!controls || !hostRef.value) return
-    const size = bounds.getSize(new THREE.Vector3())
     const center = bounds.getCenter(new THREE.Vector3())
-    center.y = Math.max(0, center.y - 0.45)
-    const fov = THREE.MathUtils.degToRad(camera.fov)
-    const aspect = Math.max(
-      0.65,
-      hostRef.value.clientWidth / Math.max(1, hostRef.value.clientHeight)
-    )
-    const span = Math.max(size.x / aspect, size.z, size.y * 1.5)
-    const distance = Math.max(5, (span / (2 * Math.tan(fov / 2))) * 1.08)
-    camera.up.set(0, 1, 0)
-    if (props.viewMode === 'top')
-      camera.position.set(center.x, center.y + distance, center.z + 0.02)
-    else
-      camera.position.set(
-        center.x + distance * 0.58,
-        center.y + distance * 0.7,
-        center.z + distance * 0.82
-      )
+    const direction =
+      props.viewMode === 'top'
+        ? new THREE.Vector3(0, 1, 0.001).normalize()
+        : new THREE.Vector3(0.58, 0.7, 0.82).normalize()
+    if (props.viewMode === 'top') camera.up.set(0, 0, -1)
+    else camera.up.set(0, 1, 0)
+    camera.position.copy(center).add(direction)
+    camera.lookAt(center)
+    camera.updateMatrixWorld()
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
+    const verticalTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.76
+    const horizontalTangent = verticalTangent * camera.aspect
+    let distance = 5
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
+          const offset = new THREE.Vector3(x, y, z).sub(center)
+          distance = Math.max(
+            distance,
+            offset.dot(direction) + Math.abs(offset.dot(right)) / horizontalTangent,
+            offset.dot(direction) + Math.abs(offset.dot(up)) / verticalTangent
+          )
+        }
+      }
+    }
+    camera.position.copy(center).addScaledVector(direction, distance)
     camera.near = 0.1
     camera.far = Math.max(3000, distance * 5)
     camera.updateProjectionMatrix()
@@ -454,7 +464,7 @@
     position: relative;
     min-width: 0;
     height: 100%;
-    min-height: 500px;
+    min-height: 0;
     overflow: hidden;
     background: radial-gradient(circle at 47% 38%, #223249 0%, #131d2c 64%, #0e1724 100%);
     border-radius: var(--art-surface-radius);
@@ -559,11 +569,5 @@
   .rack-scene__fallback span {
     font-size: 12px;
     color: #b6c3d4;
-  }
-
-  @media (width <= 640px) {
-    .rack-scene {
-      min-height: 420px;
-    }
   }
 </style>
