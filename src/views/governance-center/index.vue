@@ -228,6 +228,7 @@
   const matchStatusOptions = useDictionaryOptions('mdmGovernanceMatchStatus')
   const outboxStatusOptions = useDictionaryOptions('mdmGovernanceOutboxStatus')
   const severityOptions = useDictionaryOptions('mdmGovernanceSeverity')
+  const operationOptions = useDictionaryOptions('mdmGovernanceOperation')
   const pageHeaders: Record<
     ActiveTab,
     { eyebrow: string; title: string; description: string; icon: string }
@@ -622,7 +623,7 @@
       prop: 'operation',
       label: '动作',
       width: 90,
-      formatter: (row) => getGovernanceChangeOperationLabel(row.operation)
+      formatter: (row) => getGovernanceChangeOperationLabel(row.operation, operationOptions)
     },
     { prop: 'state', label: '状态', width: 105, formatter: (row) => statusCell(row.state) },
     { prop: 'requesterEmail', label: '申请人', minWidth: 180 },

@@ -105,6 +105,7 @@
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { exportExcel } from '@/utils/file'
@@ -188,6 +189,7 @@
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
+  const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   interface RouteDialogExpose {
     handleOpen: (row?: ProcessRoute, tenantId?: string) => Promise<void>
   }
@@ -528,10 +530,14 @@
         { key: 'effectiveDate', title: '生效日期' },
         { key: 'expiryDate', title: '失效日期' }
       ],
-      importRecordTransformer: (rows) =>
-        rows.map((row) => ({
+      importRecordTransformer: (rows) => {
+        const tenantId = defaultWriteTenantId.value
+        if (!userStore.getUserInfo.userId || !userStore.getUserInfo.tenantId || !tenantId) {
+          throw new Error('登录信息不完整，无法确定导入目标租户，请重新登录后重试')
+        }
+        return rows.map((row) => ({
           ...row,
-          tenantId: effectiveTenantId.value || '',
+          tenantId,
           code: '',
           routeType: 'standard',
           allocationMode: 'quantity',
@@ -548,8 +554,12 @@
           enabled: true,
           path: '',
           remark: ''
-        })),
-      importApi: (rows) => importProcessRoutes(rows as ProcessRouteInput[])
+        }))
+      },
+      importApi: (rows) => importProcessRoutes(rows as ProcessRouteInput[]),
+      onImportSuccess: (rows) => {
+        ElMessage.success(`已导入 ${rows.length} 条工艺路线`)
+      }
     },
     { type: 'export', permission: 'MdmProcessRoute:Export', onClick: exportRows }
   ]

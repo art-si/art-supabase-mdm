@@ -51,13 +51,16 @@
 <script setup lang="ts">
   import dayjs from 'dayjs'
   import 'dayjs/locale/zh-cn'
-  import { reactive, ref } from 'vue'
+  import { computed, reactive, ref } from 'vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
+  import { useUserStore } from '@/store/modules/user'
   import { setProductionCalendarDayType, type ProductionCalendarDayType } from '@mdm/api'
-  import { calendarDayTypes } from './calendar-day-types'
+  import { calendarDayTypesWithLabels } from './calendar-day-types'
 
   interface OpenData {
     departmentId: string
@@ -69,6 +72,9 @@
   const emit = defineEmits<{ success: [workDate: string, dayType: ProductionCalendarDayType] }>()
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const saving = ref(false)
+  const userStore = useUserStore()
+  const dictionaryDayTypes = useDictionaryOptions('mdmProductionCalendarDayType')
+  const calendarDayTypes = computed(() => calendarDayTypesWithLabels(dictionaryDayTypes))
   const context = reactive<OpenData>({
     departmentId: '',
     workDate: '',
@@ -90,6 +96,14 @@
   }
 
   const handleOpen = async (data: OpenData): Promise<void> => {
+    try {
+      await userStore.ensureDictLoaded('mdmProductionCalendarDayType')
+      if (!calendarDayTypes.value.length)
+        throw new Error('日期类型字典未配置，请联系管理员维护后重试')
+    } catch (error) {
+      notifyFriendlyError(error, '日期类型加载失败，请稍后重试')
+      return
+    }
     Object.assign(context, data)
     await dialogRef.value?.handleOpen(data, {
       title: '设置日期类型',

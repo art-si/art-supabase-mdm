@@ -857,7 +857,7 @@ export async function importProcessRoutes(inputs: ProcessRouteInput[]) {
         .from('mdm_process_route')
         .insert(inputs.map((input) => keysToSnakeDeep(input)))
         .select('id'),
-    { ...write, message: `已导入 ${inputs.length} 条工艺路线` }
+    { ...write, showMessage: false, showErrorMessage: false }
   )
 }
 export async function copyProcessRoute(id: string, name: string) {

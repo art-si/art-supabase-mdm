@@ -310,7 +310,8 @@
   import { isShiftScheduleActiveOnDate } from '../modules/shift-schedule-policy'
   import PatternDialog from './modules/pattern-dialog.vue'
   import CalendarActionDialog from './modules/calendar-action-dialog.vue'
-  import { calendarDayTypes } from './modules/calendar-day-types'
+  import { calendarDayTypeMetadata, calendarDayTypesWithLabels } from './modules/calendar-day-types'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import CalendarDayTypeDialog from './modules/calendar-day-type-dialog.vue'
   const { deleteGuardRef: deleteGuardRef, deleteRecords: deleteRecords } = useRecordDeleteGuard(
     'mdm_production_shift_pattern',
@@ -360,7 +361,8 @@
       )
   )
   const patternMap = computed(() => new Map(calendar.patterns.map((p) => [p.id, p])))
-  const dayTypeLegend = calendarDayTypes
+  const dictionaryDayTypes = useDictionaryOptions('mdmProductionCalendarDayType')
+  const dayTypeLegend = computed(() => calendarDayTypesWithLabels(dictionaryDayTypes))
   const dayPattern = (date: string) => patternMap.value.get(dayMap.value.get(date) || '')
   const schedulesForDate = (date: string) =>
     calendar.schedules.filter((schedule) =>
@@ -371,7 +373,12 @@
     (dayPattern(date) ? 'work_day' : [0, 6].includes(dayjs(date).day()) ? 'rest_day' : 'work_day')
   const resolveDayTypeMeta = (date: string) => {
     const dayType = resolveDayType(date)
-    const meta = dayTypeLegend.find((item) => item.value === dayType) ?? dayTypeLegend[2]
+    const meta = dayTypeLegend.value.find((item) => item.value === dayType) ?? {
+      ...(calendarDayTypeMetadata.find((item) => item.value === dayType) ??
+        calendarDayTypeMetadata.find((item) => item.value === 'work_day')),
+      value: dayType,
+      label: dayType
+    }
     const setting = daySettingMap.value.get(date)
     return {
       ...meta,
