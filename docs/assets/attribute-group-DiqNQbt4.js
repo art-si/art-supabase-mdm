@@ -1,1 +1,0 @@
-import{Ar as e,Rr as t,ri as n}from"./supabase-CdJ7aEwC.js";import{t as r}from"./material-reference-COPKU3gi.js";var i=t({name:`MdmMaterialAttributeGroup`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

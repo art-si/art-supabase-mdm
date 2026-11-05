@@ -1,0 +1,1 @@
+import{Ar as e,Rr as t,ri as n}from"./supabase-CdJ7aEwC.js";import{t as r}from"./governance-center-Da7NUQX9.js";var i=t({name:`MdmChangeManagement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`changes`}))}});export{i as default};

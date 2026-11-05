@@ -82,6 +82,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
@@ -147,6 +148,7 @@
   const supplierTypeOptions = useDictionaryOptions('supplierType')
   const tenantScopeStore = useTenantScopeStore()
   const { effectiveTenantId, tenantOptions } = storeToRefs(tenantScopeStore)
+  const { defaultWriteTenantId } = useTenantScopeFormPolicy()
   const tableRef = ref<ArtTableQueryExpose>()
   const supplierDialogRef = ref<{ handleOpen: (data: SupplierDialogOpenData) => Promise<void> }>()
   const detailRef = ref<{ handleOpen: (row: PurchaseSupplier) => Promise<void> }>()
@@ -205,9 +207,10 @@
   ])
 
   const openSupplier = (row?: PurchaseSupplier): void => {
+    const selectedGroup = groups.value.find((group) => group.id === selectedGroupId.value)
     void supplierDialogRef.value?.handleOpen({
       row,
-      tenantId: row?.tenantId || effectiveTenantId.value || '',
+      tenantId: row?.tenantId || selectedGroup?.tenantId || defaultWriteTenantId.value || '',
       tenantOptions: tenantChoices(),
       groups: groups.value,
       initialGroupId: row ? undefined : selectedGroupId.value || undefined
@@ -405,7 +408,7 @@
   function groupOpenData(row?: MasterGroup, parent?: MasterGroup): GroupDialogOpenData {
     return {
       domain: 'supplier',
-      tenantId: row?.tenantId || parent?.tenantId || effectiveTenantId.value || '',
+      tenantId: row?.tenantId || parent?.tenantId || defaultWriteTenantId.value || '',
       tenantOptions: tenantChoices(),
       groups: groups.value,
       row,

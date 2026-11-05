@@ -1,1 +1,0 @@
-import{Ar as e,Rr as t,ri as n}from"./supabase-CdJ7aEwC.js";import{t as r}from"./inventory-configuration-B-hM_imj.js";var i=t({name:`MdmSupplyChainCodeRule`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};
