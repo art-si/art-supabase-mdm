@@ -84,7 +84,11 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
-  import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
+  import {
+    createTenantScopeReadGuard,
+    resolveTenantWriteTargetId,
+    TenantScopeChangedError
+  } from '@/utils/tenant-scope-context'
   import { useAuth } from '@/hooks/core/useAuth'
   import { exportExcel } from '@/utils/file'
   import {
@@ -391,10 +395,16 @@
       )
     }
   ]
-  async function allRows(limit = 10000) {
+  async function allRows(limit: number, assertScope: () => void) {
+    const filters = {
+      ...table.search,
+      tenantId: effectiveTenantId.value || '',
+      departmentIds: departmentIds()
+    }
     const rows: WorkCenter[] = []
     for (let current = 1; current <= Math.ceil(limit / 1000); current++) {
-      const result = await fetchRows({ ...table.search, tenantId: '', current, size: 1000 })
+      const result = await fetchWorkCenters({ ...filters, current, size: 1000 })
+      assertScope()
       if (result.total > limit) throw new Error(`最多导出 ${limit} 条，请缩小部门范围`)
       rows.push(...result.data)
       if (rows.length >= result.total) break
@@ -402,9 +412,11 @@
     return rows
   }
   async function exportRows() {
+    const assertScope = createTenantScopeReadGuard()
     try {
-      const rows = await allRows()
+      const rows = await allRows(10000, assertScope)
       const people = await fetchCenterPeople(uniq(rows.flatMap((r) => r.personIds)))
+      assertScope()
       await exportExcel({
         data: rows.map((r) => ({
           tenantName: tenantNames.value[r.tenantId] || r.tenantId,
@@ -441,21 +453,26 @@
           }).map(([key, title]) => ({ key, title })),
           ...centerPolicyColumns
         ],
-        filename: '工作中心'
+        filename: '工作中心',
+        assertCanDownload: assertScope
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof TenantScopeChangedError) return
       ElMessage.error('导出失败，请确认有数据且筛选范围不超过 10000 条')
     }
   }
   async function exportQr() {
+    const assertScope = createTenantScopeReadGuard()
     try {
-      const rows = await allRows(500)
+      const rows = await allRows(500, assertScope)
+      assertScope()
       if (!rows.length) {
         ElMessage.info('当前范围没有工作中心')
         return
       }
       await qrDialog.value?.handleOpen(rows)
-    } catch {
+    } catch (error) {
+      if (error instanceof TenantScopeChangedError) return
       ElMessage.error('二维码加载失败，请重试或将范围缩小至 500 个以内')
     }
   }

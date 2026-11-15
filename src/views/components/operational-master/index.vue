@@ -44,6 +44,7 @@
             ref="tableRef"
             v-model="table.search"
             :api-fn="fetchRows"
+            :on-success="handleTableSuccess"
             :search-items="table.searchItems"
             :columns-factory="columnsFactory"
             :header-actions="table.headerActions"
@@ -82,7 +83,6 @@
   import { toTenantSelectOptions } from '@/utils/tenant-display'
   import { createDateTimeFormatter } from '@/utils/ui/format'
 
-  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElTag } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
@@ -106,14 +106,14 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryHeaderAction,
-    ArtTableQueryHeaderActionContext
+    ArtTableQueryHeaderActionContext,
+    ArtTableQuerySuccessHandler
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import {
     deleteMasterGroup,
     deleteOperationalMasters,
     operationalMasterTable,
-    fetchMasterGroups,
     fetchOperationalMaster,
     fetchOperationalMasterReferences,
     importOperationalMasters,
@@ -130,6 +130,7 @@
   import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import { resolveMasterConfig } from './modules/master-config'
+  import { useMasterGroups } from './modules/use-master-groups'
   import DocumentTypePage from '../../document-type/index.vue'
   import BusinessTypePage from '../../business-type/index.vue'
 
@@ -233,13 +234,11 @@
     handleOpen: (data: MasterDialogOpenData) => Promise<void>
   }>()
   const groupDialogRef = ref<{ handleOpen: (data: GroupDialogOpenData) => Promise<void> }>()
-  const overview = reactive({ total: 0, enabled: 0, rows: [] as OperationalMasterRecord[] })
-  const groupState = reactive({
-    rows: [] as MasterGroup[],
-    selectedId: '',
-    loading: false,
-    error: ''
-  })
+  const overview = reactive({ total: 0, enabled: 0 })
+  const { groupState, loadGroups } = useMasterGroups(
+    () => config.value.groupDomain,
+    effectiveTenantId
+  )
   const groupTreeUtils = new TreeUtils({ parentKey: 'parentId' })
   const selectedGroupIds = computed(() =>
     groupState.selectedId
@@ -567,10 +566,15 @@
       },
       options
     )
-    overview.total = response.total
-    overview.rows = response.data
-    overview.enabled = response.data.filter((row) => row.enabled).length
     return { records: response.data, total: response.total }
+  }
+
+  const handleTableSuccess: ArtTableQuerySuccessHandler<OperationalMasterRecord> = (
+    rows,
+    response
+  ) => {
+    overview.total = response.total ?? rows.length
+    overview.enabled = rows.filter((row) => row.enabled).length
   }
 
   function tenantChoices(): Array<{ label: string; value: string }> {
@@ -691,22 +695,6 @@
     },
     { immediate: true }
   )
-
-  async function loadGroups(): Promise<void> {
-    if (!config.value.groupDomain) {
-      groupState.rows = []
-      return
-    }
-    groupState.loading = true
-    groupState.error = ''
-    try {
-      groupState.rows = await fetchMasterGroups(config.value.groupDomain, effectiveTenantId.value)
-    } catch (error) {
-      groupState.error = getFriendlySupabaseErrorMessage(error, '分组加载失败，请重试')
-    } finally {
-      groupState.loading = false
-    }
-  }
 
   function selectGroup(id: string): void {
     groupState.selectedId = id

@@ -1,4 +1,3 @@
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { getFileExtension } from '@/utils/file/attachment'
 
 export interface DocumentPage {
@@ -40,11 +39,14 @@ async function rasterizeImage(file: File): Promise<DocumentPage[]> {
 }
 
 async function rasterizePdf(file: File): Promise<DocumentPage[]> {
-  const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist')
+  const [{ getDocument, GlobalWorkerOptions }, { default: workerUrl }] = await Promise.all([
+    import('pdfjs-dist'),
+    import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+  ])
   GlobalWorkerOptions.workerSrc = workerUrl
   const task = getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
-  const pdf = await task.promise
   try {
+    const pdf = await task.promise
     const pages: DocumentPage[] = []
     for (let index = 1; index <= Math.min(pdf.numPages, maxPages); index += 1) {
       const page = await pdf.getPage(index)

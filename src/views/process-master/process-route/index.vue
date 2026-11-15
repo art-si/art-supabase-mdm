@@ -81,7 +81,6 @@
 </template>
 <script setup lang="tsx">
   import { toTenantSelectOptions } from '@/utils/tenant-display'
-  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { computed, ref, reactive } from 'vue'
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
@@ -118,7 +117,6 @@
     deleteProcessRoute,
     fetchProcessRouteOwnedDeleteDependencies,
     importProcessRoutes,
-    fetchMasterGroups,
     deleteMasterGroup,
     type MasterGroup,
     type ProcessRoute,
@@ -128,6 +126,7 @@
   import MasterGroupPanel from '@/components/business/master-group-panel/index.vue'
   import type { GroupDialogOpenData } from '../../components/operational-master/modules/group-dialog.vue'
   import GroupDialog from '../../components/operational-master/modules/group-dialog.vue'
+  import { useMasterGroups } from '../../components/operational-master/modules/use-master-groups'
   import RouteDialog from './modules/route-dialog.vue'
   import StepsDialog from './modules/steps-dialog.vue'
   import ProductionWorkspaceHeader from '../../production/modules/production-workspace-header.vue'
@@ -202,12 +201,7 @@
   const groupDialog = ref<{ handleOpen: (data: GroupDialogOpenData) => Promise<void> }>()
   const search = ref({ keyword: '', enabled: undefined as boolean | undefined })
   const overview = reactive({ total: 0, rows: [] as ProcessRoute[] })
-  const groupState = reactive({
-    rows: [] as MasterGroup[],
-    selectedId: '',
-    loading: false,
-    error: ''
-  })
+  const { groupState, loadGroups } = useMasterGroups('process-route', effectiveTenantId)
   const groupTreeUtils = new TreeUtils({ parentKey: 'parentId' })
   const selectedGroupIds = computed(() =>
     groupState.selectedId
@@ -566,17 +560,6 @@
 
   const tenantChoices = () => toTenantSelectOptions(tenantOptions.value)
 
-  async function loadGroups() {
-    groupState.loading = true
-    groupState.error = ''
-    try {
-      groupState.rows = await fetchMasterGroups('process-route', effectiveTenantId.value)
-    } catch (error) {
-      groupState.error = getFriendlySupabaseErrorMessage(error, '分组加载失败，请重试')
-    } finally {
-      groupState.loading = false
-    }
-  }
   function selectGroup(id: string) {
     groupState.selectedId = id
     void tableRef.value?.getData()

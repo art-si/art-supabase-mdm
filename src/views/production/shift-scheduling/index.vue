@@ -500,8 +500,6 @@
 </script>
 
 <style scoped lang="scss">
-  @use '../modules/production-workspace';
-
   .shift-scheduling {
     &__scroll {
       min-width: 0;

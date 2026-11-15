@@ -27,10 +27,10 @@
           <template #primary>
             <MasterGroupPanel
               title="供应商分组"
-              :groups="groups"
-              :selected-id="selectedGroupId"
-              :loading="groupsLoading"
-              :error="groupsError"
+              :groups="groupState.rows"
+              :selected-id="groupState.selectedId"
+              :loading="groupState.loading"
+              :error="groupState.error"
               manage-permission="MdmPurchaseSupplier:ManageGroup"
               @select="selectGroup"
               @refresh="loadGroups"
@@ -43,6 +43,7 @@
             ref="tableRef"
             v-model="search"
             :api-fn="fetchRows"
+            :on-success="handleTableSuccess"
             :search-items="searchItems"
             :columns-factory="columnsFactory"
             :header-actions="headerActions"
@@ -63,7 +64,11 @@
       </div>
 
       <SupplierDialog ref="supplierDialogRef" @success="refreshAfterSave" />
-      <SupplierDetail ref="detailRef" :groups="groups" @changed="refreshAfterSave('edit')" />
+      <SupplierDetail
+        ref="detailRef"
+        :groups="groupState.rows"
+        @changed="refreshAfterSave('edit')"
+      />
       <GroupDialog ref="groupDialogRef" @success="refreshAfterGroupSave" />
       <MasterDataDeleteGuard ref="deleteGuardRef" />
       <MasterDataDeleteGuard ref="groupDeleteGuardRef" />
@@ -94,13 +99,13 @@
   import type {
     ArtTableQueryExpose,
     ArtTableQueryExcelColumn,
-    ArtTableQueryHeaderAction
+    ArtTableQueryHeaderAction,
+    ArtTableQuerySuccessHandler
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
   import {
     deleteMasterGroup,
-    fetchMasterGroups,
     fetchPurchaseSuppliers,
     type MasterGroup,
     type PurchaseSupplier,
@@ -111,6 +116,7 @@
   import GroupDialog, {
     type GroupDialogOpenData
   } from '../../components/operational-master/modules/group-dialog.vue'
+  import { useMasterGroups } from '../../components/operational-master/modules/use-master-groups'
   import SupplierDialog, { type SupplierDialogOpenData } from './modules/supplier-dialog.vue'
   import SupplierDetail from './modules/supplier-detail.vue'
 
@@ -153,18 +159,15 @@
   const supplierDialogRef = ref<{ handleOpen: (data: SupplierDialogOpenData) => Promise<void> }>()
   const detailRef = ref<{ handleOpen: (row: PurchaseSupplier) => Promise<void> }>()
   const groupDialogRef = ref<{ handleOpen: (data: GroupDialogOpenData) => Promise<void> }>()
-  const groups = ref<MasterGroup[]>([])
-  const groupsLoading = ref(false)
-  const groupsError = ref('')
-  const selectedGroupId = ref('')
+  const { groupState, loadGroups } = useMasterGroups('supplier', effectiveTenantId)
   const route = useRoute()
   const total = ref(0)
   const search = ref({ keyword: '', supplierCategory: '', supplierType: '' })
   const groupTree = new TreeUtils({ parentKey: 'parentId' })
   const groupIds = computed(() =>
-    selectedGroupId.value
+    groupState.selectedId
       ? groupTree
-          .getDescendants(groupTree.listToTree(groups.value), selectedGroupId.value, true)
+          .getDescendants(groupTree.listToTree(groupState.rows), groupState.selectedId, true)
           .map((group) => String(group.id))
       : undefined
   )
@@ -174,12 +177,12 @@
     {
       label: '当前供应商',
       value: total.value,
-      description: selectedGroupId.value ? '当前分组及下级' : '当前租户范围',
+      description: groupState.selectedId ? '当前分组及下级' : '当前租户范围',
       icon: 'ri:store-3-line'
     },
     {
       label: '分组节点',
-      value: groups.value.length,
+      value: groupState.rows.length,
       description: '支持多级分类',
       icon: 'ri:node-tree'
     }
@@ -207,13 +210,13 @@
   ])
 
   const openSupplier = (row?: PurchaseSupplier): void => {
-    const selectedGroup = groups.value.find((group) => group.id === selectedGroupId.value)
+    const selectedGroup = groupState.rows.find((group) => group.id === groupState.selectedId)
     void supplierDialogRef.value?.handleOpen({
       row,
       tenantId: row?.tenantId || selectedGroup?.tenantId || defaultWriteTenantId.value || '',
       tenantOptions: tenantChoices(),
-      groups: groups.value,
-      initialGroupId: row ? undefined : selectedGroupId.value || undefined
+      groups: groupState.rows,
+      initialGroupId: row ? undefined : groupState.selectedId || undefined
     })
   }
   const openDetail = (row: PurchaseSupplier): void => {
@@ -293,7 +296,8 @@
               row.industry,
               row.industry || '—'
             ),
-            supplierGroup: groups.value.find((group) => group.id === row.groupId)?.name || '未分组'
+            supplierGroup:
+              groupState.rows.find((group) => group.id === row.groupId)?.name || '未分组'
           }))
         }
       }
@@ -327,7 +331,8 @@
       prop: 'groupId',
       label: '供应商分组',
       minWidth: 145,
-      formatter: (row) => groups.value.find((group) => group.id === row.groupId)?.name || '未分组'
+      formatter: (row) =>
+        groupState.rows.find((group) => group.id === row.groupId)?.name || '未分组'
     },
     {
       prop: 'supplierCategory',
@@ -377,8 +382,8 @@
     }
   ]
 
-  async function fetchRows(params: SupplierQuery, options?: { signal?: AbortSignal }) {
-    const result = await fetchPurchaseSuppliers(
+  function fetchRows(params: SupplierQuery, options?: { signal?: AbortSignal }) {
+    return fetchPurchaseSuppliers(
       {
         ...params,
         tenantId: effectiveTenantId.value,
@@ -386,23 +391,14 @@
       },
       options?.signal
     )
-    total.value = result.total
-    return result
   }
 
-  async function loadGroups(): Promise<void> {
-    groupsLoading.value = true
-    groupsError.value = ''
-    try {
-      groups.value = await fetchMasterGroups('supplier', effectiveTenantId.value)
-    } catch {
-      groupsError.value = '分组加载失败，请重试'
-    } finally {
-      groupsLoading.value = false
-    }
+  const handleTableSuccess: ArtTableQuerySuccessHandler<PurchaseSupplier> = (rows, response) => {
+    total.value = response.total ?? rows.length
   }
+
   function selectGroup(id: string): void {
-    selectedGroupId.value = id
+    groupState.selectedId = id
     void tableRef.value?.getData()
   }
   function groupOpenData(row?: MasterGroup, parent?: MasterGroup): GroupDialogOpenData {
@@ -410,7 +406,7 @@
       domain: 'supplier',
       tenantId: row?.tenantId || parent?.tenantId || defaultWriteTenantId.value || '',
       tenantOptions: tenantChoices(),
-      groups: groups.value,
+      groups: groupState.rows,
       row,
       parent
     }
@@ -434,7 +430,7 @@
         }),
       onDeleted: async () => {
         ElMessage.success('供应商分组已删除')
-        if (selectedGroupId.value === resource.id) selectedGroupId.value = ''
+        if (groupState.selectedId === resource.id) groupState.selectedId = ''
         await refreshAfterGroupSave()
       }
     })
@@ -450,20 +446,21 @@
     await tableRef.value?.refreshData()
   }
   async function loadContext(): Promise<void> {
-    selectedGroupId.value = ''
+    groupState.selectedId = ''
     await tenantScopeStore.loadTenantOptions()
     await loadGroups()
     await tableRef.value?.getData()
   }
   watch(effectiveTenantId, () => void loadContext(), { immediate: true })
   watch(
-    [() => route.query, groups],
+    [() => route.query, () => groupState.rows],
     ([query]) => {
       if (query.fromMasterDelete !== '1') return
       if (query.dependencyCode === 'mdm_master_group' && typeof query.recordId === 'string') {
-        if (groups.value.some((group) => group.id === query.recordId)) selectGroup(query.recordId)
+        if (groupState.rows.some((group) => group.id === query.recordId))
+          selectGroup(query.recordId)
       } else if (query.dependencyCode === 'mdm_supplier' && typeof query.recordNo === 'string') {
-        selectedGroupId.value = ''
+        groupState.selectedId = ''
         Object.assign(search.value, {
           keyword: query.recordNo,
           supplierCategory: '',
