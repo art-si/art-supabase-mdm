@@ -20,7 +20,7 @@
         <ArtDictDisplay dict-code="mdmBomStatus" :value="record.status" display="tag" />
       </section>
 
-      <ElTabs v-model="activeTab">
+      <ElTabs class="art-card-xs art-overlay-tab-card" v-model="activeTab">
         <ElTabPane name="identity" label="BOM 身份">
           <ArtSectionCard
             title="BOM 身份"

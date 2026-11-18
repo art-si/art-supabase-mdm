@@ -85,7 +85,10 @@
               ><small>基本单位</small><strong>{{ detailBaseUnitLabel }}</strong></div
             >
           </div>
-          <ElTabs v-model="detailTab" class="material-detail__tabs">
+          <ElTabs
+            v-model="detailTab"
+            class="material-detail__tabs art-card-xs art-overlay-tab-card"
+          >
             <ElTabPane label="基础资料" name="base">
               <section class="material-detail__section">
                 <header

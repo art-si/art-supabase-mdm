@@ -1,18 +1,18 @@
 <template>
   <ArtDialog ref="dialogRef" size="xl">
     <div class="material-archive-dialog">
-      <section class="material-archive-dialog__panel">
-        <header class="material-archive-dialog__section-heading">
-          <div>
-            <strong>{{ activeTabMeta.title }}</strong>
-            <p>{{ activeTabMeta.description }}</p>
-          </div>
+      <ArtSectionCard
+        :title="activeTabMeta.title"
+        :subtitle="activeTabMeta.description"
+        preserve-content-structure
+      >
+        <template #actions>
           <div class="material-archive-dialog__completion">
             <span>资料完整度</span><strong>{{ completion }}%</strong>
           </div>
-        </header>
+        </template>
         <div class="material-archive-dialog__notice">
-          <span><ArtSvgIcon :icon="activeTabMeta.icon" /></span>
+          <span aria-hidden="true"><ArtSvgIcon :icon="activeTabMeta.icon" /></span>
           <p>{{ activeTabMeta.notice }}</p>
         </div>
 
@@ -71,7 +71,7 @@
             </div>
           </template>
         </ArtForm>
-      </section>
+      </ArtSectionCard>
     </div>
   </ArtDialog>
 </template>
@@ -87,6 +87,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import {
     fetchEmployeeSelectorList,
     type EmployeeIntegrationItem
@@ -181,13 +182,13 @@
   })
   const employeeSelections = reactive<EmployeeSelections>(initialEmployeeSelections())
   const tabs = [
-    { name: 'base', label: '基本信息', icon: 'ri:information-line' },
-    { name: 'purchase', label: '采购', icon: 'ri:shopping-bag-3-line' },
-    { name: 'sales', label: '销售', icon: 'ri:shopping-cart-line' },
-    { name: 'inventory', label: '库存', icon: 'ri:stack-line' },
-    { name: 'production', label: '生产', icon: 'ri:settings-5-line' },
-    { name: 'finance', label: '财务', icon: 'ri:bank-card-line' },
-    { name: 'conversion', label: '单位换算', icon: 'ri:exchange-2-line' }
+    { name: 'base', label: '基本信息' },
+    { name: 'purchase', label: '采购' },
+    { name: 'sales', label: '销售' },
+    { name: 'inventory', label: '库存' },
+    { name: 'production', label: '生产' },
+    { name: 'finance', label: '财务' },
+    { name: 'conversion', label: '单位换算' }
   ] as const
   const tabMeta: Record<
     ArchiveTab,
@@ -1350,7 +1351,7 @@
   }
   const formItems = computed<FormItem[]>(() =>
     tabs.flatMap((tab) => [
-      { key: tab.name, label: tab.label, type: 'tab', description: tabMeta[tab.name].description },
+      { key: tab.name, label: tab.label, type: 'tab' },
       ...enhanceFormItems(itemsForTab(tab.name))
     ])
   )
@@ -1571,81 +1572,11 @@
     }
   }
 
-  .material-archive-dialog__tabs {
-    margin-top: -4px;
-  }
-
-  .material-archive-dialog__tabs :deep(.el-tabs__header) {
-    margin-bottom: 10px;
-  }
-
-  .material-archive-dialog__tabs :deep(.el-tabs__content) {
-    display: none;
-  }
-
-  .material-archive-dialog__tab-label {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .material-archive-dialog__tab-label i {
-    width: 5px;
-    height: 5px;
-    background: var(--el-color-success);
-    border-radius: 50%;
-  }
-
-  .material-archive-dialog__panel {
-    padding: 16px;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: var(--art-surface-radius);
-  }
-
-  .material-archive-dialog__section-heading {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 1px 2px 14px;
-  }
-
-  .material-archive-dialog__section-heading strong,
-  .material-archive-dialog__section-heading p {
-    display: block;
-    margin: 0;
-  }
-
-  .material-archive-dialog__section-heading strong {
-    position: relative;
-    padding-left: 12px;
-    font-size: 15px;
-  }
-
-  .material-archive-dialog__section-heading strong::before {
-    position: absolute;
-    top: 2px;
-    bottom: 2px;
-    left: 0;
-    width: 3px;
-    content: '';
-    background: var(--theme-color);
-    border-radius: 2px;
-  }
-
-  .material-archive-dialog__section-heading p {
-    padding-left: 12px;
-    margin-top: 5px;
-    font-size: 11px;
-    color: var(--el-text-color-secondary);
-  }
-
   .material-archive-dialog__completion {
     display: inline-flex;
-    flex: none;
-    gap: 8px;
+    gap: var(--art-space-2);
     align-items: baseline;
-    padding: 5px 9px;
+    padding: var(--art-space-1) var(--art-space-2);
     background: var(--el-fill-color-lighter);
     border-radius: var(--art-surface-radius);
   }
@@ -1656,22 +1587,17 @@
   }
 
   .material-archive-dialog__completion strong {
-    padding: 0;
     font-variant-numeric: tabular-nums;
     color: var(--theme-color);
-  }
-
-  .material-archive-dialog__completion strong::before {
-    display: none;
   }
 
   .material-archive-dialog__notice {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
-    gap: 10px;
+    gap: var(--art-space-2);
     align-items: center;
-    padding: 10px 12px;
-    margin-bottom: 4px;
+    padding: var(--art-space-2) var(--art-space-3);
+    margin-bottom: var(--art-space-2);
     background: var(--el-fill-color-lighter);
     border-radius: var(--art-surface-radius);
   }
@@ -1691,10 +1617,6 @@
     font-size: 11px;
     line-height: 1.6;
     color: var(--el-text-color-secondary);
-  }
-
-  :deep(.material-archive-dialog__form) {
-    padding: 6px 0 0;
   }
 
   .material-archive-dialog__rule-field {
@@ -1735,15 +1657,6 @@
 
     .conversion-builder__equals {
       display: none;
-    }
-
-    .material-archive-dialog__section-heading {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .material-archive-dialog__completion {
-      justify-content: space-between;
     }
   }
 </style>

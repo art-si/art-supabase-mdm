@@ -66,6 +66,7 @@
       :default-expand-all="groups.length < 18"
       highlight-current
       :expand-on-click-node="false"
+      @keydown.capture="handleSelectableTreeKeydown"
       @node-click="$emit('select', $event.id)"
     >
       <template #default="{ data }">
@@ -113,6 +114,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'

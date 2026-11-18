@@ -86,6 +86,7 @@
                 :default-expand-all="groups.length < 18"
                 :expand-on-click-node="false"
                 highlight-current
+                @keydown.capture="handleSelectableTreeKeydown"
                 @node-click="selectGroup($event.id)"
               >
                 <template #default="{ data }">
@@ -166,6 +167,7 @@
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElTag, type ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useAuth } from '@/hooks/core/useAuth'

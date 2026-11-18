@@ -12,45 +12,43 @@
         </template>
       </ArtEntitySummary>
 
-      <div class="process-route-dialog__form-panel">
-        <ArtForm
-          ref="formRef"
-          v-model="form"
-          :items="items"
-          :rules="rules"
-          :span="12"
-          :gutter="24"
-          label-position="top"
-        >
-          <template #materialId>
-            <ArtMaterialSelect
-              v-if="isCreating"
-              v-model:model-values="materialIds"
-              multiple
-              :selected-data="selection"
-              :api-fn="fetchMaterials"
-              :categories="materialCategories"
-              subtitle="按物料分类筛选；每个物料会创建一条独立路线，并继承各自的生产单位"
-              empty-description="请先维护物料编码后再创建工艺路线。"
-              @change="handleMaterialChange"
-            />
-            <ArtMaterialSelect
-              v-else
-              v-model="form.materialId"
-              :selected-data="selection"
-              :api-fn="fetchMaterials"
-              :categories="materialCategories"
-              subtitle="从当前租户物料编码中选择路线适用对象"
-              empty-description="请先维护物料编码后再创建工艺路线。"
-              @change="handleMaterialChange"
-            />
-            <p v-if="isCreating && selection.length" class="process-route-dialog__material-hint">
-              <ArtSvgIcon icon="ri:information-line" />
-              {{ materialSelectionHint }}
-            </p>
-          </template>
-        </ArtForm>
-      </div>
+      <ArtForm
+        ref="formRef"
+        v-model="form"
+        :items="items"
+        :rules="rules"
+        :span="12"
+        :gutter="24"
+        label-position="top"
+      >
+        <template #materialId>
+          <ArtMaterialSelect
+            v-if="isCreating"
+            v-model:model-values="materialIds"
+            multiple
+            :selected-data="selection"
+            :api-fn="fetchMaterials"
+            :categories="materialCategories"
+            subtitle="按物料分类筛选；每个物料会创建一条独立路线，并继承各自的生产单位"
+            empty-description="请先维护物料编码后再创建工艺路线。"
+            @change="handleMaterialChange"
+          />
+          <ArtMaterialSelect
+            v-else
+            v-model="form.materialId"
+            :selected-data="selection"
+            :api-fn="fetchMaterials"
+            :categories="materialCategories"
+            subtitle="从当前租户物料编码中选择路线适用对象"
+            empty-description="请先维护物料编码后再创建工艺路线。"
+            @change="handleMaterialChange"
+          />
+          <p v-if="isCreating && selection.length" class="process-route-dialog__material-hint">
+            <ArtSvgIcon icon="ri:information-line" />
+            {{ materialSelectionHint }}
+          </p>
+        </template>
+      </ArtForm>
     </div>
   </ArtDialog>
 </template>
@@ -423,18 +421,6 @@
     display: grid;
     gap: var(--art-space-4);
 
-    &__form-panel {
-      min-width: 0;
-      padding-bottom: var(--art-space-2);
-      background: color-mix(
-        in srgb,
-        var(--el-fill-color-extra-light) 45%,
-        var(--default-box-color)
-      );
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--art-control-radius);
-    }
-
     &__material-hint {
       display: flex;
       gap: var(--art-space-2);
@@ -453,10 +439,6 @@
 
     @media (width <= 720px) {
       gap: var(--art-space-3);
-
-      &__form-panel {
-        padding-bottom: var(--art-space-1);
-      }
     }
   }
 </style>

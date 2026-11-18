@@ -242,7 +242,203 @@
         </template>
       </ArtEntitySummary>
 
-      <ElTabs v-model="activeTab" class="step-editor__tabs">
+      <DefineStepEditorContent v-slot="{ tab }">
+        <section class="step-editor__panel min-w-0">
+          <div v-if="activeTab === tab" class="step-editor__section-heading">
+            <div>
+              <strong>{{ activeStepPanel.title }}</strong>
+              <p>{{ activeStepPanel.description }}</p>
+            </div>
+            <span>{{ activeStepPanel.status }}</span>
+          </div>
+
+          <div v-if="tab === 'basic'" class="step-editor__content">
+            <div v-if="editorReadonly" class="step-editor__detail">
+              <ArtDescriptions
+                :data="stepForm"
+                :items="basicDetailItems"
+                :columns="2"
+                :tablet-columns="2"
+                :mobile-columns="1"
+                empty-text="—"
+              />
+            </div>
+            <ArtForm
+              v-else
+              ref="formRef"
+              v-model="stepForm"
+              :items="stepItems"
+              :rules="stepRules"
+              :span="12"
+              :gutter="24"
+              label-position="top"
+            >
+              <template #humanMachineRatio>
+                <div class="step-editor__ratio-field">
+                  <ElInputNumber
+                    v-model="stepForm.operatorCount"
+                    :min="1"
+                    :max="999"
+                    :precision="0"
+                    controls-position="right"
+                    aria-label="人机系数人数"
+                  />
+                  <span>人</span>
+                  <b aria-hidden="true">:</b>
+                  <ElInputNumber
+                    v-model="stepForm.machineCount"
+                    :min="1"
+                    :max="999"
+                    :precision="0"
+                    controls-position="right"
+                    aria-label="人机系数设备数"
+                  />
+                  <span>台</span>
+                </div>
+              </template>
+            </ArtForm>
+          </div>
+          <div v-if="tab === 'unit'" class="step-editor__content">
+            <ElAlert
+              v-if="!editorReadonly"
+              title="生产单位换算系数 × 生产单位 = 工序单位换算系数 × 工序单位"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+            <ArtDescriptions
+              v-if="editorReadonly"
+              :data="unitForm"
+              :items="unitDetailItems"
+              :columns="2"
+              :tablet-columns="2"
+              :mobile-columns="1"
+              empty-text="—"
+            />
+            <ArtForm
+              v-else
+              v-model="unitForm"
+              :items="unitItems"
+              :span="12"
+              :gutter="24"
+              label-position="top"
+            />
+            <div class="step-editor__equation" role="status">
+              <span>相当于</span>
+              <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
+                >1 {{ route?.productionUnit?.unitName || '生产单位' }}</strong
+              >
+              <ArtSvgIcon icon="ri:arrow-right-line" />
+              <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
+                >{{ unitConversionPreview }} {{ operationUnitName }}</strong
+              >
+            </div>
+          </div>
+
+          <div v-if="tab === 'activity'" class="step-editor__content">
+            <div class="route-maintenance__tab-toolbar">
+              <span>
+                {{
+                  editorReadonly
+                    ? '按执行顺序展示工作中心活动，可追溯默认来源。'
+                    : '默认带入所选工作中心的活动信息，活动名称及其余参数可按工序调整。'
+                }}
+              </span>
+              <ElButton
+                v-if="!editorReadonly && activityRows.length"
+                v-auth="'MdmProcessRoute:Edit'"
+                type="primary"
+                plain
+                @click="addActivity"
+                ><ArtSvgIcon icon="ri:add-line" />新增活动</ElButton
+              >
+            </div>
+            <ArtTable
+              class="process-activity-table min-w-0 max-w-full"
+              :data="activityRows"
+              :columns="activityColumns"
+              row-key="key"
+              :pagination="false"
+              :height="390"
+              empty-height="390px"
+              :stripe="false"
+            >
+              <template #empty>
+                <ArtEmptyState
+                  class="min-h-[220px]"
+                  title="暂无活动配置"
+                  description="选择车间与工作中心后可自动带入活动，也可手工新增。"
+                >
+                  <ElButton
+                    v-if="!editorReadonly"
+                    v-auth="'MdmProcessRoute:Edit'"
+                    type="primary"
+                    plain
+                    @click="addActivity"
+                  >
+                    <ArtSvgIcon icon="ri:add-line" />新增活动
+                  </ElButton>
+                </ArtEmptyState>
+              </template>
+            </ArtTable>
+          </div>
+
+          <div v-if="tab === 'outsourcing'" class="step-editor__content">
+            <ArtDescriptions
+              v-if="editorReadonly"
+              :data="outsourcingForm"
+              :items="outsourcingDetailItems"
+              :columns="2"
+              :tablet-columns="2"
+              :mobile-columns="1"
+              empty-text="—"
+            />
+            <ArtForm
+              v-else
+              v-model="outsourcingForm"
+              :items="outsourcingItems"
+              :span="24"
+              label-position="top"
+            />
+          </div>
+
+          <div v-if="tab === 'inspection'" class="step-editor__content">
+            <ArtDescriptions
+              v-if="editorReadonly"
+              :data="inspectionForm"
+              :items="inspectionDetailItems"
+              :columns="2"
+              :tablet-columns="2"
+              :mobile-columns="1"
+              empty-text="—"
+            />
+            <ArtForm
+              v-else
+              v-model="inspectionForm"
+              :items="inspectionItems"
+              :span="12"
+              :gutter="24"
+              label-position="top"
+            />
+          </div>
+
+          <div v-if="tab === 'sop'" class="step-editor__content">
+            <ArtDescriptions
+              v-if="editorReadonly"
+              :data="sopForm"
+              :items="sopDetailItems"
+              :columns="2"
+              :tablet-columns="2"
+              :mobile-columns="1"
+              empty-text="—"
+            />
+            <ArtForm v-else v-model="sopForm" :items="sopItems" :span="24" label-position="top">
+            </ArtForm>
+          </div>
+        </section>
+      </DefineStepEditorContent>
+
+      <ElTabs v-model="activeTab" class="step-editor__tabs art-card-xs art-overlay-tab-card">
         <ElTabPane v-for="tab in stepTabs" :key="tab.name" :name="tab.name">
           <template #label>
             <span class="step-editor__tab-label">
@@ -253,202 +449,9 @@
               </span>
             </span>
           </template>
+          <ReuseStepEditorContent :tab="tab.name" />
         </ElTabPane>
       </ElTabs>
-
-      <section class="step-editor__panel min-w-0">
-        <div class="step-editor__section-heading">
-          <div>
-            <strong>{{ activeStepPanel.title }}</strong>
-            <p>{{ activeStepPanel.description }}</p>
-          </div>
-          <span>{{ activeStepPanel.status }}</span>
-        </div>
-
-        <div v-show="activeTab === 'basic'" class="step-editor__content">
-          <div v-if="editorReadonly" class="step-editor__detail">
-            <ArtDescriptions
-              :data="stepForm"
-              :items="basicDetailItems"
-              :columns="2"
-              :tablet-columns="2"
-              :mobile-columns="1"
-              empty-text="—"
-            />
-          </div>
-          <ArtForm
-            v-else
-            ref="formRef"
-            v-model="stepForm"
-            :items="stepItems"
-            :rules="stepRules"
-            :span="12"
-            :gutter="24"
-            label-position="top"
-          >
-            <template #humanMachineRatio>
-              <div class="step-editor__ratio-field">
-                <ElInputNumber
-                  v-model="stepForm.operatorCount"
-                  :min="1"
-                  :max="999"
-                  :precision="0"
-                  controls-position="right"
-                  aria-label="人机系数人数"
-                />
-                <span>人</span>
-                <b aria-hidden="true">:</b>
-                <ElInputNumber
-                  v-model="stepForm.machineCount"
-                  :min="1"
-                  :max="999"
-                  :precision="0"
-                  controls-position="right"
-                  aria-label="人机系数设备数"
-                />
-                <span>台</span>
-              </div>
-            </template>
-          </ArtForm>
-        </div>
-        <div v-show="activeTab === 'unit'" class="step-editor__content">
-          <ElAlert
-            v-if="!editorReadonly"
-            title="生产单位换算系数 × 生产单位 = 工序单位换算系数 × 工序单位"
-            type="info"
-            :closable="false"
-            show-icon
-          />
-          <ArtDescriptions
-            v-if="editorReadonly"
-            :data="unitForm"
-            :items="unitDetailItems"
-            :columns="2"
-            :tablet-columns="2"
-            :mobile-columns="1"
-            empty-text="—"
-          />
-          <ArtForm
-            v-else
-            v-model="unitForm"
-            :items="unitItems"
-            :span="12"
-            :gutter="24"
-            label-position="top"
-          />
-          <div class="step-editor__equation" role="status">
-            <span>相当于</span>
-            <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
-              >1 {{ route?.productionUnit?.unitName || '生产单位' }}</strong
-            >
-            <ArtSvgIcon icon="ri:arrow-right-line" />
-            <strong class="min-w-0 wrap-anywhere text-(--el-text-color-primary)"
-              >{{ unitConversionPreview }} {{ operationUnitName }}</strong
-            >
-          </div>
-        </div>
-
-        <div v-show="activeTab === 'activity'" class="step-editor__content">
-          <div class="route-maintenance__tab-toolbar">
-            <span>
-              {{
-                editorReadonly
-                  ? '按执行顺序展示工作中心活动，可追溯默认来源。'
-                  : '默认带入所选工作中心的活动信息，活动名称及其余参数可按工序调整。'
-              }}
-            </span>
-            <ElButton
-              v-if="!editorReadonly && activityRows.length"
-              v-auth="'MdmProcessRoute:Edit'"
-              type="primary"
-              plain
-              @click="addActivity"
-              ><ArtSvgIcon icon="ri:add-line" />新增活动</ElButton
-            >
-          </div>
-          <ArtTable
-            class="process-activity-table min-w-0 max-w-full"
-            :data="activityRows"
-            :columns="activityColumns"
-            row-key="key"
-            :pagination="false"
-            :height="390"
-            empty-height="390px"
-            :stripe="false"
-          >
-            <template #empty>
-              <ArtEmptyState
-                class="min-h-[220px]"
-                title="暂无活动配置"
-                description="选择车间与工作中心后可自动带入活动，也可手工新增。"
-              >
-                <ElButton
-                  v-if="!editorReadonly"
-                  v-auth="'MdmProcessRoute:Edit'"
-                  type="primary"
-                  plain
-                  @click="addActivity"
-                >
-                  <ArtSvgIcon icon="ri:add-line" />新增活动
-                </ElButton>
-              </ArtEmptyState>
-            </template>
-          </ArtTable>
-        </div>
-
-        <div v-show="activeTab === 'outsourcing'" class="step-editor__content">
-          <ArtDescriptions
-            v-if="editorReadonly"
-            :data="outsourcingForm"
-            :items="outsourcingDetailItems"
-            :columns="2"
-            :tablet-columns="2"
-            :mobile-columns="1"
-            empty-text="—"
-          />
-          <ArtForm
-            v-else
-            v-model="outsourcingForm"
-            :items="outsourcingItems"
-            :span="24"
-            label-position="top"
-          />
-        </div>
-
-        <div v-show="activeTab === 'inspection'" class="step-editor__content">
-          <ArtDescriptions
-            v-if="editorReadonly"
-            :data="inspectionForm"
-            :items="inspectionDetailItems"
-            :columns="2"
-            :tablet-columns="2"
-            :mobile-columns="1"
-            empty-text="—"
-          />
-          <ArtForm
-            v-else
-            v-model="inspectionForm"
-            :items="inspectionItems"
-            :span="12"
-            :gutter="24"
-            label-position="top"
-          />
-        </div>
-
-        <div v-show="activeTab === 'sop'" class="step-editor__content">
-          <ArtDescriptions
-            v-if="editorReadonly"
-            :data="sopForm"
-            :items="sopDetailItems"
-            :columns="2"
-            :tablet-columns="2"
-            :mobile-columns="1"
-            empty-text="—"
-          />
-          <ArtForm v-else v-model="sopForm" :items="sopItems" :span="24" label-position="top">
-          </ArtForm>
-        </div>
-      </section>
     </div>
   </ArtDialog>
   <MasterDataDeleteGuard ref="stepDeleteGuardRef" />
@@ -457,7 +460,7 @@
 
 <script setup lang="tsx">
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
-  import { useMediaQuery } from '@vueuse/core'
+  import { createReusableTemplate, useMediaQuery } from '@vueuse/core'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { getProcessRouteSequenceLabel } from '@mdm/domain/process-route-display'
   import { toNameCodeOption } from '@/utils/form/option'
@@ -954,34 +957,41 @@
   const stepEditorDescription = computed(
     () => `${route.value?.name || '工艺路线'} · ${currentSequenceSubtitle.value}`
   )
-  const stepTabs = computed(() => [
-    { name: 'basic', label: '工序明细', icon: 'ri:file-list-3-line', count: 0 },
-    { name: 'unit', label: '单位换算', icon: 'ri:exchange-line', count: 0 },
-    {
-      name: 'activity',
-      label: '活动信息',
-      icon: 'ri:function-line',
-      count: activityRows.value.length
-    },
-    {
-      name: 'outsourcing',
-      label: '委外信息',
-      icon: 'ri:truck-line',
-      count: outsourcingForm.value.enabled ? 1 : 0
-    },
-    {
-      name: 'inspection',
-      label: '检验信息',
-      icon: 'ri:shield-check-line',
-      count: stepForm.value.needInspection ? 1 : 0
-    },
-    {
-      name: 'sop',
-      label: '作业指导书',
-      icon: 'ri:file-shield-2-line',
-      count: sopForm.value.documentIds.length + sopForm.value.attachments.length
-    }
-  ])
+  const stepTabs = computed(
+    () =>
+      [
+        { name: 'basic', label: '工序明细', icon: 'ri:file-list-3-line', count: 0 },
+        { name: 'unit', label: '单位换算', icon: 'ri:exchange-line', count: 0 },
+        {
+          name: 'activity',
+          label: '活动信息',
+          icon: 'ri:function-line',
+          count: activityRows.value.length
+        },
+        {
+          name: 'outsourcing',
+          label: '委外信息',
+          icon: 'ri:truck-line',
+          count: outsourcingForm.value.enabled ? 1 : 0
+        },
+        {
+          name: 'inspection',
+          label: '检验信息',
+          icon: 'ri:shield-check-line',
+          count: stepForm.value.needInspection ? 1 : 0
+        },
+        {
+          name: 'sop',
+          label: '作业指导书',
+          icon: 'ri:file-shield-2-line',
+          count: sopForm.value.documentIds.length + sopForm.value.attachments.length
+        }
+      ] as const
+  )
+  type StepEditorTab = (typeof stepTabs.value)[number]['name']
+  const [DefineStepEditorContent, ReuseStepEditorContent] = createReusableTemplate<{
+    tab: StepEditorTab
+  }>()
   const operationUnitName = computed(
     () =>
       references.units.find((item) => item.id === unitForm.value.operationUnitId)?.name ||
@@ -1033,7 +1043,7 @@
           status: `已关联 ${count} 份`
         }
       } as const
-    )[activeTab.value as 'basic' | 'unit' | 'activity' | 'outsourcing' | 'inspection' | 'sop']
+    )[activeTab.value as StepEditorTab]
   })
   const currentSequenceTitle = computed(() =>
     currentSequence.value
@@ -2424,7 +2434,10 @@
       onConfirm: async () => {
         if (editorReadonly.value) return true
         try {
-          if (!(await validateArtFormForSubmit(formRef.value))) return false
+          if (!(await validateArtFormForSubmit(formRef.value))) {
+            activeTab.value = 'basic'
+            return false
+          }
         } catch (error) {
           notifyFriendlyError(error, '工序明细校验未完成，请稍后重试', 'warning')
           return false
@@ -3007,10 +3020,6 @@
         height: 40px;
         padding: 0 var(--art-space-4);
       }
-
-      :deep(.el-tabs__content) {
-        display: none;
-      }
     }
 
     &__tab-label {
@@ -3041,11 +3050,7 @@
 
     &__panel {
       min-height: 470px;
-      padding: var(--art-space-4);
-      background: color-mix(in srgb, var(--el-fill-color-extra-light) 45%, var(--el-bg-color));
-      border: 1px solid var(--el-border-color-lighter);
-      border-top: 0;
-      border-radius: 0 0 var(--el-border-radius-base) var(--el-border-radius-base);
+      padding-block-start: var(--art-space-3);
     }
 
     &__section-heading {
@@ -3173,10 +3178,6 @@
           min-width: auto;
           padding: 0 var(--art-space-3);
         }
-      }
-
-      &__panel {
-        padding: var(--art-space-3);
       }
 
       &__section-heading {

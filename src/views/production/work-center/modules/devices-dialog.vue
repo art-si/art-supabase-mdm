@@ -38,6 +38,7 @@
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
 
+  import { normalizeStringList } from '@/utils/form/normalize'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { ElMessage } from 'element-plus'
 
@@ -259,7 +260,7 @@
     })
   }
   function updateEquipmentIds(value: DataSelectModelValue) {
-    form.value.equipmentIds = Array.isArray(value) ? value.map(String) : []
+    form.value.equipmentIds = normalizeStringList(value)
   }
   function updateSelection(rows: DataSelectRecord[]) {
     selection.value = rows.map((row) => ({

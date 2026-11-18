@@ -19,6 +19,7 @@
   import { fetchEnabledOrganizationTree } from '@/api/system-manage'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { toTenantSelectOptions } from '@/utils/tenant-display'
   import {
     saveProductionDepartment,
     type ProductionDepartment,
@@ -63,10 +64,7 @@
       label: '所属租户',
       type: 'select',
       span: 24,
-      options: tenantOptions.value.map((tenant) => ({
-        label: `${tenant.tenantName}（${tenant.tenantCode}）`,
-        value: tenant.id
-      })),
+      options: toTenantSelectOptions(tenantOptions.value),
       props: {
         disabled: !!form.id || !!form.model.parentId,
         filterable: true,

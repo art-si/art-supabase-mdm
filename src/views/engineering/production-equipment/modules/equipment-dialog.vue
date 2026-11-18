@@ -13,20 +13,16 @@
         </div>
       </div>
 
-      <section class="equipment-dialog__panel">
-        <ArtForm
-          ref="formRef"
-          v-model:active-tab="activeTab"
-          v-model="form"
-          :items="formItems"
-          :rules="rules"
-          :span="12"
-          :gutter="24"
-          label-position="top"
-          root-class="equipment-dialog__form"
-        >
-        </ArtForm>
-      </section>
+      <ArtForm
+        ref="formRef"
+        v-model:active-tab="activeTab"
+        v-model="form"
+        :items="formItems"
+        :rules="rules"
+        :span="12"
+        :gutter="24"
+        label-position="top"
+      />
     </div>
   </ArtDialog>
 </template>
@@ -576,90 +572,6 @@
         line-height: 22px;
       }
     }
-
-    &__tabs {
-      min-width: 0;
-
-      :deep(.el-tabs__content) {
-        display: none;
-      }
-
-      :deep(.el-tabs__header) {
-        margin: 0;
-      }
-
-      :deep(.el-tabs__nav-wrap) {
-        padding-inline: var(--art-space-2);
-      }
-    }
-
-    &__tab-label {
-      display: inline-flex;
-      gap: var(--art-space-2);
-      align-items: center;
-    }
-
-    &__panel {
-      min-width: 0;
-      padding: var(--art-space-4);
-      background: color-mix(in srgb, var(--el-fill-color-light) 45%, var(--el-bg-color));
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--el-border-radius-base);
-
-      > header {
-        display: flex;
-        gap: var(--art-space-4);
-        align-items: flex-start;
-        justify-content: space-between;
-        padding-bottom: var(--art-space-3);
-        margin-bottom: var(--art-space-4);
-        border-bottom: 1px solid var(--el-border-color-lighter);
-
-        > div {
-          display: flex;
-          gap: var(--art-space-3);
-          align-items: center;
-          min-width: 0;
-
-          > span {
-            display: grid;
-            flex: none;
-            place-items: center;
-            width: 34px;
-            height: 34px;
-            color: var(--theme-color);
-            background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
-            border-radius: var(--el-border-radius-base);
-          }
-
-          strong,
-          small {
-            display: block;
-          }
-
-          strong {
-            font-size: var(--art-font-size-section-title);
-          }
-
-          small {
-            margin-top: 2px;
-            font-size: 11px;
-            color: var(--el-text-color-secondary);
-          }
-        }
-
-        > span {
-          flex: none;
-          padding-top: 3px;
-          font-size: 11px;
-          color: var(--el-text-color-secondary);
-        }
-      }
-
-      :deep(.equipment-dialog__form) {
-        padding-top: 0;
-      }
-    }
   }
 
   @media (width <= 620px) {
@@ -675,14 +587,6 @@
     .equipment-dialog__status {
       grid-column: 1 / -1;
       justify-self: start;
-    }
-
-    .equipment-dialog__panel {
-      padding: var(--art-space-3);
-
-      > header > span {
-        display: none;
-      }
     }
   }
 </style>

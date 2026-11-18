@@ -669,10 +669,11 @@
     },
     { immediate: true }
   )
-  watch(targetBomId, () => {
+  watch(targetBomId, async () => {
     selectedGroupId.value = ''
     Object.assign(search.value, { keyword: '', purpose: undefined, status: undefined })
-    void tableRef.value?.refreshCreate()
+    await nextTick()
+    await tableRef.value?.getData()
   })
   watch(
     [targetGroupId, groups],

@@ -210,6 +210,7 @@
                 :default-expand-all="projectTree.length < 12"
                 :expand-on-click-node="false"
                 highlight-current
+                @keydown.capture="handleSelectableTreeKeydown"
                 @node-click="(node: ProjectNode) => selectNode(node.id)"
               >
                 <template #default="{ data }">
@@ -508,6 +509,7 @@
 
 <script setup lang="ts">
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { computed, h, onMounted, reactive, ref, watch } from 'vue'
   import { useElementSize } from '@vueuse/core'

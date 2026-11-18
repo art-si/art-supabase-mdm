@@ -75,6 +75,7 @@
                 :expand-on-click-node="false"
                 highlight-current
                 default-expand-all
+                @keydown.capture="handleSelectableTreeKeydown"
                 @node-click="selectScope"
               >
                 <template #default="{ data }">
@@ -206,7 +207,7 @@
               }}</strong></div
             >
           </div>
-          <ElTabs v-model="activeDetailTab">
+          <ElTabs class="art-card-xs art-overlay-tab-card" v-model="activeDetailTab">
             <ElTabPane name="identity" label="设备身份">
               <ArtSectionCard
                 title="设备身份"
@@ -262,6 +263,7 @@
   import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElAvatar, ElImage, ElTag } from 'element-plus'
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'

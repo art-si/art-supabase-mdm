@@ -19,7 +19,7 @@
         </template>
       </ArtEntitySummary>
 
-      <ElTabs v-model="activeTab">
+      <ElTabs class="art-card-xs art-overlay-tab-card" v-model="activeTab">
         <ElTabPane name="definition" label="类型定义">
           <ArtSectionCard title="类型定义" subtitle="业务类型的单据归属、稳定标识与来源关系。">
             <ArtDescriptions :data="detail" :items="definitionItems" :columns="2">
@@ -100,7 +100,6 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
   import type { BusinessTypeRecord } from '@mdm/api'
 
   export interface BusinessTypeDetailData {
@@ -197,17 +196,9 @@
     { key: 'tagStyle', label: '标签样式', field: 'record.tagStyle' },
     { key: 'textColor', label: '文字颜色', field: 'record.textColor' },
     { key: 'createBy', label: '创建人', field: 'record.createBy' },
-    {
-      key: 'createTime',
-      label: '创建时间',
-      value: (data: BusinessTypeDetailData) => formatWithDayjs(data.record.createTime) || '--'
-    },
+    { key: 'createTime', label: '创建时间', field: 'record.createTime', format: 'datetime' },
     { key: 'updateBy', label: '更新人', field: 'record.updateBy' },
-    {
-      key: 'updateTime',
-      label: '更新时间',
-      value: (data: BusinessTypeDetailData) => formatWithDayjs(data.record.updateTime) || '--'
-    }
+    { key: 'updateTime', label: '更新时间', field: 'record.updateTime', format: 'datetime' }
   ]
 
   const handleOpen = async (data: BusinessTypeDetailData): Promise<void> => {

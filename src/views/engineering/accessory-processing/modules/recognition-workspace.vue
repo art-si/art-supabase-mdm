@@ -37,7 +37,11 @@
         </div>
       </div>
 
-      <ElTabs v-model="activeTab" class="accessory-recognition__tabs" aria-label="配件清单识别步骤">
+      <ElTabs
+        v-model="activeTab"
+        class="art-card-xs art-overlay-tab-card accessory-recognition__tabs"
+        aria-label="配件清单识别步骤"
+      >
         <ElTabPane label="上传与识别" name="upload" :lazy="false">
           <ArtSectionCard
             title="上传与识别"

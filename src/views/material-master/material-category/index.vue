@@ -18,7 +18,7 @@
         <CategoryTreePanel
           :categories="records"
           :selected-id="selectedCategoryId"
-          :loading="treeLoading"
+          :loading="treeLoading && !records.length"
           :error="treeError"
           @select="selectCategory"
           @refresh="refresh"
@@ -62,6 +62,8 @@
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
+  import { useTenantOperationGuard } from '@/hooks/core/useTenantOperationGuard'
+  import type { TableRequestOptions } from '@/hooks/core/useTable'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -106,7 +108,12 @@
     '物料分类'
   )
   const statusOptions = useDictionaryOptions('commonEnabledStatus')
-  const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
+  const {
+    effectiveTenantId,
+    revision: tenantRevision,
+    tenantOptions
+  } = storeToRefs(useTenantScopeStore())
+  const captureReadScope = useTenantOperationGuard('MdmMaterialCategory:View')
   const tenantId = computed(() => effectiveTenantId.value ?? '')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
@@ -339,15 +346,22 @@
       )
     }
   ]
-  const fetchData = async (params: Api.Common.PaginationParams & typeof search.value) => {
+  const fetchData = async (
+    params: Api.Common.PaginationParams & typeof search.value,
+    options?: TableRequestOptions
+  ) => {
+    const isCurrentScope = captureReadScope()
+    const isCurrent = () => !options?.signal?.aborted && isCurrentScope()
+    const requestTenantId = tenantId.value
     treeLoading.value = true
     treeError.value = ''
     try {
       const [categoryRecords, typeRecords, siteRecords] = await Promise.all([
-        fetchMaterialCategories(tenantId.value),
-        fetchMaterialReferenceOptions<MaterialType>('material-type', tenantId.value),
-        fetchMaterialSiteOptions(tenantId.value)
+        fetchMaterialCategories(requestTenantId),
+        fetchMaterialReferenceOptions<MaterialType>('material-type', requestTenantId),
+        fetchMaterialSiteOptions(requestTenantId)
       ])
+      if (!isCurrent()) throw new DOMException('查询已取消', 'AbortError')
       records.value = categoryRecords
       materialTypes.value = typeRecords
       sites.value = siteRecords
@@ -377,15 +391,29 @@
       const start = (params.current - 1) * params.size
       return { records: filtered.slice(start, start + params.size), total: filtered.length }
     } catch (error) {
-      treeError.value = getFriendlySupabaseErrorMessage(error, '分类层级加载失败，请重试')
+      if (isCurrent())
+        treeError.value = getFriendlySupabaseErrorMessage(error, '分类层级加载失败，请重试')
       throw error
     } finally {
-      treeLoading.value = false
+      if (isCurrent()) treeLoading.value = false
     }
   }
   const refresh = async (): Promise<void> => {
     await tableRef.value?.getData()
   }
+
+  watch(
+    [effectiveTenantId, tenantRevision],
+    () => {
+      selectedCategoryId.value = ''
+      records.value = []
+      materialTypes.value = []
+      sites.value = []
+      treeLoading.value = false
+      treeError.value = ''
+    },
+    { flush: 'sync' }
+  )
 </script>
 
 <style scoped lang="scss">

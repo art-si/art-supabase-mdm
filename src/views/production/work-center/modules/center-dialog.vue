@@ -7,7 +7,7 @@
   >
     <div class="center-dialog" :class="{ 'is-fullscreen': dialogFullscreen }">
       <ElAlert v-if="form.error" :title="form.error" type="error" :closable="false" show-icon />
-      <ElTabs v-model="form.tab" class="min-w-0" stretch>
+      <ElTabs v-model="form.tab" class="min-w-0 art-card-xs art-overlay-tab-card" stretch>
         <ElTabPane label="基本资料" name="基本资料">
           <ArtSectionCard
             title="工作中心资料"
@@ -490,7 +490,10 @@
           return false
         }
         try {
-          if (!(await validateArtFormForSubmit(formRef.value))) return false
+          if (!(await validateArtFormForSubmit(formRef.value))) {
+            form.tab = '基本资料'
+            return false
+          }
           const activityValidation = await activityEditorRef.value?.validate()
           if (activityValidation?.valid === false) {
             form.tab = '活动信息'

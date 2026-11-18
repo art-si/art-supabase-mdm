@@ -19,14 +19,23 @@
         </template>
       </ArtEntitySummary>
 
-      <component :is="detail.isProductionType ? ElTabs : 'div'" v-model="activeTab" class="min-w-0">
+      <component
+        :is="detail.isProductionType ? ElTabs : 'div'"
+        v-model="activeTab"
+        class="min-w-0"
+        :class="{ 'art-card-xs art-overlay-tab-card': detail.isProductionType }"
+      >
         <component
           :is="detail.isProductionType ? ElTabPane : 'div'"
           name="definition"
           label="类型定义"
         >
           <div class="space-y-4">
-            <ArtSectionCard title="类型定义" subtitle="单据类型的业务归属与稳定标识。">
+            <component
+              :is="detailSection"
+              title="类型定义"
+              subtitle="单据类型的业务归属与稳定标识。"
+            >
               <ArtDescriptions :data="detail" :items="definitionItems" :columns="2">
                 <template #item-isDefault>
                   <ArtDictDisplay
@@ -49,9 +58,10 @@
                   />
                 </template>
               </ArtDescriptions>
-            </ArtSectionCard>
+            </component>
 
-            <ArtSectionCard
+            <component
+              :is="detailSection"
               v-if="detail.isPayableType"
               title="应付业务规则"
               subtitle="应付单按保存时的规则快照执行，不随类型配置变更而重写历史。"
@@ -64,9 +74,13 @@
                   />
                 </template>
               </ArtDescriptions>
-            </ArtSectionCard>
+            </component>
 
-            <ArtSectionCard title="显示与审计" subtitle="列表展示风格以及最近一次维护信息。">
+            <component
+              :is="detailSection"
+              title="显示与审计"
+              subtitle="列表展示风格以及最近一次维护信息。"
+            >
               <ArtDescriptions :data="detail" :items="auditItems" :columns="2">
                 <template #item-tagStyle>
                   <ElTag
@@ -84,12 +98,13 @@
                   </span>
                 </template>
               </ArtDescriptions>
-            </ArtSectionCard>
+            </component>
           </div>
         </component>
         <ElTabPane v-if="detail.isProductionType" name="production" label="生产控制">
           <div class="space-y-4">
-            <ArtSectionCard
+            <component
+              :is="detailSection"
               v-if="detail.isProductionType"
               title="完工入库控制"
               subtitle="按工单类型复核报工、BOM 领料与在制材料扣减时机。"
@@ -120,9 +135,10 @@
                   />
                 </template>
               </ArtDescriptions>
-            </ArtSectionCard>
+            </component>
 
-            <ArtSectionCard
+            <component
+              :is="detailSection"
               v-if="detail.isProductionType"
               title="领料仓库范围"
               subtitle="工单下达锁料和关联工单出库均按此范围执行。"
@@ -136,23 +152,25 @@
                   display="tag"
                 />
               </div>
-            </ArtSectionCard>
-            <ArtSectionCard
+            </component>
+            <component
+              :is="detailSection"
               v-if="detail.record.packingEnabled && extensionItems.length && !hasDetailedExtensions"
               title="排包工单专用字段"
               subtitle="选择此类型的生产工单时显示，并可从 BOM 组件类型取值。"
             >
               <ArtDescriptions :data="detail" :items="extensionItems" :columns="2" />
-            </ArtSectionCard>
+            </component>
           </div>
         </ElTabPane>
         <ElTabPane v-if="hasDetailedExtensions" name="extensions" label="排包字段">
-          <ArtSectionCard
+          <component
+            :is="detailSection"
             title="排包工单专用字段"
             subtitle="选择此类型的生产工单时显示，并可从 BOM 组件类型取值。"
           >
             <ArtDescriptions :data="detail" :items="extensionItems" :columns="2" />
-          </ArtSectionCard>
+          </component>
         </ElTabPane>
       </component>
     </div>
@@ -169,7 +187,7 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
+  import ArtPageSection from '@/components/core/layouts/art-page-section/index.vue'
   import type { DocumentTypeRecord } from '@mdm/api'
 
   export interface DocumentTypeDetailData {
@@ -209,6 +227,7 @@
     isPayableType: false
   })
 
+  const detailSection = computed(() => (detail.isProductionType ? ArtPageSection : ArtSectionCard))
   const tagPreviewStyle = computed<CSSProperties>(() => ({
     color: detail.record.textColor || undefined
   }))
@@ -292,17 +311,9 @@
     { key: 'tagStyle', label: '标签样式', field: 'record.tagStyle' },
     { key: 'textColor', label: '文字颜色', field: 'record.textColor' },
     { key: 'createBy', label: '创建人', field: 'record.createBy' },
-    {
-      key: 'createTime',
-      label: '创建时间',
-      value: (data: DocumentTypeDetailData) => formatWithDayjs(data.record.createTime) || '--'
-    },
+    { key: 'createTime', label: '创建时间', field: 'record.createTime', format: 'datetime' },
     { key: 'updateBy', label: '更新人', field: 'record.updateBy' },
-    {
-      key: 'updateTime',
-      label: '更新时间',
-      value: (data: DocumentTypeDetailData) => formatWithDayjs(data.record.updateTime) || '--'
-    }
+    { key: 'updateTime', label: '更新时间', field: 'record.updateTime', format: 'datetime' }
   ]
 
   const handleOpen = async (data: DocumentTypeDetailData): Promise<void> => {

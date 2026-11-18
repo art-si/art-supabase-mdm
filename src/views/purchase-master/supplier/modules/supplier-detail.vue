@@ -14,7 +14,7 @@
         :description="`${record.supplierCode} · ${groupName}`"
       />
 
-      <ElTabs v-model="activeTab" class="min-w-0">
+      <ElTabs v-model="activeTab" class="min-w-0 art-card-xs art-overlay-tab-card">
         <ElTabPane label="基本信息" name="overview" class="grid min-w-0 gap-3.5">
           <ArtSectionCard title="单位信息" subtitle="统一身份与业务分类" preserve-content-structure>
             <ArtDescriptions

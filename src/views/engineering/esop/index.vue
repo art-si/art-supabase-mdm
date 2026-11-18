@@ -104,6 +104,7 @@
                 default-expand-all
                 highlight-current
                 class="esop-page__category-tree"
+                @keydown.capture="handleSelectableTreeKeydown"
                 @node-click="handleCategoryClick"
               >
                 <template #default="{ data }">
@@ -308,6 +309,7 @@
   import { loadAllLinePages } from '@/utils/business/document-detail-list'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
@@ -520,7 +522,7 @@
     selectedCategoryId.value = id
     categoryTreeRef.value?.setCurrentKey(id)
     await nextTick()
-    await tableRef.value?.refreshData()
+    await tableRef.value?.refreshContext()
   }
   const handleCategoryClick = (data: EsopCategory): void => {
     void selectCategory(data.id)

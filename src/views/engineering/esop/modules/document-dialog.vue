@@ -2,7 +2,6 @@
   <ArtDialog ref="dialogRef" size="xl">
     <div class="esop-document-dialog">
       <ArtEntitySummary
-        class="esop-document-dialog__identity"
         icon="ri:file-shield-2-line"
         eyebrow="CONTROLLED WORK INSTRUCTION"
         :title="form.documentName || '新 ESOP 文档'"
@@ -13,15 +12,34 @@
         </template>
       </ArtEntitySummary>
 
-      <ElTabs v-model="activeTab" class="esop-document-dialog__tabs">
-        <ElTabPane name="document">
+      <ElTabs
+        v-model="activeTab"
+        class="art-card-xs art-overlay-tab-card esop-document-dialog__tabs"
+      >
+        <ElTabPane name="document" class="esop-document-dialog__panel">
           <template #label>
             <span class="esop-document-dialog__tab-label">
               <ArtSvgIcon icon="ri:file-text-line" />文档信息
             </span>
           </template>
+          <div class="esop-document-dialog__section-heading">
+            <div>
+              <strong>受控文件资料</strong>
+              <p>维护唯一编号、当前版本与可追溯附件。</p>
+            </div>
+            <span>必填项完整后可保存</span>
+          </div>
+          <ArtForm
+            ref="formRef"
+            v-model="form"
+            :items="documentItems"
+            :rules="rules"
+            :span="12"
+            :gutter="24"
+            label-position="top"
+          />
         </ElTabPane>
-        <ElTabPane name="scope">
+        <ElTabPane name="scope" class="esop-document-dialog__panel">
           <template #label>
             <span class="esop-document-dialog__tab-label">
               <ArtSvgIcon icon="ri:git-branch-line" />适用范围
@@ -30,51 +48,20 @@
               }}</span>
             </span>
           </template>
+          <div class="esop-document-dialog__section-heading">
+            <div>
+              <strong>产品与工艺关联</strong>
+              <p>定义生产任务调用该 ESOP 的业务边界。</p>
+            </div>
+            <span>已关联 {{ scopeCount }} 项</span>
+          </div>
+          <ArtForm v-model="form" :items="scopeItems" :span="24" label-position="top" />
+          <div class="esop-document-dialog__scope-note">
+            <span><ArtSvgIcon icon="ri:information-line" /></span>
+            <p>产品关联适合跨路线通用指导书；工艺路线关联适合特定加工过程。两者可同时维护。</p>
+          </div>
         </ElTabPane>
       </ElTabs>
-
-      <section class="esop-document-dialog__panel">
-        <div class="esop-document-dialog__section-heading">
-          <div>
-            <strong>{{ activeTab === 'document' ? '受控文件资料' : '产品与工艺关联' }}</strong>
-            <p>
-              {{
-                activeTab === 'document'
-                  ? '维护唯一编号、当前版本与可追溯附件。'
-                  : '定义生产任务调用该 ESOP 的业务边界。'
-              }}
-            </p>
-          </div>
-          <span>{{
-            activeTab === 'document' ? '必填项完整后可保存' : `已关联 ${scopeCount} 项`
-          }}</span>
-        </div>
-
-        <ArtForm
-          v-show="activeTab === 'document'"
-          ref="formRef"
-          v-model="form"
-          :items="documentItems"
-          :rules="rules"
-          :span="12"
-          :gutter="24"
-          label-position="top"
-        >
-        </ArtForm>
-
-        <ArtForm
-          v-show="activeTab === 'scope'"
-          v-model="form"
-          :items="scopeItems"
-          :span="24"
-          label-position="top"
-        >
-        </ArtForm>
-        <div v-if="activeTab === 'scope'" class="esop-document-dialog__scope-note">
-          <span><ArtSvgIcon icon="ri:information-line" /></span>
-          <p>产品关联适合跨路线通用指导书；工艺路线关联适合特定加工过程。两者可同时维护。</p>
-        </div>
-      </section>
     </div>
   </ArtDialog>
 </template>
@@ -415,15 +402,11 @@
 <style scoped lang="scss">
   .esop-document-dialog {
     display: grid;
-    gap: 0;
-
-    &__identity {
-      margin-bottom: var(--art-space-2);
-    }
+    gap: var(--art-space-3);
 
     &__tabs {
       :deep(.el-tabs__header) {
-        margin: 0;
+        margin-bottom: var(--art-space-4);
       }
 
       :deep(.el-tabs__nav-wrap::after) {
@@ -463,11 +446,6 @@
 
     &__panel {
       min-height: 360px;
-      padding: var(--art-space-4);
-      background: color-mix(in srgb, var(--el-fill-color-extra-light) 45%, var(--el-bg-color));
-      border: 1px solid var(--el-border-color-lighter);
-      border-top: 0;
-      border-radius: 0 0 var(--el-border-radius-base) var(--el-border-radius-base);
     }
 
     &__section-heading {
@@ -529,10 +507,6 @@
         > span {
           display: none;
         }
-      }
-
-      &__panel {
-        padding: var(--art-space-3);
       }
     }
   }

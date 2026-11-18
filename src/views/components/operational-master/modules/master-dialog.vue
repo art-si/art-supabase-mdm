@@ -17,10 +17,7 @@
         </template>
       </ArtEntitySummary>
 
-      <MasterCustomerTabs
-        :enabled="config.kind === 'customer' && !!form.model.id && !form.copy"
-        :record-id="form.model.id"
-      >
+      <MasterCustomerTabs v-model="activeCustomerTab" :enabled="hasCustomerTabs">
         <MasterDetail
           v-if="form.readonly"
           :config="config"
@@ -30,7 +27,11 @@
           :tenant-options="form.tenantOptions"
         />
 
-        <div v-else class="operational-master-dialog__form-panel">
+        <div
+          v-else
+          class="operational-master-dialog__form-panel"
+          :class="{ 'operational-master-dialog__form-panel--framed': !hasCustomerTabs }"
+        >
           <ArtForm
             ref="formRef"
             v-model="form.model"
@@ -118,7 +119,7 @@
     OperationalMasterConfig
   } from './master-config'
   import MasterDetail from './master-detail.vue'
-  import MasterCustomerTabs from './master-customer-tabs.vue'
+  import MasterCustomerTabs, { type MasterCustomerTab } from './master-customer-tabs.vue'
   import { buildOperationalMasterWriteInput } from './master-payload'
   import { createOperationalMasterModel } from './master-model'
 
@@ -140,6 +141,7 @@
   const referenceTree = new TreeUtils({ parentKey: 'parentId' })
   const dialogRef = ref<ArtDialogExpose<MasterDialogOpenData>>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
+  const activeCustomerTab = ref<MasterCustomerTab>('master')
   const emptyReferences = (): OperationalMasterReferences => ({
     customers: [],
     employees: [],
@@ -164,6 +166,9 @@
     set: (value: string) => (form.model.addressDetail = value)
   })
   const config = computed(() => form.config as OperationalMasterConfig)
+  const hasCustomerTabs = computed(
+    () => form.config?.kind === 'customer' && Boolean(form.model.id) && !form.copy
+  )
   const dialogHeading = computed(() =>
     form.readonly
       ? `${config.value.title}详情`
@@ -508,6 +513,7 @@
   }
 
   const handleOpen = async (data: MasterDialogOpenData): Promise<void> => {
+    activeCustomerTab.value = 'master'
     form.config = data.config
     form.groups = data.groups
     form.tenantOptions = data.tenantOptions
@@ -545,7 +551,10 @@
       },
       onConfirm: async () => {
         try {
-          if (!(await validateArtFormForSubmit(formRef.value))) return false
+          if (!(await validateArtFormForSubmit(formRef.value))) {
+            activeCustomerTab.value = 'master'
+            return false
+          }
           await saveOperationalMaster(
             data.config.kind,
             normalizePayload(),
@@ -575,6 +584,9 @@
 
     &__form-panel {
       min-width: 0;
+    }
+
+    &__form-panel--framed {
       padding-bottom: var(--art-space-2);
       background: color-mix(
         in srgb,

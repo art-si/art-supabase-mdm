@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+  import { normalizeStringList } from '@/utils/form/normalize'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, reactive, ref } from 'vue'
@@ -196,7 +197,7 @@
   }
 
   function updateCenterIds(value: DataSelectModelValue) {
-    form.model.workCenterIds = Array.isArray(value) ? value.map(String) : []
+    form.model.workCenterIds = normalizeStringList(value)
     form.error = ''
   }
 

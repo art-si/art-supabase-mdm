@@ -54,8 +54,8 @@
             :table-props="{
               rowKey: 'id',
               tableLayout: 'fixed',
-              emptyText: '暂无供应商',
-              emptyDescription: '可新增供应商，并按左侧分组统一管理。'
+              emptyText: hasAppliedFilters ? '未找到匹配的供应商' : '暂无供应商',
+              emptyDescription
             }"
             focus-scope-selector=".purchase-supplier-page__workspace"
             focusable
@@ -163,6 +163,13 @@
   const route = useRoute()
   const total = ref(0)
   const search = ref({ keyword: '', supplierCategory: '', supplierType: '' })
+  const hasAppliedFilters = ref(false)
+  const emptyDescription = computed(() => {
+    if (hasAppliedFilters.value) return '可重置查询条件，或切换供应商分组后再查看。'
+    return hasAuth('MdmPurchaseSupplier:Add')
+      ? '可使用「新增供应商」建立采购档案。'
+      : '供应商资料录入后将显示在这里。可联系负责维护资料的同事。'
+  })
   const groupTree = new TreeUtils({ parentKey: 'parentId' })
   const groupIds = computed(() =>
     groupState.selectedId
@@ -382,15 +389,18 @@
     }
   ]
 
-  function fetchRows(params: SupplierQuery, options?: { signal?: AbortSignal }) {
-    return fetchPurchaseSuppliers(
-      {
-        ...params,
-        tenantId: effectiveTenantId.value,
-        groupIds: groupIds.value
-      },
-      options?.signal
-    )
+  async function fetchRows(params: SupplierQuery, options?: { signal?: AbortSignal }) {
+    const query = { ...params, tenantId: effectiveTenantId.value, groupIds: groupIds.value }
+    const result = await fetchPurchaseSuppliers(query, options?.signal)
+    if (!options?.signal?.aborted) {
+      hasAppliedFilters.value = Boolean(
+        query.keyword?.trim() ||
+        query.supplierCategory ||
+        query.supplierType ||
+        query.groupIds?.length
+      )
+    }
+    return result
   }
 
   const handleTableSuccess: ArtTableQuerySuccessHandler<PurchaseSupplier> = (rows, response) => {

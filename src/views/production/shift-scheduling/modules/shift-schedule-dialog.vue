@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
+  import { normalizeStringList } from '@/utils/form/normalize'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { computed, h, reactive, ref } from 'vue'
@@ -372,7 +373,7 @@
   }
 
   function updatePersonnelIds(value: DataSelectModelValue): void {
-    form.model.personnelIds = Array.isArray(value) ? value.map(String) : []
+    form.model.personnelIds = normalizeStringList(value)
   }
 
   function updateMembers(rows: DataSelectRecord[]): void {

@@ -1,0 +1,1 @@
+import{ii as e,jr as t,zr as n}from"./supabase-DzWAq2Y6.js";import{t as r}from"./catalog-D2pvYA9C.js";var i=n({name:`MdmVehicleDirectory`,__name:`index`,setup(n){return(n,i)=>(e(),t(r))}});export{i as default};

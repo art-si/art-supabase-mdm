@@ -27,7 +27,7 @@
             <WarehouseGroupPanel
               :groups="groups"
               :selected-id="selectedGroupId"
-              :loading="groupState.loading"
+              :loading="groupState.loading && !groups.length"
               :error="groupState.error"
               @select="selectGroup"
               @refresh="refresh"
@@ -430,6 +430,7 @@
 
   watch(effectiveTenantId, () => {
     selectedGroupId.value = ''
+    groups.value = []
     void refresh()
   })
 </script>

@@ -54,6 +54,7 @@
       :default-expanded-keys="defaultExpandedKeys"
       highlight-current
       :expand-on-click-node="false"
+      @keydown.capture="handleSelectableTreeKeydown"
       @node-click="selectNode"
     >
       <template #default="{ data }">
@@ -90,6 +91,7 @@
   import type { ProductionDepartment } from '@mdm/api'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import { storeToRefs } from 'pinia'
   import { productionTree } from './production-model'
   const props = withDefaults(

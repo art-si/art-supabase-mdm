@@ -38,7 +38,7 @@
 
 <script setup lang="tsx">
   import { createDateTimeFormatter } from '@/utils/ui/format'
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -69,7 +69,7 @@
   })
 
   defineOptions({ name: 'MdmInventoryReservation' })
-  const { confirmDelete } = useArtFeedback()
+  const { confirmAction } = useArtFeedback()
   const statusOptions = useDictionaryOptions('mdmInventoryReservationStatus')
   const tableRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<InstanceType<typeof ReservationDialog>>()
@@ -122,9 +122,18 @@
     }
   ]
   const release = async (row: InventoryReservation): Promise<void> => {
-    await confirmDelete(`确定释放工单“${row.workOrderNo || row.workOrderId}”的这条库存预留吗？`)
-    await releaseInventoryReservation(row.id)
-    refresh()
+    try {
+      await confirmAction(
+        `确定释放工单“${row.workOrderNo || row.workOrderId}”的这条库存预留吗？`,
+        '释放预留',
+        { type: 'warning', confirmButtonText: '释放预留' }
+      )
+      await releaseInventoryReservation(row.id)
+      refresh()
+    } catch (error) {
+      if (error === 'cancel' || error === 'close') return
+      notifyFriendlyError(error, '库存预留释放失败，请稍后重试')
+    }
   }
   const columnsFactory = (): ColumnOption<InventoryReservation>[] => [
     {
@@ -178,7 +187,8 @@
           <BusinessTableRowActions>
             <ArtButtonTable
               permission="MdmInventoryReservation:Release"
-              type="delete"
+              type="edit"
+              icon="ri:lock-unlock-line"
               label="释放预留"
               onClick={() => release(row)}
             />

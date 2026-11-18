@@ -2,7 +2,7 @@
   <ArtSectionCard
     class="bom-group-panel"
     title="BOM 分组"
-    subtitle="选择分组后联动筛选右侧 BOM"
+    subtitle="按分组筛选 BOM"
     :loading="loading"
     :error="error"
     :empty="!loading && !error && !groups.length"
@@ -20,7 +20,7 @@
           :default-expanded="groups.length < 18"
         />
         <ArtIconButton
-          v-auth="'MdmBomMaintenance:ManageGroup'"
+          v-if="hasAuth(manageGroupPermission)"
           icon="ri:add-line"
           label="新增 BOM 分组"
           @click="$emit('add')"
@@ -58,6 +58,7 @@
     <ElTree
       ref="treeRef"
       :data="treeData"
+      aria-label="BOM 分组树"
       node-key="id"
       :props="{ label: 'name', children: 'children' }"
       :current-node-key="selectedId || undefined"
@@ -65,6 +66,7 @@
       :default-expand-all="groups.length < 18"
       highlight-current
       :expand-on-click-node="false"
+      @keydown.capture="handleSelectableTreeKeydown"
       @node-click="$emit('select', $event)"
     >
       <template #default="{ data }">
@@ -95,6 +97,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { ElTree } from 'element-plus'
   import TreeUtils from '@/utils/tree'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtButtonMore, {
     type ButtonMoreItem
@@ -102,6 +105,7 @@
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import { useAuth } from '@/hooks/core/useAuth'
   import type { BomGroup } from '@mdm/api'
 
   const props = defineProps<{
@@ -118,20 +122,22 @@
     edit: [row: BomGroup]
     remove: [row: BomGroup]
   }>()
+  const { hasAuth } = useAuth()
+  const manageGroupPermission = 'MdmBomMaintenance:ManageGroup'
   const groupActions = computed<ButtonMoreItem[]>(() => [
     {
       key: 'add',
       label: '新增下级分组',
       icon: 'ri:add-line',
-      auth: 'MdmBomMaintenance:ManageGroup'
+      auth: manageGroupPermission
     },
-    { key: 'edit', label: '编辑分组', icon: 'ri:edit-line', auth: 'MdmBomMaintenance:ManageGroup' },
+    { key: 'edit', label: '编辑分组', icon: 'ri:edit-line', auth: manageGroupPermission },
     {
       key: 'delete',
       label: '删除分组',
       icon: 'ri:delete-bin-6-line',
       color: 'var(--el-color-danger)',
-      auth: 'MdmBomMaintenance:ManageGroup',
+      auth: manageGroupPermission,
       disabled: props.deleteBusy
     }
   ])

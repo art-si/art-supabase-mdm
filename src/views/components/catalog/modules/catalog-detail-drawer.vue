@@ -25,7 +25,11 @@
         </div>
       </section>
 
-      <ElTabs v-if="visibleAttributes.length > 4" v-model="activeTab">
+      <ElTabs
+        class="art-card-xs art-overlay-tab-card"
+        v-if="visibleAttributes.length > 4"
+        v-model="activeTab"
+      >
         <ElTabPane name="identity" label="身份与来源">
           <ArtSectionCard
             title="身份与来源"

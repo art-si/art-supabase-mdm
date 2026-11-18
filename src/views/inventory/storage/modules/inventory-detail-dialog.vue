@@ -13,7 +13,7 @@
       :error="error"
       :empty="!loading && !error && !rows.length"
       empty-title="暂无在库批次"
-      empty-description="可从库区或库位的快捷菜单办理入库。"
+      empty-description="入库后可在此查看批次余额、所在库位和最近出入库时间。"
       @retry="load"
     >
       <ArtTable

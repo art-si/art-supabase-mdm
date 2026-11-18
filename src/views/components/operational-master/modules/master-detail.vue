@@ -1,6 +1,10 @@
 <template>
   <div class="operational-master-detail">
-    <ElTabs v-if="sections.length > 1" v-model="activeTab">
+    <ElTabs
+      v-if="sections.length > 1"
+      v-model="activeTab"
+      :class="{ 'art-card-xs art-overlay-tab-card': config.kind !== 'customer' || !record.id }"
+    >
       <ElTabPane
         v-for="section in sections"
         :key="section.key"

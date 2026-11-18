@@ -125,6 +125,7 @@
                   :expand-on-click-node="false"
                   :filter-node-method="filterParameterNode"
                   ref="parameterTreeRef"
+                  @keydown.capture="handleSelectableTreeKeydown"
                   @node-click="insertParameter"
                 >
                   <template #default="{ data }">
@@ -316,6 +317,7 @@
 
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { handleSelectableTreeKeydown } from '@/utils/ui/selection-tree-keyboard'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
   import type { ElTree } from 'element-plus'

@@ -8,7 +8,7 @@
         show-icon
       />
       <ElAlert v-if="error" :title="error" type="error" :closable="false" show-icon />
-      <ElTabs v-model="activeSection" stretch>
+      <ElTabs class="art-card-xs art-overlay-tab-card" v-model="activeSection" stretch>
         <ElTabPane v-for="section in sections" :key="section" :label="section" :name="section" lazy>
           <ArtSectionCard
             :title="section"
