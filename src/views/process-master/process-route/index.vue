@@ -107,6 +107,7 @@
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { useUserStore } from '@/store/modules/user'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
+  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import { exportExcel } from '@/utils/file'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
@@ -312,8 +313,15 @@
       prop: 'routeType',
       label: '类型',
       width: 100,
-      formatter: (row) =>
-        userStore.getDictLabelByValue('mdmProcessRouteType', row.routeType, '未识别类型')
+      formatter: (row) => (
+        <ArtDictDisplay
+          dictCode="mdmProcessRouteType"
+          value={row.routeType}
+          display="text"
+          emptyText="未识别类型"
+          unknownText="未识别类型"
+        />
+      )
     },
     {
       prop: 'allocationMode',
@@ -363,8 +371,15 @@
       prop: 'source',
       label: '来源',
       width: 100,
-      formatter: (row) =>
-        userStore.getDictLabelByValue('mdmProcessRouteSource', row.source, '未识别来源')
+      formatter: (row) => (
+        <ArtDictDisplay
+          dictCode="mdmProcessRouteSource"
+          value={row.source}
+          display="text"
+          emptyText="未识别来源"
+          unknownText="未识别来源"
+        />
+      )
     },
     {
       prop: 'enabled',

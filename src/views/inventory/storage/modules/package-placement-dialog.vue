@@ -24,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtOverlaySession } from '@/hooks/core/useArtOverlay'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -44,6 +45,7 @@
   }
   const emit = defineEmits<{ success: [] }>()
   const dialogRef = ref<ArtDialogExpose<PackagePlacementContext>>()
+  const session = useArtOverlaySession(() => Boolean(unref(dialogRef.value?.visible)))
   const formRef = ref<InstanceType<typeof ArtForm>>()
   const context = shallowRef<PackagePlacementContext>()
   const bins = ref<StorageBin[]>([])
@@ -90,18 +92,21 @@
   async function loadBins(): Promise<void> {
     if (!context.value?.warehouse.enableLocations) return
     const warehouseId = context.value.warehouse.id
+    const version = session.invalidate()
+    if (!session.isCurrent(version)) return
     loadError.value = false
     dialogRef.value?.setLoading(true)
     try {
       const loadedBins = await fetchStorageBins(warehouseId)
-      if (context.value?.warehouse.id === warehouseId) bins.value = loadedBins
+      if (session.isCurrent(version)) bins.value = loadedBins
     } catch {
-      loadError.value = true
+      if (session.isCurrent(version)) loadError.value = true
     } finally {
-      dialogRef.value?.setLoading(false)
+      if (session.isCurrent(version)) dialogRef.value?.setLoading(false)
     }
   }
   async function handleOpen(data: PackagePlacementContext): Promise<void> {
+    session.invalidate()
     context.value = data
     form.value.binId = data.pack.binId
     bins.value = []
@@ -115,6 +120,12 @@
       onOpen: async () => {
         formRef.value?.clearValidate()
         await loadBins()
+      },
+      onClose: () => {
+        session.invalidate()
+      },
+      onReset: () => {
+        session.invalidate()
       }
     })
   }

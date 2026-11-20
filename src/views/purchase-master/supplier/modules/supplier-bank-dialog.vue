@@ -118,7 +118,7 @@
       onOpen: () => {
         formRef.value?.clearValidate()
       },
-      onConfirm: async () => {
+      onConfirm: async (_data, api) => {
         try {
           if (!(await validateArtFormForSubmit(formRef.value))) return false
           const payload: SupplierBankInput = {
@@ -131,12 +131,16 @@
             payeeAddress: normalizeNullableText(model.value.payeeAddress),
             payeePhone: normalizeNullableText(model.value.payeePhone)
           }
+          api.setOptions({ loadingText: '正在保存银行信息…' })
+          api.setLoading(true)
           await saveSupplierBank(payload, editingId.value || undefined)
           emit('success')
           return true
         } catch (error) {
           notifyFriendlyError(error, '供应商银行账户保存失败，请检查填写内容和网络后重试')
           return false
+        } finally {
+          api.setLoading(false)
         }
       }
     })

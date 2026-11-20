@@ -440,7 +440,10 @@
   const buildWriteInput = (): ProductionEquipmentInput =>
     cloneDeep(pick(form.value, equipmentInputKeys))
 
-  const handleSubmit = async (): Promise<boolean> => {
+  const handleSubmit = async (
+    _data: EquipmentDialogOpenData,
+    api: ArtDialogExpose<EquipmentDialogOpenData>
+  ): Promise<boolean> => {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
     } catch (error) {
@@ -448,12 +451,17 @@
       return false
     }
     try {
-      await saveProductionEquipment(buildWriteInput(), form.value.id)
+      const payload = buildWriteInput()
+      api.setOptions({ loadingText: '正在保存生产设备…' })
+      api.setLoading(true)
+      await saveProductionEquipment(payload, form.value.id)
       emit('success')
       return true
     } catch (error) {
       notifyFriendlyError(error, '生产设备保存失败，请检查归属与技术信息后重试')
       return false
+    } finally {
+      api.setLoading(false)
     }
   }
 

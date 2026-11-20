@@ -104,7 +104,7 @@
       onOpen: () => {
         formRef.value?.clearValidate()
       },
-      onConfirm: async () => {
+      onConfirm: async (_data, api) => {
         try {
           if (!(await validateArtFormForSubmit(formRef.value))) return false
           const payload: SupplierContactInput = {
@@ -121,12 +121,16 @@
             email: normalizeNullableText(model.value.email),
             remark: normalizeNullableText(model.value.remark)
           }
+          api.setOptions({ loadingText: '正在保存联系人…' })
+          api.setLoading(true)
           await saveSupplierContact(payload, editingId.value || undefined)
           emit('success')
           return true
         } catch (error) {
           notifyFriendlyError(error, '供应商联系人保存失败，请检查填写内容和网络后重试')
           return false
+        } finally {
+          api.setLoading(false)
         }
       }
     })

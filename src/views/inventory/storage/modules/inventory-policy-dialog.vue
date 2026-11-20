@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useArtOverlaySession } from '@/hooks/core/useArtOverlay'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -23,6 +24,7 @@
 
   const emit = defineEmits<{ success: [staleDays: number] }>()
   const dialogRef = ref<ArtDialogExpose<{ tenantId: string; warehouseName: string }>>()
+  const session = useArtOverlaySession(() => Boolean(unref(dialogRef.value?.visible)))
   const context = shallowRef<{ tenantId: string; warehouseName: string }>()
   const form = reactive({ staleDays: 90, autoReserveOnRelease: true })
   const items: FormItem[] = [
@@ -45,17 +47,19 @@
   async function loadPolicy(): Promise<void> {
     if (!context.value) return
     const tenantId = context.value.tenantId
+    const version = session.invalidate()
+    if (!session.isCurrent(version)) return
     loadError.value = false
     dialogRef.value?.setLoading(true)
     try {
       const policy = await fetchInventoryPolicy(tenantId)
-      if (context.value?.tenantId !== tenantId) return
+      if (!session.isCurrent(version)) return
       form.staleDays = policy.staleDays
       form.autoReserveOnRelease = policy.autoReserveOnRelease
     } catch {
-      loadError.value = true
+      if (session.isCurrent(version)) loadError.value = true
     } finally {
-      dialogRef.value?.setLoading(false)
+      if (session.isCurrent(version)) dialogRef.value?.setLoading(false)
     }
   }
 
@@ -65,12 +69,13 @@
       ElMessage.warning('无活动天数必须是大于零的整数')
       return false
     }
+    const policy = {
+      staleDays: form.staleDays,
+      autoReserveOnRelease: form.autoReserveOnRelease
+    }
     try {
-      await saveInventoryPolicy(context.value.tenantId, {
-        staleDays: form.staleDays,
-        autoReserveOnRelease: form.autoReserveOnRelease
-      })
-      emit('success', form.staleDays)
+      await saveInventoryPolicy(context.value.tenantId, policy)
+      emit('success', policy.staleDays)
       return true
     } catch (error) {
       notifyFriendlyError(error, '呆滞库存口径保存失败，请检查当前租户和网络后重试')
@@ -79,6 +84,7 @@
   }
 
   async function handleOpen(data: { tenantId: string; warehouseName: string }): Promise<void> {
+    session.invalidate()
     context.value = data
     loadError.value = false
     await dialogRef.value?.handleOpen(data, {
@@ -87,7 +93,13 @@
       loading: true,
       loadingText: '正在加载库存口径…',
       onConfirm: submit,
-      onOpen: loadPolicy
+      onOpen: loadPolicy,
+      onClose: () => {
+        session.invalidate()
+      },
+      onReset: () => {
+        session.invalidate()
+      }
     })
   }
   defineExpose({ handleOpen })

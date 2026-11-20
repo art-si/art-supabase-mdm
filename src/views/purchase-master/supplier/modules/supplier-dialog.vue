@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+  import { pick } from 'lodash-es'
   import TreeUtils from '@/utils/tree'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
@@ -278,11 +279,23 @@
     formRef.value?.clearValidate()
   }
 
-  const handleSubmit = async (): Promise<boolean> => {
+  const handleSubmit = async (
+    _data: SupplierDialogOpenData,
+    api: ArtDialogExpose<SupplierDialogOpenData>
+  ): Promise<boolean> => {
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      await savePurchaseSupplier({
-        ...toRaw(form.model),
+      const payload: PurchaseSupplierInput = {
+        ...pick(toRaw(form.model), [
+          'id',
+          'tenantId',
+          'groupId',
+          'supplierCategory',
+          'supplierType',
+          'enterpriseNature',
+          'industry',
+          'coordinateSystem'
+        ]),
         supplierCode: form.model.supplierCode.trim().toUpperCase(),
         supplierName: form.model.supplierName.trim(),
         supplierGroup: form.model.groupId
@@ -296,12 +309,18 @@
         longitude: form.model.longitude,
         latitude: form.model.latitude,
         remark: normalizeNullableText(form.model.remark)
-      })
-      emit('success', form.model.id ? 'edit' : 'add')
+      }
+      const mode = payload.id ? 'edit' : 'add'
+      api.setOptions({ loadingText: '正在保存供应商档案…' })
+      api.setLoading(true)
+      await savePurchaseSupplier(payload)
+      emit('success', mode)
       return true
     } catch (error) {
       notifyFriendlyError(error, '供应商档案保存失败，请检查填写内容和网络后重试')
       return false
+    } finally {
+      api.setLoading(false)
     }
   }
 
